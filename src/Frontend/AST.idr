@@ -29,10 +29,10 @@ data GateName
 
 ------------------------------------------------------------------------------
 -- BuiltinName: built-in runtime-like functions (keywords).
---   qalloc()      -> Qubit
---   qalloc(8)     -> QReg
---   measr(q)      -> (Bit, Qubit)
---   reset(q)      -> Qubit
+--   qalloc()      -> qubit
+--   qalloc(8)     -> [qubit; 8]
+--   measr(q)      -> (bit, qubit)
+--   reset(q)      -> qubit
 --   math helpers: abs, acos, asin, atan, ceil, cos, exp, floor, ln, log2, log10, pow, round, sin, sqrt, tan
 --   quantum helpers: adjoint, discard, measr, qalloc, reset, uncompute
 --   other helpers: max, min
@@ -171,10 +171,10 @@ data TypExpr : Type where
   -- Unit type: ()
   TypUnit : TypExpr
 
-  -- Primitive type keyword: int, bool, float, Qubit, Bit, ...
+  -- Primitive type keyword: int, bool, float, qubit, bit, ...
   TypPrim : TypPrimName -> TypExpr
 
-  -- Tuple types: (int, bool, QReg[n])
+  -- Tuple types: (int, bool)
   TypTuple : List TypExpr -> TypExpr
 
   -- Fixed-size arrays: [T; n]
