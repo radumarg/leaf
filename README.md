@@ -17,6 +17,10 @@
   </tr>
 </table>
 
+## Documentation
+
+[Documentation](docs/README.md)
+
 ## Progress Status
 
 * Frontend (syntax based on Rust): 65%

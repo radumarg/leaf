@@ -249,6 +249,9 @@ let qs: [qubit; 8] = qalloc(8);
 let b: bit = measr(q);
 let bs: [bit; 8] = measr(qs);
 
+// Bitstrings: b"10110010" (See OpenQasm3 for reference)
+b"0101"
+
 // (32) Bit can appear in conditions:
 
 if b { X(q); }        
