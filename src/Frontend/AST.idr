@@ -146,19 +146,28 @@ data TypPrimName
   | TypPrimAngle
   | TypPrimBit
   | TypPrimBool
-  | TypPrimFloat
-  | TypPrimInt
-  | TypPrimUInt
+  | TypPrimF32
+  | TypPrimF64
+  | TypPrimI8
+  | TypPrimI16
+  | TypPrimI32
+  | TypPrimI64
+  | TypPrimI128
+  | TypPrimU8
+  | TypPrimU16
+  | TypPrimU32
+  | TypPrimU64
+  | TypPrimU128
   | TypPrimQubit
 
 ------------------------------------------------------------------------------
 -- TypExpr: type expressions in annotations and function signatures.
 --   ()                => TypUnit
---   int               => TypPrim TypPrimInt
---   (int, bool)       => TypTuple [...]
---   [int; 4]          => TypArrayFixed (TypPrim TypPrimInt) 4
---   [int; 4]          => TypArrayFixed (TypPrim TypPrimInt) (SizeNat 4)
---   [int; n]          => TypArrayFixed (TypPrim TypPrimInt) (SizeVar "n")
+--   i32               => TypPrim TypPrimI32
+--   (i32, bool)       => TypTuple [...]
+--   [i32; 4]          => TypArrayFixed (TypPrim TypPrimI32) 4
+--   [i32; 4]          => TypArrayFixed (TypPrim TypPrimI32) (SizeNat 4)
+--   [i32; n]          => TypArrayFixed (TypPrim TypPrimI32) (SizeVar "n")
 ------------------------------------------------------------------------------
 public export
 data SizeExpr : Type where

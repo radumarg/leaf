@@ -59,7 +59,7 @@ data Symbol
 --   TokFloatLitRaw "3.14"
 --   TokStringLit "Hello"
 --   TokKw KwLet
---   TokTypPrim TypPrimInt
+--   TokTypPrim TypPrimI32
 --   TokGate GateH
 --   TokSym SymPlusEq
 --   TokUnderscore
@@ -145,9 +145,18 @@ typeFromString s =
     "angle" => Just TypPrimAngle
     "bit"   => Just TypPrimBit
     "bool"  => Just TypPrimBool
-    "float" => Just TypPrimFloat
-    "int"   => Just TypPrimInt
-    "uint"  => Just TypPrimUInt
+    "f32"  => Just TypPrimF32
+    "f64"  => Just TypPrimF64
+    "i8"   => Just TypPrimI8
+    "i16"  => Just TypPrimI16
+    "i32"  => Just TypPrimI32
+    "i64"  => Just TypPrimI64
+    "i128" => Just TypPrimI128
+    "u8"   => Just TypPrimU8
+    "u16"  => Just TypPrimU16
+    "u32"  => Just TypPrimU32
+    "u64"  => Just TypPrimU64
+    "u128" => Just TypPrimU128
     "qubit" => Just TypPrimQubit
     _       => Nothing
 

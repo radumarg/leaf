@@ -1,7 +1,3 @@
-// (0) Code lines are terminated by ';' like this is currently done in Rust except for function return syntax which does not end with ';', again like is the convention in Rust. Paranthesis, square brakets and curly braces follow the same rules from Rust.
-
-// (1) Types Reserved Keywords:  
-  (), angle, bit, bool, float, int, qubit, uint
 
 // (param?): bind value, get name let p:Param = param("theta1")
 
@@ -50,12 +46,12 @@ ctrl(q0, q1) {
 
   let my_var = 5;
 
-  let x:int = 3;
+  let x:i32 = 3;
   x = 2 + 5;
 
 // (10) Types variable delaration:
 
-  let my_var : int = 5;
+  let my_var : i32 = 5;
 
 // (11) Operators:
 
@@ -128,7 +124,7 @@ ctrl(q0, q1) {
   
 //  Function returning some variable:
   
-  fn f(x: int) -> int {
+  fn f(x: i32) -> i32 {
   	x + 1
    }
 
@@ -138,7 +134,7 @@ ctrl(q0, q1) {
   // Does not measure
   // Does not touch quantum state at all
   // opt-in promise (guardrail), like "const" in C++
-  classical fn f(x: int) -> int {
+  classical fn f(x: i32) -> i32 {
     x + 1
   }
 
@@ -188,7 +184,7 @@ ctrl(q0, q1) {
   
 // (21) Function syntax with typed arguments:
 
-  fn f(x: (int, bool)) {
+  fn f(x: (i32, bool)) {
     let (n, flag) = x;
   }  
   
@@ -207,7 +203,7 @@ fn f() {
 // (24) Declaring tuples:
 
   let t = (1, 3.14, true);
-  let t: (int, float, bool) = (1, 3.14, true);
+  let t: (i32, f64, bool) = (1, 3.14, true);
   
 // (25) Tuples positional indexing:
 
@@ -228,7 +224,7 @@ fn f() {
 // (28) Declaring Arrays literal:
 
 let a = [1, 2, 3];
-let b: [int; 4] = [10, 20, 30, 40];
+let b: [i32; 4] = [10, 20, 30, 40];
 
 // (29) Arrays declared using a repeat syntax:
 
@@ -298,12 +294,12 @@ match b {
 // (37) Type casting:
  
  let b:Bit = 1;
- let x = b as int;
+ let x = b as i32;
 
 // (38) Qubit allocation:
 
 qalloc() -> Qubit
-qalloc(n: uint) -> qubit[n]
+qalloc(n: u32) -> qubit[n]
 
 // (39) Reset:
 
@@ -381,7 +377,7 @@ let scratch qs = qalloc(8);
 
 // (49) function annottated to contain only cassical code, no quantum operations allowed, including no qubit allocation, no quantum gates, no measurement, no dependence on measured values.
 
-  classical fn f(x: int) -> int {
+  classical fn f(x: i32) -> i32 {
   	x + 1
   }
 
