@@ -10,7 +10,7 @@
 // quantum computing specific:
 bit, qubit
 
-// additional quantum types:
+// additional quantum types (OpenQASM3 inspired):
 angle, Param
 
 // signed integer types:  
