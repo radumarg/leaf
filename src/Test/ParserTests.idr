@@ -8,11 +8,11 @@ import Frontend.Token
 import System.File
 import Text.Bounds
 
-testIntTypeDeclaration : IO ()
-testIntTypeDeclaration = do
-  fileResult <- readFile "src/Test/Good/Types/IntTypeDeclaration.lf"
+runTest : String -> IO ()
+runTest fileName = do
+  fileResult <- readFile fileName
   case fileResult of
-    Left fileErr => putStrLn $ "Failed to read src/Test/Good/Types/IntTypeDeclaration.lf: " ++ show fileErr
+    Left fileErr => putStrLn $ "Failed to read " ++ fileName ++ ": " ++ show fileErr
     Right testProgram =>
       case lexProgram testProgram of
         Left err => putStrLn $ "Lexer error: " ++ show err
@@ -23,4 +23,4 @@ testIntTypeDeclaration = do
 
 main : IO ()
 main = do
-  testIntTypeDeclaration
+  runTest("src/Test/Good/Types/i8TypeDeclaration.lf")
