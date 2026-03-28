@@ -599,12 +599,30 @@ showFnDeclLax (MkFnDecl name params maybeRet body) =
   in "fn " ++ name ++ "(" ++ joinWith ", " (map showFnParamLeaf params) ++ ")" ++
      retPart ++ " " ++ showBlockWith PrettyLax body
 
+showFnDeclStrict : FnDecl -> String
+showFnDeclStrict (MkFnDecl name params maybeRet body) =
+  let retPart =
+        case maybeRet of
+          Nothing => ""
+          Just retTyp => " -> " ++ showTypExprLeaf retTyp
+  in "fn " ++ name ++ "(" ++ joinWith ", " (map showFnParamLeaf params) ++ ")" ++
+     retPart ++ " " ++ showBlockWith PrettyStrict body
+
 showItemLax : Item -> String
 showItemLax (ItemFnDecl fnDecl) = showFnDeclLax fnDecl
 showItemLax (ItemStmt stmt) = showStmtWith PrettyLax stmt
 
+showItemStrict : Item -> String
+showItemStrict (ItemFnDecl fnDecl) = showFnDeclStrict fnDecl
+showItemStrict (ItemStmt stmt) = showStmtWith PrettyStrict stmt
+
+public export
 showProgramLax : Program -> String
 showProgramLax (MkProgram items) = joinWith "\n" (map showItemLax items)
+
+public export
+showProgramStrict : Program -> String
+showProgramStrict (MkProgram items) = joinWith "\n" (map showItemStrict items)
 
 mutual
   eqExprList : List Expr -> List Expr -> Bool
@@ -757,9 +775,6 @@ public export
 implementation Show ControlArg where
   showPrec _ arg = showControlArgWith PrettyLax arg
 
-------------------------------------------------------------------------------
--- Show Expr: default to lax surface syntax
-------------------------------------------------------------------------------
 public export
 implementation Show ControlPrefix where
   showPrec _ ctrlPrefix = showControlPrefixWith PrettyLax ctrlPrefix

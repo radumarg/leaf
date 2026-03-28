@@ -7,9 +7,11 @@ import Frontend.Parser
 import Frontend.Token
 import System.File
 import Text.Bounds
+import Tester
+import Tester.Runner
 
-runTest : String -> IO ()
-runTest fileName = do
+runTest : String -> String -> {default False debug : Bool} -> IO ()
+runTest fileName parseExpression {debug} = do
   fileResult <- readFile fileName
   case fileResult of
     Left fileErr => putStrLn $ "Failed to read " ++ fileName ++ ": " ++ show fileErr
@@ -19,8 +21,19 @@ runTest fileName = do
         Right tokens =>
           case parseProgramAll tokens of
             Left err => putStrLn $ "Parse error: " ++ show err
-            Right program => putStrLn $ "Parsed program: " ++ show program
+            Right program => do
+              let strictParseResult = showProgramStrict program
+              case debug of
+                True => do
+                  putStrLn $ "Parsed program: " ++ show program
+                  putStrLn $ "Strict parse expression: " ++ strictParseResult
+                False => do
+                  result <- runEitherT $ assertEq parseExpression strictParseResult
+                  case result of
+                    Left err => putStrLn err
+                    Right () => pure ()
 
 main : IO ()
 main = do
-  runTest("src/Test/Good/Types/i8TypeDeclaration.lf")
+  runTest "src/Test/Good/Types/i8TypeDeclaration.lf" "let i : i8 = 1;"
+  runTest "src/Test/Good/Types/i8TypeDeclaration.lf" "let i : i8 = 1;" {debug = True}

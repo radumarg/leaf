@@ -2,7 +2,8 @@ package leaf-tests
 
 sourcedir = "src"
 depends = elab-util,
-          parser
+          parser,
+          tester
 
 modules = Frontend.AST,
           Frontend.Lexer,
