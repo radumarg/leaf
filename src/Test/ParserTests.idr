@@ -61,7 +61,7 @@ main = do
   runTest "src/Test/Good/Types/angle32TypeDeclaration.lf" "let theta : angle32 = 1.234567;" "let theta : angle32 = 1.234567;"
   runTest "src/Test/Good/Types/angle64TypeDeclaration.lf" "let theta : angle64 = 1.2345678901234567;" "let theta : angle64 = 1.2345678901234567;"
   runTest "src/Test/Good/Types/unitTypeDeclaration.lf" "let unit : () = ();" "let unit : () = ();"
-  --runTest "src/Test/Good/Types/paramTypeDeclaration.lf" "let theta : param = param(\"theta\");" "let theta : param = param(\"theta\");"
+  runTest "src/Test/Good/Types/paramTypeDeclaration.lf" "let theta : Param = param(\"theta\");" "let theta : Param = param(\"theta\");"
   -- Test inferred types
   runTest "src/Test/Good/Types/i32InferredType.lf" "let i = -7;" "let i = (-7);"
   runTest "src/Test/Good/Types/f64InferredType.lf" "let f = -1000.0;" "let f = (-1000.0);"

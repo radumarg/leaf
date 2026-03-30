@@ -154,6 +154,7 @@ typeFromString s =
     "i32"     => Just TypPrimI32
     "i64"     => Just TypPrimI64
     "i128"    => Just TypPrimI128
+    "Param"   => Just TypPrimParam
     "u8"      => Just TypPrimU8
     "u16"     => Just TypPrimU16
     "u32"     => Just TypPrimU32

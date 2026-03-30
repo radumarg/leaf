@@ -1,3 +1,6 @@
+////////////////////////////////
+// Basic Leaf language Syntax
+////////////////////////////////
 
 // Code lines are terminated by ';' like this is currently done in Rust except for function return syntax which does not end with ';', again like is the convention in Rust.
 
@@ -29,7 +32,40 @@ bool
 ()
 
 ////////////////////////////////
-// Syntax for paramaters
+// Syntax for Basic Types
 ////////////////////////////////
+let f:f32 = 1.234567;
+let d:f64 = -1.2345678901234567;
 
+// inferred types for floating point literals
+let d = -1000.0;
+
+let i:i8 = -1;
+let i:i16 = -1;
+let i:i32 = 1;
+let i:i64 = 1;
+let i:i128 = -1;
+
+// inferred types for integer literals
+let i = -7;
+
+let q:qubit = qalloc();
+
+// inferred type for qubit literals
+let q = qalloc();
+
+let u:u8 = 1;
+let u:u16 = 1;
+let u:u32 = 1;
+let u:u64 = 1;
+let u:u128 = 1;
+
+let unit:() = ();
+
+// inferred type for unit literal
+let () = ();
+
+////////////////////////////////
+// Syntax for Parameters
+////////////////////////////////
 let theta : Param = param("theta")

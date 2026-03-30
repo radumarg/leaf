@@ -155,6 +155,7 @@ data TypPrimName
   | TypPrimI32
   | TypPrimI64
   | TypPrimI128
+  | TypPrimParam
   | TypPrimU8
   | TypPrimU16
   | TypPrimU32
