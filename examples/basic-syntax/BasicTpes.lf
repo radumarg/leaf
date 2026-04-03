@@ -1,4 +1,4 @@
--- basic types
+// basic types
 
 let b: bool = true;
 
@@ -27,7 +27,7 @@ let unit: () = ();
 
 let theta: Param = param("theta");
 
--- inferred types
+// inferred types
 
 let b = true;
 let i = -7;
