@@ -1,5 +1,5 @@
 ////////////////////////////////
-// Basic Leaf language Syntax
+// Basic Leaf Language Syntax
 ////////////////////////////////
 
 // Code lines are terminated by ';' like this is currently done in Rust except for function return syntax which does not end with ';', again like is the convention in Rust.

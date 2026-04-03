@@ -1,6 +1,7 @@
 package leaf-tests
 
 sourcedir = "src"
+
 depends = elab-util,
           parser,
           tester
@@ -9,7 +10,10 @@ modules = Frontend.AST,
           Frontend.Lexer,
           Frontend.Parser,
           Frontend.Token,
-          Test.ParserTests
+          Frontend.ExprPrettyPrinter,
+          Test.TestsHelper,
+          Test.TypeParseTests,
+          Test.Run
 
-main = Test.ParserTests
+main = Test.Run
 executable = leaf-tests

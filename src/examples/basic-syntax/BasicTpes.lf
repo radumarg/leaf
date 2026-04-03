@@ -1,0 +1,25 @@
+-- basic types
+let i:i8 = -1;
+let i:i16 = -1;
+let i:i32 = 1;
+let i:i64 = 1;
+let i:i128 = -1;
+let u:u8 = 1;
+let u:u16 = 1;
+let u:u32 = 1;
+let u:u64 = 1;
+let u:u128 = 1;
+let d:f32 = 1.234567;
+let d:f64 = -1.2345678901234567;
+let i:bit = 1;
+let q:qubit = qalloc();
+let b:bool = true;
+let theta:angle32 = 1.234567;
+let theta:angle64 = 1.2345678901234567;
+let unit:() = ();
+let theta:Param = param("theta");
+-- inferred types
+let i = -7;
+let f = -1000.0;
+let q = qalloc();
+let () = ();
