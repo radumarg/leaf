@@ -2,7 +2,7 @@
 
 let b:bool = true;
 
-let i:bit = 1;
+let b:bit = 1;
 let q:qubit = qalloc();
 
 let i:i8 = -1;
@@ -17,8 +17,8 @@ let u:u32 = 1;
 let u:u64 = 1;
 let u:u128 = 1;
 
-let d:f32 = 1.234567;
-let d:f64 = -1.2345678901234567;
+let f:f32 = 1.234567;
+let f:f64 = -1.2345678901234567;
 
 let theta:angle32 = 1.234567;
 let theta:angle64 = 1.2345678901234567;
@@ -29,6 +29,7 @@ let theta:Param = param("theta");
 
 -- inferred types
 
+let b = true;
 let i = -7;
 let f = -1000.0;
 let q = qalloc();

@@ -28,6 +28,7 @@ runTypeParseTest = do
   runParseOkTest "src/Test/Fixtures/Good/Types/paramTypeDeclaration.lf" "let theta : Param = param(\"theta\");" "let theta : Param = param(\"theta\");"
 
   -- Test inferred types
+  runParseOkTest "src/Test/Fixtures/Good/Types/boolInferredType.lf" "let b = true;" "let b = true;"
   runParseOkTest "src/Test/Fixtures/Good/Types/i32InferredType.lf" "let i = -7;" "let i = (-7);"
   runParseOkTest "src/Test/Fixtures/Good/Types/f64InferredType.lf" "let f = -1000.0;" "let f = (-1000.0);"
   runParseOkTest "src/Test/Fixtures/Good/Types/qubitInferredType.lf" "let q = qalloc();" "let q = qalloc();"
