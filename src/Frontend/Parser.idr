@@ -601,6 +601,13 @@ mutual
           Right (atomExpr, tokens1) =>
             parsePostfixChain remainingFuel atomExpr tokens1
 
+  isCallableExpr : Expr -> Bool
+  isCallableExpr (EVarName _) = True
+  isCallableExpr (EField _ _) = True
+  isCallableExpr (ETupleIndex _ _) = True
+  isCallableExpr (ECall _ _) = True
+  isCallableExpr _ = False
+
   -- Postfix chain: calls, indexing, field access, tuple indexing, casts
   parsePostfixChain : Nat -> Expr -> Parser Expr
   parsePostfixChain Z _ tokens =
@@ -610,16 +617,19 @@ mutual
     case peekToken tokens of
       -- Function call: f(...)
       Just (TokSym SymLParen) =>
-        case expectSymbol SymLParen tokens of
-          Left err => Left err
-          Right ((), tokens1) =>
-            case parseCommaSep0Until remainingFuel SymRParen (parseExprPrec remainingFuel 0) tokens1 of
+        if isCallableExpr currentExpr
+          then
+            case expectSymbol SymLParen tokens of
               Left err => Left err
-              Right (argExprs, tokens2) =>
-                case expectSymbol SymRParen tokens2 of
+              Right ((), tokens1) =>
+                case parseCommaSep0Until remainingFuel SymRParen (parseExprPrec remainingFuel 0) tokens1 of
                   Left err => Left err
-                  Right ((), tokens3) =>
-                    parsePostfixChain remainingFuel (ECall currentExpr argExprs) tokens3
+                  Right (argExprs, tokens2) =>
+                    case expectSymbol SymRParen tokens2 of
+                      Left err => Left err
+                      Right ((), tokens3) =>
+                        parsePostfixChain remainingFuel (ECall currentExpr argExprs) tokens3
+          else Right (currentExpr, tokens)
 
       -- Indexing: a[0]
       Just (TokSym SymLBracket) =>
@@ -1361,36 +1371,56 @@ mutual
         case expectSymbol SymLBracket tokens of
           Left err => Left err
           Right ((), tokens1) =>
-            case parseExprPrec fuelLeft 0 tokens1 of
-              Left err => Left err
-              Right (firstExpr, tokens2) =>
-                case peekToken tokens2 of
-                  Just (TokSym SymSemi) =>
-                    -- Repeat form: [expr; Nat]
-                    case expectSymbol SymSemi tokens2 of
-                      Left err => Left err
-                      Right ((), tokens3) =>
-                        case tokens3 of
-                          (B (TokIntLitRaw rawDigits) rawBounds :: tokens4) =>
-                            case digitsToNat rawDigits of
-                              Nothing => Left (B (ParseExpected "natural number after ';' in [x; n]") rawBounds)
-                              Just n  =>
+            case peekToken tokens1 of
+              Just (TokSym SymRBracket) =>
+                case expectSymbol SymRBracket tokens1 of
+                  Left err => Left err
+                  Right ((), tokens2) =>
+                    Right (EArrayLiteral [], tokens2)
+
+              _ =>
+                case parseExprPrec fuelLeft 0 tokens1 of
+                  Left err => Left err
+                  Right (firstExpr, tokens2) =>
+                    case peekToken tokens2 of
+                      Just (TokSym SymSemi) =>
+                        -- Repeat form: [expr; Nat]
+                        case expectSymbol SymSemi tokens2 of
+                          Left err => Left err
+                          Right ((), tokens3) =>
+                            case tokens3 of
+                              (B (TokIntLitRaw rawDigits) rawBounds :: tokens4) =>
+                                case digitsToNat rawDigits of
+                                  Nothing => Left (B (ParseExpected "natural number after ';' in [x; n]") rawBounds)
+                                  Just n  =>
+                                    case expectSymbol SymRBracket tokens4 of
+                                      Left err => Left err
+                                      Right ((), tokens5) =>
+                                        Right (EArrayRepeat firstExpr n, tokens5)
+                              _ =>
+                                failAtHead (ParseExpected "Nat literal after ';' in [x; n]") tokens3
+
+                      Just (TokSym SymComma) =>
+                        -- Literal list form: [e1, e2, ...]
+                        case expectSymbol SymComma tokens2 of
+                          Left err => Left err
+                          Right ((), tokens3) =>
+                            case parseCommaSep0Until fuelLeft SymRBracket (parseExprPrec fuelLeft 0) tokens3 of
+                              Left err => Left err
+                              Right (moreExprs, tokens4) =>
                                 case expectSymbol SymRBracket tokens4 of
                                   Left err => Left err
                                   Right ((), tokens5) =>
-                                    Right (EArrayRepeat firstExpr n, tokens5)
-                          _ =>
-                            failAtHead (ParseExpected "Nat literal after ';' in [x; n]") tokens3
+                                    Right (EArrayLiteral (firstExpr :: moreExprs), tokens5)
 
-                  _ =>
-                    -- Literal list form: [e1, e2, ...]
-                    case parseCommaSep0Until fuelLeft SymRBracket (parseExprPrec fuelLeft 0) tokens2 of
-                      Left err => Left err
-                      Right (moreExprs, tokens3) =>
-                        case expectSymbol SymRBracket tokens3 of
+                      Just (TokSym SymRBracket) =>
+                        case expectSymbol SymRBracket tokens2 of
                           Left err => Left err
-                          Right ((), tokens4) =>
-                            Right (EArrayLiteral (firstExpr :: moreExprs), tokens4)
+                          Right ((), tokens3) =>
+                            Right (EArrayLiteral [firstExpr], tokens3)
+
+                      _ =>
+                        failAtHead (ParseExpected "',' or ']' after array element") tokens2
 
       -- Identifier: variable or macro call name!(...)
       Just (TokIdent name) =>

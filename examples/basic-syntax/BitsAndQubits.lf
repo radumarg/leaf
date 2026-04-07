@@ -1,0 +1,21 @@
+// explicit type annotations for qubits and bits
+
+let q : qubit = qalloc();
+
+let q : qubit = qalloc(1);
+
+let qs : [qubit; 3] = qalloc(3);
+
+let b : bit = measr(q);
+
+let b : bit = 0;
+
+let bs : [bit; 3] = measr(qs);
+
+// inferred types for qubits and bits
+
+let q = qalloc();
+
+let qs = qalloc(3);
+
+let b = measr(q);
