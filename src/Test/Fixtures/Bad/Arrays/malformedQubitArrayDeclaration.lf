@@ -1,0 +1,1 @@
+et qubits: [qubit; 2] = qalloc(1), qalloc(1);

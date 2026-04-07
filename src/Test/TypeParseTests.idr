@@ -111,5 +111,17 @@ runTypeParseTest = do
                   "src/Test/Fixtures/Bad/Types/missingEqualsBeforeInitializer.lf"
   runParseShouldFailTest
                   "src/Test/Fixtures/Bad/Types/doubleColonInTypeDeclaration.lf"
+  runParseShouldFailTest
+                  "src/Test/Fixtures/Bad/Types/unexpectedIntegerAfterInitializer.lf"
+  runParseShouldFailTest
+                  "src/Test/Fixtures/Bad/Types/unexpectedFloatAfterParamInitializer.lf"
+  runParseShouldFailTest
+                  "src/Test/Fixtures/Bad/Types/unexpectedSecondParamAfterInitializer.lf"
+  runParseShouldFailTest
+                  "src/Test/Fixtures/Bad/Types/unexpectedFloatAfterInferredInitializer.lf"
+  runParseShouldFailTest
+                  "src/Test/Fixtures/Bad/Types/unexpectedCommaSeparatedQallocInInitializer.lf"
+  runParseShouldFailTest
+                  "src/Test/Fixtures/Bad/Types/unexpectedCommaSeparatedBoolInitializer.lf"
 
   --runParseOkTest "src/Test/Fixtures/Good/Types/i8TypeDeclaration.lf" "let i : i8 = 1;" "let i : i8 = 1;" {debug = True}

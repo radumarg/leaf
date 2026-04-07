@@ -92,6 +92,9 @@ let params: [param; 2] = [Param("theta"), Param("phi")];
 // let first = a[0];
 // let n = a.len();
 
+// Bitstrings: b"10110010" (See OpenQasm3 for reference)
+//b"0101"
+
 // // (31) Other quantum specific constructs:
 
 // let q: qubit = qalloc();

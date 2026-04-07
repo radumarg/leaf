@@ -224,8 +224,7 @@ fn f() {
   
 
 
-// Bitstrings: b"10110010" (See OpenQasm3 for reference)
-b"0101"
+
 
 // (32) Bit can appear in conditions:
 

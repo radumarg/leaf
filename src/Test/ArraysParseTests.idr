@@ -131,3 +131,15 @@ runArraysParseTest = do
                     "src/Test/Fixtures/Bad/Arrays/missingSemicolonInRepeatArrayDeclaration.lf"
     runParseShouldFailTest
                     "src/Test/Fixtures/Bad/Arrays/nonNumericRepeatCountInArrayDeclaration.lf"
+    runParseShouldFailTest
+                    "src/Test/Fixtures/Bad/Arrays/unexpectedScalarAfterArrayInitializer.lf"
+    runParseShouldFailTest
+                    "src/Test/Fixtures/Bad/Arrays/unexpectedScalarAfterArrayLiteralInitializer.lf"
+    runParseShouldFailTest
+                    "src/Test/Fixtures/Bad/Arrays/malformedParamArrayDeclaration.lf"
+    runParseShouldFailTest
+                    "src/Test/Fixtures/Bad/Arrays/malformedQubitArrayDeclaration.lf"
+    runParseShouldFailTest
+                    "src/Test/Fixtures/Bad/Arrays/malformedUnitArrayDeclaration.lf"
+    runParseShouldFailTest
+                    "src/Test/Fixtures/Bad/Arrays/unexpectedFloatAfterInferredArrayInitializer.lf"
