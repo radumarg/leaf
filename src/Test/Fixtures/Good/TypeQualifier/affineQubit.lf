@@ -1,0 +1,1 @@
+let affine q: qubit = qalloc();

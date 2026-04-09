@@ -1,0 +1,1 @@
+let qs = CNOT(q0, q1);

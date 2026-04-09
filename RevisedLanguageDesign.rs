@@ -76,7 +76,6 @@ let () = ();
 ////////////////////////////////
 let theta : param = Param("theta")
 
-
 ////////////////////////////////
 // Syntax for declaring arrays
 ////////////////////////////////
@@ -123,20 +122,31 @@ let q = qalloc();
 let qs = qalloc(3);
 let b = measr(q);
 
+//////////////////////////////////////////
+// Syntax for type qualifiers for qubits
+//////////////////////////////////////////
 
-// // (52) Declaring a qubits as linear, meaning they must be used exactly once, no copying or discarding allowed. Default is linear, so the 'lin' keyword is optional.  
+// linear qubits: must be used exactly once, no copying or discarding allowed
+// this is the default, so the 'linear' keyword is optional
+let linear q: qubit = qalloc();
+let linear qs: [qubit; 2] = qalloc(2);
 
-//   let lin q: qubit = qalloc();
+// affine qubits: must be used at most once, no copying allowed, but discarding is allowed
+let affine q: qubit = qalloc();
+let affine qs: [qubit; 2] = qalloc(2);
 
-//   let lin qs = qalloc(8);
+// scratch qubits are automatically uncomputed at the end of their scope
+let scratch q: qubit = qalloc();
+let scratch qs: [qubit; 2] = qalloc(2);
 
-// // (53) Declaring qubits as affine, meaning they can be used at most once, no copying allowed, but discarding is allowed.
+// linear/affine type qualifiers can be combined with scratch
+let scratch linear q: qubit = qalloc();
+let scratch linear qs: [qubit; 2] = qalloc(2);
+let scratch affine q: qubit = qalloc();
+let scratch affine qs: [qubit; 2] = qalloc(2);
 
-//   let affin q: qubit = qalloc();
 
-//   let affin qs = qalloc(8);
 
-// // Scratch, etc. classic/unitary/?
 
 // // (54) Declaring bit strings
 

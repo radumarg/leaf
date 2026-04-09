@@ -1,0 +1,1 @@
+let scratch affine qs = qalloc(2);

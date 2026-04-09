@@ -1,0 +1,1 @@
+let qs: [qubit; 2] = CTDG(q0, q1);

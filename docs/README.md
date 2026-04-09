@@ -5,3 +5,4 @@
 - [Operators](operators.md)
 - [Quantum Gates](quantum-gates.md)
 - [Types](types.md)
+- [Type Annotations](type-annotations.md)

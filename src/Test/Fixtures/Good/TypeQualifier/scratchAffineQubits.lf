@@ -1,0 +1,1 @@
+let scratch affine qs: [qubit; 2] = qalloc(2);

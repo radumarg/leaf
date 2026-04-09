@@ -1,0 +1,1 @@
+let scratch linear q: qubit = qalloc();

@@ -1,0 +1,1 @@
+let qs: [qubit; 3] = CSWAP(q0, q1, q2);

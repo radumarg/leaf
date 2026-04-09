@@ -1,0 +1,1 @@
+let q: qubit = RX(1, q);

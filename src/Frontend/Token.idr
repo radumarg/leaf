@@ -19,10 +19,10 @@ import Frontend.AST
 ----------------------------------------------------------------------
 public export
 data Keyword
-  = KwAbs | KwAdjoint | KwAffin | KwAs | KwAcos | KwAsin | KwAtan
+  = KwAbs | KwAdjoint | KwAffine | KwAs | KwAcos | KwAsin | KwAtan
   | KwBarrier |KwBreak | KwCeil | KwClassical | KwCos | KwCtrl | KwContinue | KwDiscard
   | KwElse | KwExp | KwFalse | KwFloor | KwFn | KwFor | KwGeneral | KwIf | KwImport | KwIn
-  | KwLet | KwLn | KwALin | KwLog10 | KwLog2 | KwLoop
+  | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
   | KwMatch | KwMax | KwMeasr | KwMin | KwNegCtrl
   | KwParam | KwPow | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwReturn
   | KwScratch | KwSin | KwSqrt | KwTan | KwTrue | KwUncompute | KwUnitary | KwWhile
@@ -84,7 +84,7 @@ public export
 keywordFromString : String -> Maybe Keyword
 keywordFromString s =
   case s of
-    "affin"     => Just KwAffin
+    "affine"    => Just KwAffine
     "abs"       => Just KwAbs
     "adjoint"   => Just KwAdjoint
     "acos"      => Just KwAcos
@@ -110,7 +110,7 @@ keywordFromString s =
     "import"    => Just KwImport
     "in"        => Just KwIn
     "let"       => Just KwLet
-    "lin"       => Just KwALin
+    "linear"    => Just KwLinear
     "ln"        => Just KwLn
     "log10"     => Just KwLog10
     "log2"      => Just KwLog2
@@ -221,7 +221,7 @@ showKeywordLeaf kw =
   case kw of
     KwAbs       => "abs"
     KwAdjoint   => "adjoint"
-    KwAffin     => "affin"
+    KwAffine    => "affine"
     KwAs        => "as"
     KwAcos      => "acos"
     KwAsin      => "asin"
@@ -246,7 +246,7 @@ showKeywordLeaf kw =
     KwIn        => "in"
     KwLet       => "let"
     KwLn        => "ln"
-    KwALin      => "lin"
+    KwLinear    => "linear"
     KwLog10     => "log10"
     KwLog2      => "log2"
     KwLoop      => "loop"

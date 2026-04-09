@@ -1,0 +1,1 @@
+let qs: [qubit; 2] = CNOT(q0, q1);

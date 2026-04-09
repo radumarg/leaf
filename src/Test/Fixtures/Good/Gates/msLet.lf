@@ -1,0 +1,1 @@
+let qs: [qubit; 2] = MS(1, 2, q0, q1);
