@@ -62,8 +62,8 @@ runTypeParseTests = do
                   "let unit : () = ();"
                   "let unit : () = ();"
   runParseOkTest "src/Test/Fixtures/Good/Types/paramTypeDeclaration.lf"
-                  "let theta : Param = param(\"theta\");"
-                  "let theta : Param = param(\"theta\");"
+                  "let theta : param = Param(\"theta\");"
+                  "let theta : param = Param(\"theta\");"
 
   -- Test inferred types
   runParseOkTest "src/Test/Fixtures/Good/Types/boolInferredType.lf"
@@ -85,8 +85,8 @@ runTypeParseTests = do
    -- Test type declarations corner case
   --runParseOkTest "src/Test/Fixtures/Good/Types/redundantSemicolumnsTypeDeclaration.lf" "let i : i32 = -99;" "let i : i32 = (-99);"
   runParseOkTest "src/Test/Fixtures/Good/Types/noSpacesParamTypeDeclaration.lf"
-                  "let theta : Param = param(\"phi\");"
-                  "let theta : Param = param(\"phi\");"
+                  "let theta : param = Param(\"phi\");"
+                  "let theta : param = Param(\"phi\");"
   runParseOkTest "src/Test/Fixtures/Good/Types/extraWhitespaceQubitTypeDeclaration.lf"
                   "let q : qubit = qalloc();"
                   "let q : qubit = qalloc();"

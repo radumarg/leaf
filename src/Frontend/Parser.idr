@@ -21,7 +21,6 @@ import Text.Parse.Manual
 public export
 data ParseErr
   = ParseUnexpectedEOF
-  | ParseUnexpectedToken Token
   | ParseExpected String
   | ParseFuelExhausted String
 
@@ -43,6 +42,50 @@ outOfFuelErr tokens =
 public export
 Parser : Type -> Type
 Parser a = List (Bounded Token) -> Either (Bounded ParseErr) (a, List (Bounded Token))
+
+--------------------------------------------------------------------------------
+-- Small generic helpers used throughout the parser.
+--
+-- These helpers are intentionally simple:
+--   * they only centralize repeated token-matching boilerplate
+--   * they do NOT change parser behavior
+--   * they keep error locations attached to the head token
+--------------------------------------------------------------------------------
+
+-- Small fuel helpers.
+-- We keep the same formulas as before, but naming them makes intent clearer.
+fuelFor : List a -> Nat
+fuelFor xs = 2 * length xs + 16
+
+exprFuelFor : List a -> Nat
+exprFuelFor xs = 3 * length xs + 32
+
+-- Generic helper:
+--   expectMaybe "identifier" matcher
+-- tries to consume one token that matcher recognizes.
+expectMaybe : String -> (Token -> Maybe a) -> Parser a
+expectMaybe expectedText matcher tokens =
+  case tokens of
+    [] =>
+      Left (bounded (ParseExpected expectedText) begin begin)
+
+    (B tok tokenBounds :: rest) =>
+      case matcher tok of
+        Just value => Right (value, rest)
+        Nothing => Left (B (ParseExpected expectedText) tokenBounds)
+
+-- Generic optional version of expectMaybe.
+-- It never fails. It either consumes and returns Just x, or leaves the stream untouched.
+acceptMaybe : (Token -> Maybe a) -> Parser (Maybe a)
+acceptMaybe matcher tokens =
+  case tokens of
+    [] =>
+      Right (Nothing, [])
+
+    (B tok _ :: rest) =>
+      case matcher tok of
+        Just value => Right (Just value, rest)
+        Nothing => Right (Nothing, tokens)
 
 --------------------------------------------------------------------------------
 -- Basic token stream helpers.
@@ -67,49 +110,57 @@ failAtHead parseErr (B _ tokenBounds :: _) = Left (B parseErr tokenBounds)
 -- “expect” / “accept” helpers.
 -- - expectX: must match, otherwise error
 -- - acceptX: optionally consume if matches, otherwise do nothing
+--
+-- These are still exposed as dedicated helpers because the rest of the parser
+-- reads much better with domain names like expectSymbol / expectKeyword than
+-- with raw generic matcher code everywhere.
 --------------------------------------------------------------------------------
 
+matchSymbol : Symbol -> Token -> Maybe ()
+matchSymbol expectedSymbol tok =
+  case tok of
+    TokSym sym =>
+      if sym == expectedSymbol then Just () else Nothing
+    _ => Nothing
+
+matchKeyword : Keyword -> Token -> Maybe ()
+matchKeyword expectedKeyword tok =
+  case tok of
+    TokKw kw =>
+      if kw == expectedKeyword then Just () else Nothing
+    _ => Nothing
+
+matchIdentName : Token -> Maybe String
+matchIdentName tok =
+  case tok of
+    TokIdent identName => Just identName
+    _ => Nothing
+
 expectSymbol : Symbol -> Parser ()
-expectSymbol expectedSymbol tokens =
-  case tokens of
-    (B (TokSym sym) symBounds :: rest) =>
-      if sym == expectedSymbol
-         then Right ((), rest)
-         else Left (B (ParseExpected ("symbol " ++ show expectedSymbol)) symBounds)
-    _ => failAtHead (ParseExpected ("symbol " ++ show expectedSymbol)) tokens
+expectSymbol expectedSymbol =
+  expectMaybe ("symbol " ++ show expectedSymbol) (matchSymbol expectedSymbol)
 
 acceptSymbol : Symbol -> Parser Bool
 acceptSymbol expectedSymbol tokens =
-  case tokens of
-    (B (TokSym sym) _ :: rest) =>
-      if sym == expectedSymbol
-         then Right (True, rest)
-         else Right (False, tokens)
-    _ => Right (False, tokens)
+  case acceptMaybe (matchSymbol expectedSymbol) tokens of
+    Left err => Left err
+    Right (Nothing, remainingTokens) => Right (False, remainingTokens)
+    Right (Just (), remainingTokens) => Right (True, remainingTokens)
 
 expectKeyword : Keyword -> Parser ()
-expectKeyword expectedKeyword tokens =
-  case tokens of
-    (B (TokKw kw) kwBounds :: rest) =>
-      if kw == expectedKeyword
-         then Right ((), rest)
-         else Left (B (ParseExpected ("keyword " ++ show expectedKeyword)) kwBounds)
-    _ => failAtHead (ParseExpected ("keyword " ++ show expectedKeyword)) tokens
+expectKeyword expectedKeyword =
+  expectMaybe ("keyword " ++ show expectedKeyword) (matchKeyword expectedKeyword)
 
 acceptKeyword : Keyword -> Parser Bool
 acceptKeyword expectedKeyword tokens =
-  case tokens of
-    (B (TokKw kw) _ :: rest) =>
-      if kw == expectedKeyword
-         then Right (True, rest)
-         else Right (False, tokens)
-    _ => Right (False, tokens)
+  case acceptMaybe (matchKeyword expectedKeyword) tokens of
+    Left err => Left err
+    Right (Nothing, remainingTokens) => Right (False, remainingTokens)
+    Right (Just (), remainingTokens) => Right (True, remainingTokens)
 
 expectIdentName : Parser String
-expectIdentName tokens =
-  case tokens of
-    (B (TokIdent identName) _ :: rest) => Right (identName, rest)
-    _ => failAtHead (ParseExpected "identifier") tokens
+expectIdentName =
+  expectMaybe "identifier" matchIdentName
 
 --------------------------------------------------------------------------------
 -- Small number helpers.
@@ -142,10 +193,122 @@ digitsToNat rawDigits =
         chars
 
 --------------------------------------------------------------------------------
+-- Small classification helpers for tokens that map directly into AST forms.
+--
+-- These helpers keep repeated "case token of ..." logic in one place, while
+-- still keeping the main parsing code explicit.
+--------------------------------------------------------------------------------
+
+literalFromToken : Token -> Maybe Literal
+literalFromToken tok =
+  case tok of
+    TokIntLitRaw rawInt => Just (LitIntRaw rawInt)
+    TokFloatLitRaw rawFloat => Just (LitFloatRaw rawFloat)
+    TokStringLit rawString => Just (LitString rawString)
+    TokBitStringLit rawBits => Just (LitBitString rawBits)
+    TokKw KwTrue => Just (LitBool True)
+    TokKw KwFalse => Just (LitBool False)
+    _ => Nothing
+
+assignOpFromSymbol : Symbol -> Maybe AssignOp
+assignOpFromSymbol sym =
+  case sym of
+    SymEq        => Just AssignEq
+    SymPlusEq    => Just AssignAddEq
+    SymMinusEq   => Just AssignSubEq
+    SymStarEq    => Just AssignMulEq
+    SymSlashEq   => Just AssignDivEq
+    SymPercentEq => Just AssignRemEq
+    SymWalrusEq  => Just AssignWalrusEq
+    _ => Nothing
+
+-- Builtin specification table.
+--
+-- This is the single source of truth for builtin/keyword correspondence.
+-- The Bool flag says whether that builtin keyword should be recognized by
+-- parseAtom as a builtin expression form.
+--
+-- We keep BuiltinImport in the table for completeness, but mark it False so we
+-- preserve the current parser behavior.
+builtinSpecs : List (BuiltinName, Keyword, Bool)
+builtinSpecs =
+  [ (BuiltinAbs,        KwAbs,        True)
+  , (BuiltinAdjoint,    KwAdjoint,    True)
+  , (BuiltinAcos,       KwAcos,       True)
+  , (BuiltinAsin,       KwAsin,       True)
+  , (BuiltinAtan,       KwAtan,       True)
+  , (BuiltinBarrier,    KwBarrier,    True)
+  , (BuiltinCeil,       KwCeil,       True)
+  , (BuiltinCos,        KwCos,        True)
+  , (BuiltinDiscard,    KwDiscard,    True)
+  , (BuiltinExp,        KwExp,        True)
+  , (BuiltinFloor,      KwFloor,      True)
+  , (BuiltinImport,     KwImport,     False)
+  , (BuiltinLn,         KwLn,         True)
+  , (BuiltinLog10,      KwLog10,      True)
+  , (BuiltinLog2,       KwLog2,       True)
+  , (BuiltinMax,        KwMax,        True)
+  , (BuiltinMeasr,      KwMeasr,      True)
+  , (BuiltinMin,        KwMin,        True)
+  , (BuiltinParam,      KwParam,      True)
+  , (BuiltinPow,        KwPow,        True)
+  , (BuiltinQAlloc,     KwQAlloc,     True)
+  , (BuiltinReset,      KwReset,      True)
+  , (BuiltinRound,      KwRound,      True)
+  , (BuiltinSin,        KwSin,        True)
+  , (BuiltinSqrt,       KwSqrt,       True)
+  , (BuiltinTan,        KwTan,        True)
+  , (BuiltinUncompute,  KwUncompute,  True)
+  ]
+
+lookupBuiltinKeyword : BuiltinName -> List (BuiltinName, Keyword, Bool) -> Maybe Keyword
+lookupBuiltinKeyword builtinName specs =
+  case specs of
+    [] => Nothing
+    (candidateBuiltinName, kw, _) :: rest =>
+      if candidateBuiltinName == builtinName
+         then Just kw
+         else lookupBuiltinKeyword builtinName rest
+
+lookupBuiltinByKeyword : Keyword -> List (BuiltinName, Keyword, Bool) -> Maybe BuiltinName
+lookupBuiltinByKeyword kw specs =
+  case specs of
+    [] => Nothing
+    (builtinName, candidateKeyword, allowedInParseAtom) :: rest =>
+      if candidateKeyword == kw && allowedInParseAtom
+         then Just builtinName
+         else lookupBuiltinByKeyword kw rest
+
+builtinKeyword : BuiltinName -> Keyword
+builtinKeyword builtinName =
+  case lookupBuiltinKeyword builtinName builtinSpecs of
+    Just kw => kw
+    Nothing => KwImport
+
+validateBuiltinCallArgs : BuiltinName -> List Expr -> Maybe String
+validateBuiltinCallArgs builtinName args =
+  case builtinName of
+    BuiltinParam =>
+      case args of
+        [_] => Nothing
+        _ => Just "Param expects exactly one argument"
+
+    _ => Nothing
+
+-- Reverse mapping for parseAtom dispatch.
+-- This is derived from `builtinSpecs`, so there is only one mapping to maintain.
+builtinFromKeyword : Keyword -> Maybe BuiltinName
+builtinFromKeyword kw =
+  lookupBuiltinByKeyword kw builtinSpecs
+
+--------------------------------------------------------------------------------
 -- Comma-separated list helper until a closing symbol.
 -- Supports:
 --   - empty list: ()
 --   - trailing comma: (a, b, )
+--
+-- Internally this now uses a reversed accumulator for readability and to avoid
+-- repeated `++ [x]`. The external behavior is unchanged.
 --------------------------------------------------------------------------------
 mutual
   parseCommaSep0Until : (fuel : Nat) -> (closingSymbol : Symbol) -> Parser a -> Parser (List a)
@@ -168,38 +331,41 @@ mutual
   parseCommaSep1Until (S fuel) closingSymbol parseOne tokens =
     case parseOne tokens of
       Left err => Left err
-      Right (firstValue, tokensAfterFirst) => go fuel [firstValue] tokensAfterFirst
+      Right (firstValue, tokensAfterFirst) =>
+        -- `revValues` stores elements in reverse order for cheap accumulation.
+        go fuel [firstValue] tokensAfterFirst
     where
       go : (fuelGo : Nat)
         -> List a
         -> List (Bounded Token)
         -> Either (Bounded ParseErr) (List a, List (Bounded Token))
-      go Z accumulatedValues currentTokens =
+      go Z revValues currentTokens =
         Left (outOfFuelErr currentTokens)
 
-      go (S fuelGo) accumulatedValues currentTokens =
-        case peekToken currentTokens of
-          Just (TokSym SymComma) =>
-            case expectSymbol SymComma currentTokens of
-              Left err => Left err
-              Right ((), tokensAfterComma) =>
-                -- Allow trailing comma: if next token is closing, stop.
-                case peekToken tokensAfterComma of
-                  Just (TokSym s) =>
-                    if s == closingSymbol
-                      then Right (accumulatedValues, tokensAfterComma)
-                      else
-                        case parseOne tokensAfterComma of
-                          Left err => Left err
-                          Right (nextValue, tokensAfterNext) =>
-                            go fuelGo (accumulatedValues ++ [nextValue]) tokensAfterNext
-                  _ =>
+      go (S fuelGo) revValues currentTokens =
+        case acceptSymbol SymComma currentTokens of
+          Left err => Left err
+
+          Right (False, _) =>
+            Right (reverse revValues, currentTokens)
+
+          Right (True, tokensAfterComma) =>
+            -- Allow trailing comma: if next token is closing, stop.
+            case peekToken tokensAfterComma of
+              Just (TokSym s) =>
+                if s == closingSymbol
+                  then Right (reverse revValues, tokensAfterComma)
+                  else
                     case parseOne tokensAfterComma of
                       Left err => Left err
                       Right (nextValue, tokensAfterNext) =>
-                        go fuelGo (accumulatedValues ++ [nextValue]) tokensAfterNext
-          _ =>
-            Right (accumulatedValues, currentTokens)
+                        go fuelGo (nextValue :: revValues) tokensAfterNext
+
+              _ =>
+                case parseOne tokensAfterComma of
+                  Left err => Left err
+                  Right (nextValue, tokensAfterNext) =>
+                    go fuelGo (nextValue :: revValues) tokensAfterNext
 
 --------------------------------------------------------------------------------
 -- SIZE EXPRESSIONS (for symbolic `n` in types)
@@ -240,8 +406,7 @@ mutual
   public export
   parseTypExpr : Parser TypExpr
   parseTypExpr tokens =
-    let typFuel : Nat = 2 * length tokens + 16 in
-    parseTypExprFuel typFuel tokens
+    parseTypExprFuel (fuelFor tokens) tokens
 
   parseTypExprFuel : Nat -> Parser TypExpr
   parseTypExprFuel Z tokens =
@@ -306,8 +471,7 @@ mutual
   public export
   parseTypArrayFixed : Parser TypExpr
   parseTypArrayFixed tokens =
-    let typFuel : Nat = 2 * length tokens + 16 in
-    parseTypArrayFixedFuel typFuel tokens
+    parseTypArrayFixedFuel (fuelFor tokens) tokens
 
   parseTypArrayFixedFuel : Nat -> Parser TypExpr
   parseTypArrayFixedFuel Z tokens =
@@ -337,75 +501,73 @@ mutual
 parseLiteral : Parser Literal
 parseLiteral tokens =
   case tokens of
-    (B (TokIntLitRaw rawInt) _ :: rest) =>
-      Right (LitIntRaw rawInt, rest)
+    (B tok _ :: rest) =>
+      case literalFromToken tok of
+        Just lit =>
+          Right (lit, rest)
 
-    (B (TokFloatLitRaw rawFloat) _ :: rest) =>
-      Right (LitFloatRaw rawFloat, rest)
+        Nothing =>
+          case tok of
+            -- Unit literal: ()
+            TokSym SymLParen =>
+              case expectSymbol SymLParen tokens of
+                Left err => Left err
+                Right ((), tokens1) =>
+                  case expectSymbol SymRParen tokens1 of
+                    Left err => Left err
+                    Right ((), tokens2) =>
+                      Right (LitUnit, tokens2)
 
-    (B (TokStringLit rawString) _ :: rest) =>
-      Right (LitString rawString, rest)
-
-    (B (TokBitStringLit rawBits) _ :: rest) =>
-      Right (LitBitString rawBits, rest)
-
-    (B (TokKw KwTrue) _ :: rest) =>
-      Right (LitBool True, rest)
-
-    (B (TokKw KwFalse) _ :: rest) =>
-      Right (LitBool False, rest)
-
-    -- Unit literal: ()
-    (B (TokSym SymLParen) _ :: _) =>
-      case expectSymbol SymLParen tokens of
-        Left err => Left err
-        Right ((), tokens1) =>
-          case expectSymbol SymRParen tokens1 of
-            Left err => Left err
-            Right ((), tokens2) =>
-              Right (LitUnit, tokens2)
+            _ =>
+              failAtHead (ParseExpected "literal") tokens
 
     _ =>
       failAtHead (ParseExpected "literal") tokens
 
+-- Small helper used in parseAtom when a token class is known to be a literal.
+parseLiteralExpr : Parser Expr
+parseLiteralExpr tokens =
+  case parseLiteral tokens of
+    Left err => Left err
+    Right (lit, rest) => Right (ELit lit, rest)
+
 --------------------------------------------------------------------------------
 -- PATTERN PARSING (let bindings + match arms)
 --------------------------------------------------------------------------------
-buildPatternQualifiers : Bool -> Maybe PatternQualifier -> List PatternQualifier
-buildPatternQualifiers hasScratch maybeQualifier =
-  case hasScratch of
-    True =>
-      case maybeQualifier of
-        Nothing => [PatQualScratch]
-        Just qualifier => [PatQualScratch, qualifier]
-    False =>
-      case maybeQualifier of
-        Nothing => []
-        Just qualifier => [qualifier]
 
-parsePatternQualifiersAcc : List PatternQualifier -> Bool -> Maybe PatternQualifier -> Parser (List PatternQualifier)
-parsePatternQualifiersAcc qualifiers hasScratch maybeLinearity tokens =
+-- Parse pattern qualifiers with two invariants:
+--   * at most one `scratch`
+--   * at most one linearity qualifier (`linear` or `affine`)
+--
+-- This helper is easy to misread because it deliberately stops parsing
+-- qualifiers once it sees a duplicate or a non-qualifier token.
+-- At that point it returns the qualifiers parsed so far and leaves the
+-- remaining tokens untouched for the surrounding pattern parser.
+--
+-- Internally this uses a reverse accumulator to avoid repeated list appends.
+parsePatternQualifiersAcc : Bool -> Maybe PatternQualifier -> List PatternQualifier -> Parser (List PatternQualifier)
+parsePatternQualifiersAcc hasScratch maybeLinearity revQualifiers tokens =
   case tokens of
     (B (TokKw KwScratch) _ :: rest) =>
       case hasScratch of
-        True => Right (qualifiers, tokens)
-        False => parsePatternQualifiersAcc (qualifiers ++ [PatQualScratch]) True maybeLinearity rest
+        True => Right (reverse revQualifiers, tokens)
+        False => parsePatternQualifiersAcc True maybeLinearity (PatQualScratch :: revQualifiers) rest
 
     (B (TokKw KwLinear) _ :: rest) =>
       case maybeLinearity of
-        Nothing => parsePatternQualifiersAcc (qualifiers ++ [PatQualLinear]) hasScratch (Just PatQualLinear) rest
-        Just _ => Right (qualifiers, tokens)
+        Nothing => parsePatternQualifiersAcc hasScratch (Just PatQualLinear) (PatQualLinear :: revQualifiers) rest
+        Just _ => Right (reverse revQualifiers, tokens)
 
     (B (TokKw KwAffine) _ :: rest) =>
       case maybeLinearity of
-        Nothing => parsePatternQualifiersAcc (qualifiers ++ [PatQualAffine]) hasScratch (Just PatQualAffine) rest
-        Just _ => Right (qualifiers, tokens)
+        Nothing => parsePatternQualifiersAcc hasScratch (Just PatQualAffine) (PatQualAffine :: revQualifiers) rest
+        Just _ => Right (reverse revQualifiers, tokens)
 
-    _ => Right (qualifiers, tokens)
+    _ => Right (reverse revQualifiers, tokens)
 
 parsePatternQualifiers : Parser (List PatternQualifier)
 parsePatternQualifiers tokens0 =
-  parsePatternQualifiersAcc [] False Nothing tokens0
+  parsePatternQualifiersAcc False Nothing [] tokens0
 
 mutual
   parsePatternFuel : Nat -> Parser Pattern
@@ -441,71 +603,53 @@ mutual
         Right (PatVarName name, rest)
 
       -- Literal patterns
-      (B (TokIntLitRaw _) _ :: _) =>
-        case parseLiteral tokensBase of
-          Left err => Left err
-          Right (lit, rest) => Right (PatLit lit, rest)
+      (B tok _ :: _) =>
+        case literalFromToken tok of
+          Just _ =>
+            case parseLiteral tokensBase of
+              Left err => Left err
+              Right (lit, rest) => Right (PatLit lit, rest)
 
-      (B (TokFloatLitRaw _) _ :: _) =>
-        case parseLiteral tokensBase of
-          Left err => Left err
-          Right (lit, rest) => Right (PatLit lit, rest)
-
-      (B (TokStringLit _) _ :: _) =>
-        case parseLiteral tokensBase of
-          Left err => Left err
-          Right (lit, rest) => Right (PatLit lit, rest)
-
-      (B (TokBitStringLit _) _ :: _) =>
-        case parseLiteral tokensBase of
-          Left err => Left err
-          Right (lit, rest) => Right (PatLit lit, rest)
-
-      (B (TokKw KwTrue) _ :: _) =>
-        case parseLiteral tokensBase of
-          Left err => Left err
-          Right (lit, rest) => Right (PatLit lit, rest)
-
-      (B (TokKw KwFalse) _ :: _) =>
-        case parseLiteral tokensBase of
-          Left err => Left err
-          Right (lit, rest) => Right (PatLit lit, rest)
-
-      -- Tuple pattern or unit: (...) / ()
-      (B (TokSym SymLParen) _ :: _) =>
-        case expectSymbol SymLParen tokensBase of
-          Left err => Left err
-          Right ((), tokens1) =>
-            case peekToken tokens1 of
-              Just (TokSym SymRParen) =>
-                case expectSymbol SymRParen tokens1 of
+          Nothing =>
+            case tok of
+              -- Tuple pattern or unit: (...) / ()
+              TokSym SymLParen =>
+                case expectSymbol SymLParen tokensBase of
                   Left err => Left err
-                  Right ((), tokens2) => Right (PatUnit, tokens2)
-
-              _ =>
-                case parsePatternFuel fuelLeft tokens1 of
-                  Left err => Left err
-                  Right (firstPat, tokens2) =>
-                    case peekToken tokens2 of
-                      Just (TokSym SymComma) =>
-                        case expectSymbol SymComma tokens2 of
+                  Right ((), tokens1) =>
+                    case peekToken tokens1 of
+                      Just (TokSym SymRParen) =>
+                        case expectSymbol SymRParen tokens1 of
                           Left err => Left err
-                          Right ((), tokens3) =>
-                            -- Fuel for the comma-separated tail list.
-                            let commaFuel : Nat = 2 * length tokens3 + 16 in
-                            case parseCommaSep0Until commaFuel SymRParen (parsePatternFuel fuelLeft) tokens3 of
-                              Left err => Left err
-                              Right (morePats, tokens4) =>
-                                case expectSymbol SymRParen tokens4 of
-                                  Left err => Left err
-                                  Right ((), tokens5) =>
-                                    Right (PatTuple (firstPat :: morePats), tokens5)
+                          Right ((), tokens2) => Right (PatUnit, tokens2)
 
                       _ =>
-                        -- Grouping parentheses for patterns: (x) -> x
-                        case expectSymbol SymRParen tokens2 of
+                        case parsePatternFuel fuelLeft tokens1 of
                           Left err => Left err
-                          Right ((), tokens3) => Right (firstPat, tokens3)
+                          Right (firstPat, tokens2) =>
+                            case peekToken tokens2 of
+                              Just (TokSym SymComma) =>
+                                case expectSymbol SymComma tokens2 of
+                                  Left err => Left err
+                                  Right ((), tokens3) =>
+                                    -- Fuel for the comma-separated tail list.
+                                    let commaFuel : Nat = fuelFor tokens3 in
+                                    case parseCommaSep0Until commaFuel SymRParen (parsePatternFuel fuelLeft) tokens3 of
+                                      Left err => Left err
+                                      Right (morePats, tokens4) =>
+                                        case expectSymbol SymRParen tokens4 of
+                                          Left err => Left err
+                                          Right ((), tokens5) =>
+                                            Right (PatTuple (firstPat :: morePats), tokens5)
+
+                              _ =>
+                                -- Grouping parentheses for patterns: (x) -> x
+                                case expectSymbol SymRParen tokens2 of
+                                  Left err => Left err
+                                  Right ((), tokens3) => Right (firstPat, tokens3)
+
+              _ =>
+                failAtHead (ParseExpected "pattern") tokensBase
 
       _ =>
         failAtHead (ParseExpected "pattern") tokensBase
@@ -513,7 +657,7 @@ mutual
 parsePattern : Parser Pattern
 parsePattern tokens =
   -- Big enough to cover recursive descent over the remaining input
-  let patternFuel : Nat = 2 * length tokens + 16 in
+  let patternFuel : Nat = fuelFor tokens in
   parsePatternFuel patternFuel tokens
 
 --------------------------------------------------------------------------------
@@ -584,8 +728,7 @@ mutual
   public export
   parseExpr : Parser Expr
   parseExpr tokens =
-    let exprFuel : Nat = 3 * length tokens + 32 in
-    parseExprPrec exprFuel 0 tokens
+    parseExprPrec (exprFuelFor tokens) 0 tokens
 
   -- Parse with minimum precedence (Pratt-style).
   parseExprPrec : Nat -> Nat -> Parser Expr
@@ -663,6 +806,13 @@ mutual
   isCallableExpr _ = False
 
   -- Postfix chain: calls, indexing, field access, tuple indexing, casts
+  --
+  -- This function repeatedly extends an already-parsed expression on the left:
+  --   f(x)[0].field as T
+  --
+  -- The key idea is:
+  --   * parsePrefix gives us the initial expression
+  --   * parsePostfixChain keeps consuming postfix continuations until none match
   parsePostfixChain : Nat -> Expr -> Parser Expr
   parsePostfixChain Z _ tokens =
     failAtHead (ParseFuelExhausted "postfix chain") tokens
@@ -728,9 +878,6 @@ mutual
       _ =>
         Right (currentExpr, tokens)
 
-
-
-
   --------------------------------------------------------------------------------
   -- Control prefix parsing for ctrl(...) / negctrl(...)
   --------------------------------------------------------------------------------
@@ -739,6 +886,10 @@ mutual
   --   ctrl(q0)                       => ControlArgExpr (EVarName "q0")
   --   ctrl(q0 = true, q1 = false)    => ControlArgNamed ...
   --   ctrl(a[0])                     => ControlArgExpr <expr>
+  --
+  -- The only ambiguity here is an identifier followed by '=':
+  --   that is treated as the named-polarity form.
+  -- Otherwise identifiers are treated as ordinary expression arguments.
   parseControlArg : Nat -> Parser ControlArg
   parseControlArg fuel tokens =
     case tokens of
@@ -791,6 +942,9 @@ mutual
 
   -- Parse zero or more prefixes:
   --   ctrl(...) negctrl(...) ctrl(...)
+  --
+  -- As with other list-producing helpers, we accumulate in reverse for clarity
+  -- and efficiency, then reverse once at the end.
   parseControlPrefixes : Nat -> Parser (List ControlPrefix)
   parseControlPrefixes fuel tokens =
     go fuel [] tokens
@@ -800,11 +954,11 @@ mutual
         -> List (Bounded Token)
         -> Either (Bounded ParseErr) (List ControlPrefix, List (Bounded Token))
 
-      go Z accumulatedPrefixes currentTokens =
+      go Z revPrefixes currentTokens =
         -- Out of fuel: stop (or error; choose what matches your parser style)
-        Right (accumulatedPrefixes, currentTokens)
+        Right (reverse revPrefixes, currentTokens)
 
-      go (S fuelLeft) accumulatedPrefixes currentTokens =
+      go (S fuelLeft) revPrefixes currentTokens =
         case peekToken currentTokens of
           Just (TokKw KwCtrl) =>
             case expectKeyword KwCtrl currentTokens of
@@ -813,7 +967,7 @@ mutual
                 case parseControlArgs fuelLeft tokens1 of
                   Left err => Left err
                   Right (args, tokens2) =>
-                    go fuelLeft (accumulatedPrefixes ++ [PrefixCtrl args]) tokens2
+                    go fuelLeft (PrefixCtrl args :: revPrefixes) tokens2
 
           Just (TokKw KwNegCtrl) =>
             case expectKeyword KwNegCtrl currentTokens of
@@ -822,10 +976,10 @@ mutual
                 case parseControlArgs fuelLeft tokens1 of
                   Left err => Left err
                   Right (args, tokens2) =>
-                    go fuelLeft (accumulatedPrefixes ++ [PrefixNegCtrl args]) tokens2
+                    go fuelLeft (PrefixNegCtrl args :: revPrefixes) tokens2
 
           _ =>
-            Right (accumulatedPrefixes, currentTokens)
+            Right (reverse revPrefixes, currentTokens)
 
   --------------------------------------------------------------------------------
   -- Gate application / control blocks:
@@ -895,36 +1049,45 @@ mutual
   parseBlockExpr : Parser BlockExpr
   parseBlockExpr tokens =
     -- Local fuel for the block: proportional to remaining tokens.
-    let blockFuel : Nat = 2 * length tokens + 16 in
+    let blockFuel : Nat = fuelFor tokens in
     parseBlockExprFuel blockFuel tokens
 
   -- Parse zero or more statements, then an optional tail expression, until '}'.
+  --
+  -- Internally, statements are accumulated in reverse order to avoid repeated
+  -- `++ [stmt]`. We reverse exactly once when the block finishes.
   parseBlockBody :
       Nat
     -> List Stmt
     -> List (Bounded Token)
     -> Either (Bounded ParseErr) (List Stmt, Maybe Expr, List (Bounded Token))
-  parseBlockBody Z accumulatedStatements tokens =
+  parseBlockBody Z revAccumulatedStatements tokens =
     failAtHead (ParseFuelExhausted "block body") tokens
 
-  parseBlockBody (S remainingFuel) accumulatedStatements tokens =
+  parseBlockBody (S remainingFuel) revAccumulatedStatements tokens =
     case peekToken tokens of
       Just (TokSym SymRBrace) =>
-        Right (accumulatedStatements, Nothing, tokens)
+        Right (reverse revAccumulatedStatements, Nothing, tokens)
 
       _ =>
         -- Either parse a statement OR parse an expression and decide statement/tail.
         case parseStmtOrTail remainingFuel tokens of
           Left err => Left err
           Right (Left stmt, tokensAfterStmt) =>
-            parseBlockBody remainingFuel (accumulatedStatements ++ [stmt]) tokensAfterStmt
+            parseBlockBody remainingFuel (stmt :: revAccumulatedStatements) tokensAfterStmt
 
           Right (Right tailExpr, tokensAfterTailExpr) =>
-            Right (accumulatedStatements, Just tailExpr, tokensAfterTailExpr)
+            Right (reverse revAccumulatedStatements, Just tailExpr, tokensAfterTailExpr)
 
   -- Either:
   --   Left stmt  (a real statement)
   --   Right expr (the tail expression)
+  --
+  -- This helper is the main block-level disambiguation point.
+  -- After parsing the leading expression, it decides whether we saw:
+  --   * an assignment statement
+  --   * an expression statement ending in ';'
+  --   * the final tail expression before '}'
   parseStmtOrTail : Nat -> Parser (Either Stmt Expr)
   parseStmtOrTail fuel tokens =
     case peekToken tokens of
@@ -957,25 +1120,27 @@ mutual
           Left err => Left err
           Right (lhsExpr, tokensAfterExpr) =>
             case peekToken tokensAfterExpr of
-              -- Assignment statements
-              Just (TokSym SymEq)       => parseAssignStmt fuel AssignEq lhsExpr tokensAfterExpr
-              Just (TokSym SymPlusEq)   => parseAssignStmt fuel AssignAddEq lhsExpr tokensAfterExpr
-              Just (TokSym SymMinusEq)  => parseAssignStmt fuel AssignSubEq lhsExpr tokensAfterExpr
-              Just (TokSym SymStarEq)   => parseAssignStmt fuel AssignMulEq lhsExpr tokensAfterExpr
-              Just (TokSym SymSlashEq)  => parseAssignStmt fuel AssignDivEq lhsExpr tokensAfterExpr
-              Just (TokSym SymPercentEq)=> parseAssignStmt fuel AssignRemEq lhsExpr tokensAfterExpr
-              Just (TokSym SymWalrusEq) => parseAssignStmt fuel AssignWalrusEq lhsExpr tokensAfterExpr
+              Just (TokSym sym) =>
+                case assignOpFromSymbol sym of
+                  -- Assignment statements
+                  Just assignOp =>
+                    parseAssignStmt fuel assignOp lhsExpr tokensAfterExpr
 
-              -- Expression statement: expr ;
-              Just (TokSym SymSemi) =>
-                case expectSymbol SymSemi tokensAfterExpr of
-                  Left err => Left err
-                  Right ((), tokensAfterSemi) =>
-                    Right (Left (StmtExpr lhsExpr True), tokensAfterSemi)
+                  Nothing =>
+                    case sym of
+                      -- Expression statement: expr ;
+                      SymSemi =>
+                        case expectSymbol SymSemi tokensAfterExpr of
+                          Left err => Left err
+                          Right ((), tokensAfterSemi) =>
+                            Right (Left (StmtExpr lhsExpr True), tokensAfterSemi)
 
-              -- Tail expression: expr }
-              Just (TokSym SymRBrace) =>
-                Right (Right lhsExpr, tokensAfterExpr)
+                      -- Tail expression: expr }
+                      SymRBrace =>
+                        Right (Right lhsExpr, tokensAfterExpr)
+
+                      _ =>
+                        failAtHead (ParseExpected "assignment op, ';', or '}' after expression") tokensAfterExpr
 
               _ =>
                 failAtHead (ParseExpected "assignment op, ';', or '}' after expression") tokensAfterExpr
@@ -1142,342 +1307,265 @@ mutual
                 Right (arm :: moreArms, tokens2)
 
   --------------------------------------------------------------------------------
-  -- ATOMS (Expr forms that do not start with infix operators)
+  -- Helpers used by parseAtom.
+  --
+  -- These are separated out so that parseAtom itself becomes a readable dispatcher
+  -- rather than a very large nested case tree.
   --------------------------------------------------------------------------------
-  parseAtom : Nat -> Parser Expr
-  parseAtom Z tokens =
-    Left (outOfFuelErr tokens)
 
-  parseAtom (S fuelLeft) tokens =
-    case peekToken tokens of
-      -- Blocks: { ... }
-      Just (TokSym SymLBrace) =>
-        case parseBlockExprFuel fuelLeft tokens of
+  -- match scrutinee { pat => expr, ... }
+  parseMatchArm : Nat -> Parser MatchArm
+  parseMatchArm fuelLeft armTokens =
+    case parsePattern armTokens of
+      Left err => Left err
+      Right (armPattern, tokensA) =>
+        case expectSymbol SymFatArrow tokensA of
           Left err => Left err
-          Right (blk, rest) => Right (EBlock blk, rest)
-
-      -- if cond { ... } else expr?
-      Just (TokKw KwIf) =>
-        case expectKeyword KwIf tokens of
-          Left err => Left err
-          Right ((), tokens1) =>
-            case parseExprPrec fuelLeft 0 tokens1 of
+          Right ((), tokensB) =>
+            case parseExprPrec fuelLeft 0 tokensB of
               Left err => Left err
-              Right (condExpr, tokens2) =>
-                case parseBlockExprFuel fuelLeft tokens2 of
-                  Left err => Left err
-                  Right (thenBlk, tokens3) =>
-                    case acceptKeyword KwElse tokens3 of
-                      Left err => Left err
-                      Right (False, tokensNoElse) =>
-                        Right (EIf condExpr thenBlk Nothing, tokensNoElse)
-                      Right (True, tokensAfterElse) =>
-                        case parseExprPrec fuelLeft 0 tokensAfterElse of
-                          Left err => Left err
-                          Right (elseExpr, tokensAfterElseExpr) =>
-                            Right (EIf condExpr thenBlk (Just elseExpr), tokensAfterElseExpr)
+              Right (armBodyExpr, tokensC) =>
+                Right (MkMatchArm armPattern armBodyExpr, tokensC)
 
-      -- qif cond { ... } qelse expr?
-      Just (TokKw KwQif) =>
-        case expectKeyword KwQif tokens of
+  -- Blocks: { ... }
+  parseBlockExprAtom : Nat -> Parser Expr
+  parseBlockExprAtom fuelLeft tokens =
+    case parseBlockExprFuel fuelLeft tokens of
+      Left err => Left err
+      Right (blk, rest) => Right (EBlock blk, rest)
+
+  -- if cond { ... } else expr?
+  parseIfExprAtom : Nat -> Parser Expr
+  parseIfExprAtom fuelLeft tokens =
+    case expectKeyword KwIf tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case parseExprPrec fuelLeft 0 tokens1 of
           Left err => Left err
-          Right ((), tokens1) =>
-            case parseExprPrec fuelLeft 0 tokens1 of
+          Right (condExpr, tokens2) =>
+            case parseBlockExprFuel fuelLeft tokens2 of
               Left err => Left err
-              Right (condExpr, tokens2) =>
-                case parseBlockExprFuel fuelLeft tokens2 of
+              Right (thenBlk, tokens3) =>
+                case acceptKeyword KwElse tokens3 of
                   Left err => Left err
-                  Right (qthenBlk, tokens3) =>
-                    case acceptKeyword KwQelse tokens3 of
+                  Right (False, tokensNoElse) =>
+                    Right (EIf condExpr thenBlk Nothing, tokensNoElse)
+                  Right (True, tokensAfterElse) =>
+                    case parseExprPrec fuelLeft 0 tokensAfterElse of
                       Left err => Left err
-                      Right (False, tokensNoQElse) =>
-                        Right (EQIf condExpr qthenBlk Nothing, tokensNoQElse)
-                      Right (True, tokensAfterQElse) =>
-                        case parseExprPrec fuelLeft 0 tokensAfterQElse of
-                          Left err => Left err
-                          Right (qelseExpr, tokensAfterQElseExpr) =>
-                            Right (EQIf condExpr qthenBlk (Just qelseExpr), tokensAfterQElseExpr)
+                      Right (elseExpr, tokensAfterElseExpr) =>
+                        Right (EIf condExpr thenBlk (Just elseExpr), tokensAfterElseExpr)
 
-      -- loop { ... }
-      Just (TokKw KwLoop) =>
-        case expectKeyword KwLoop tokens of
+  -- qif cond { ... } qelse expr?
+  parseQIfExprAtom : Nat -> Parser Expr
+  parseQIfExprAtom fuelLeft tokens =
+    case expectKeyword KwQif tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case parseExprPrec fuelLeft 0 tokens1 of
           Left err => Left err
-          Right ((), tokens1) =>
-            case parseBlockExprFuel fuelLeft tokens1 of
+          Right (condExpr, tokens2) =>
+            case parseBlockExprFuel fuelLeft tokens2 of
+              Left err => Left err
+              Right (qthenBlk, tokens3) =>
+                case acceptKeyword KwQelse tokens3 of
+                  Left err => Left err
+                  Right (False, tokensNoQElse) =>
+                    Right (EQIf condExpr qthenBlk Nothing, tokensNoQElse)
+                  Right (True, tokensAfterQElse) =>
+                    case parseExprPrec fuelLeft 0 tokensAfterQElse of
+                      Left err => Left err
+                      Right (qelseExpr, tokensAfterQElseExpr) =>
+                        Right (EQIf condExpr qthenBlk (Just qelseExpr), tokensAfterQElseExpr)
+
+  -- loop { ... }
+  parseLoopAtom : Nat -> Parser Expr
+  parseLoopAtom fuelLeft tokens =
+    case expectKeyword KwLoop tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case parseBlockExprFuel fuelLeft tokens1 of
+          Left err => Left err
+          Right (blk, rest) =>
+            Right (ELoop blk, rest)
+
+  -- while cond { ... }
+  parseWhileAtom : Nat -> Parser Expr
+  parseWhileAtom fuelLeft tokens =
+    case expectKeyword KwWhile tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case parseExprPrec fuelLeft 0 tokens1 of
+          Left err => Left err
+          Right (condExpr, tokens2) =>
+            case parseBlockExprFuel fuelLeft tokens2 of
               Left err => Left err
               Right (blk, rest) =>
-                Right (ELoop blk, rest)
+                Right (EWhile condExpr blk, rest)
 
-      -- while cond { ... }
-      Just (TokKw KwWhile) =>
-        case expectKeyword KwWhile tokens of
+  -- for pat in iterable { ... }
+  parseForAtom : Nat -> Parser Expr
+  parseForAtom fuelLeft tokens =
+    case expectKeyword KwFor tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case parsePattern tokens1 of
           Left err => Left err
-          Right ((), tokens1) =>
+          Right (loopPattern, tokens2) =>
+            case expectKeyword KwIn tokens2 of
+              Left err => Left err
+              Right ((), tokens3) =>
+                case parseExprPrec fuelLeft 0 tokens3 of
+                  Left err => Left err
+                  Right (iterExpr, tokens4) =>
+                    case parseBlockExprFuel fuelLeft tokens4 of
+                      Left err => Left err
+                      Right (blk, rest) =>
+                        Right (EFor loopPattern iterExpr blk, rest)
+
+  -- match scrutinee { pat => expr, ... }
+  parseMatchAtom : Nat -> Parser Expr
+  parseMatchAtom fuelLeft tokens =
+    case expectKeyword KwMatch tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case parseExprPrec fuelLeft 0 tokens1 of
+          Left err => Left err
+          Right (scrutineeExpr, tokens2) =>
+            case expectSymbol SymLBrace tokens2 of
+              Left err => Left err
+              Right ((), tokens3) =>
+                case parseCommaSep0Until fuelLeft SymRBrace (parseMatchArm fuelLeft) tokens3 of
+                  Left err => Left err
+                  Right (arms, tokens4) =>
+                    case expectSymbol SymRBrace tokens4 of
+                      Left err => Left err
+                      Right ((), tokens5) =>
+                        Right (EMatch scrutineeExpr arms, tokens5)
+
+  -- qmatch scrutinee { 0 => { ... } b"01" => { ... } }
+  parseQMatchAtom : Nat -> Parser Expr
+  parseQMatchAtom fuelLeft tokens =
+    case expectKeyword KwQmatch tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case parseExprPrec fuelLeft 0 tokens1 of
+          Left err => Left err
+          Right (scrutineeExpr, tokens2) =>
+            case expectSymbol SymLBrace tokens2 of
+              Left err => Left err
+              Right ((), tokens3) =>
+                case parseQMatchArms fuelLeft tokens3 of
+                  Left err => Left err
+                  Right (arms, tokens4) =>
+                    case expectSymbol SymRBrace tokens4 of
+                      Left err => Left err
+                      Right ((), tokens5) =>
+                        Right (EQMatch scrutineeExpr arms, tokens5)
+
+  -- Parentheses:
+  --   ()          => unit literal
+  --   (x)         => grouping
+  --   (x, y, z)   => tuple
+  parseParenAtom : Nat -> Parser Expr
+  parseParenAtom fuelLeft tokens =
+    case expectSymbol SymLParen tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case peekToken tokens1 of
+          Just (TokSym SymRParen) =>
+            case expectSymbol SymRParen tokens1 of
+              Left err => Left err
+              Right ((), tokens2) =>
+                Right (ELit LitUnit, tokens2)
+
+          _ =>
             case parseExprPrec fuelLeft 0 tokens1 of
               Left err => Left err
-              Right (condExpr, tokens2) =>
-                case parseBlockExprFuel fuelLeft tokens2 of
-                  Left err => Left err
-                  Right (blk, rest) =>
-                    Right (EWhile condExpr blk, rest)
-
-      -- for pat in iterable { ... }
-      Just (TokKw KwFor) =>
-        case expectKeyword KwFor tokens of
-          Left err => Left err
-          Right ((), tokens1) =>
-            case parsePattern tokens1 of
-              Left err => Left err
-              Right (loopPattern, tokens2) =>
-                case expectKeyword KwIn tokens2 of
-                  Left err => Left err
-                  Right ((), tokens3) =>
-                    case parseExprPrec fuelLeft 0 tokens3 of
+              Right (firstExpr, tokens2) =>
+                case peekToken tokens2 of
+                  Just (TokSym SymComma) =>
+                    case expectSymbol SymComma tokens2 of
                       Left err => Left err
-                      Right (iterExpr, tokens4) =>
-                        case parseBlockExprFuel fuelLeft tokens4 of
+                      Right ((), tokens3) =>
+                        case parseCommaSep0Until fuelLeft SymRParen (parseExprPrec fuelLeft 0) tokens3 of
                           Left err => Left err
-                          Right (blk, rest) =>
-                            Right (EFor loopPattern iterExpr blk, rest)
-
-      -- match scrutinee { pat => expr, ... }
-      Just (TokKw KwMatch) =>
-        case expectKeyword KwMatch tokens of
-          Left err => Left err
-          Right ((), tokens1) =>
-            case parseExprPrec fuelLeft 0 tokens1 of
-              Left err => Left err
-              Right (scrutineeExpr, tokens2) =>
-                case expectSymbol SymLBrace tokens2 of
-                  Left err => Left err
-                  Right ((), tokens3) =>
-                    let parseMatchArm : Parser MatchArm
-                        parseMatchArm armTokens =
-                          case parsePattern armTokens of
-                            Left err => Left err
-                            Right (armPattern, tokensA) =>
-                              case expectSymbol SymFatArrow tokensA of
-                                Left err => Left err
-                                Right ((), tokensB) =>
-                                  case parseExprPrec fuelLeft 0 tokensB of
-                                    Left err => Left err
-                                    Right (armBodyExpr, tokensC) =>
-                                      Right (MkMatchArm armPattern armBodyExpr, tokensC)
-                    in
-                    case parseCommaSep0Until fuelLeft SymRBrace parseMatchArm tokens3 of
-                      Left err => Left err
-                      Right (arms, tokens4) =>
-                        case expectSymbol SymRBrace tokens4 of
-                          Left err => Left err
-                          Right ((), tokens5) =>
-                            Right (EMatch scrutineeExpr arms, tokens5)
-
-      -- qmatch scrutinee { 0 => { ... } b"01" => { ... } }
-      Just (TokKw KwQmatch) =>
-        case expectKeyword KwQmatch tokens of
-          Left err => Left err
-          Right ((), tokens1) =>
-            case parseExprPrec fuelLeft 0 tokens1 of
-              Left err => Left err
-              Right (scrutineeExpr, tokens2) =>
-                case expectSymbol SymLBrace tokens2 of
-                  Left err => Left err
-                  Right ((), tokens3) =>
-                    case parseQMatchArms fuelLeft tokens3 of
-                      Left err => Left err
-                      Right (arms, tokens4) =>
-                        case expectSymbol SymRBrace tokens4 of
-                          Left err => Left err
-                          Right ((), tokens5) =>
-                            Right (EQMatch scrutineeExpr arms, tokens5)
-
-      -- Builtins (keywords)
-      Just (TokKw KwAbs) =>
-        parseBuiltinCall fuelLeft BuiltinAbs tokens
-
-      Just (TokKw KwAdjoint) =>
-        parseBuiltinCall fuelLeft BuiltinAdjoint tokens
-
-      Just (TokKw KwAcos) =>
-        parseBuiltinCall fuelLeft BuiltinAcos tokens
-
-      Just (TokKw KwAsin) =>
-        parseBuiltinCall fuelLeft BuiltinAsin tokens
-
-      Just (TokKw KwAtan) =>
-        parseBuiltinCall fuelLeft BuiltinAtan tokens
-
-      Just (TokKw KwBarrier) =>
-        parseBuiltinCall fuelLeft BuiltinBarrier tokens
-
-      Just (TokKw KwCeil) =>
-        parseBuiltinCall fuelLeft BuiltinCeil tokens
-
-      Just (TokKw KwCos) =>
-        parseBuiltinCall fuelLeft BuiltinCos tokens
-
-      Just (TokKw KwDiscard) =>
-        parseBuiltinCall fuelLeft BuiltinDiscard tokens
-
-      Just (TokKw KwExp) =>
-        parseBuiltinCall fuelLeft BuiltinExp tokens
-
-      Just (TokKw KwFloor) =>
-        parseBuiltinCall fuelLeft BuiltinFloor tokens
-
-      Just (TokKw KwLn) =>
-        parseBuiltinCall fuelLeft BuiltinLn tokens
-
-      Just (TokKw KwLog10) =>
-        parseBuiltinCall fuelLeft BuiltinLog10 tokens
-
-      Just (TokKw KwLog2) =>
-        parseBuiltinCall fuelLeft BuiltinLog2 tokens
-
-      Just (TokKw KwMax) =>
-        parseBuiltinCall fuelLeft BuiltinMax tokens
-
-      Just (TokKw KwMeasr) =>
-        parseBuiltinCall fuelLeft BuiltinMeasr tokens
-
-      Just (TokKw KwMin) =>
-        parseBuiltinCall fuelLeft BuiltinMin tokens
-
-      Just (TokKw KwParam) =>
-        parseBuiltinCall fuelLeft BuiltinParam tokens
-
-      Just (TokKw KwPow) =>
-        parseBuiltinCall fuelLeft BuiltinPow tokens
-
-      Just (TokKw KwQAlloc) =>
-        parseBuiltinCall fuelLeft BuiltinQAlloc tokens
-
-      Just (TokKw KwReset) =>
-        parseBuiltinCall fuelLeft BuiltinReset tokens
-
-      Just (TokKw KwRound) =>
-        parseBuiltinCall fuelLeft BuiltinRound tokens
-
-      Just (TokKw KwSin) =>
-        parseBuiltinCall fuelLeft BuiltinSin tokens
-
-      Just (TokKw KwSqrt) =>
-        parseBuiltinCall fuelLeft BuiltinSqrt tokens
-
-      Just (TokKw KwTan) =>
-        parseBuiltinCall fuelLeft BuiltinTan tokens
-
-      Just (TokKw KwUncompute) =>
-        parseBuiltinCall fuelLeft BuiltinUncompute tokens
-
-      -- Gate / control pipeline:
-      --   ctrl(...) negctrl(...) H(q)
-      --   H(q)
-      Just (TokKw KwCtrl) =>
-        parseGateOrControl fuelLeft tokens
-
-      Just (TokKw KwNegCtrl) =>
-        parseGateOrControl fuelLeft tokens
-
-      Just (TokGate _) =>
-        parseGateOrControl fuelLeft tokens
-
-      -- Parentheses:
-      --   ()          => unit literal
-      --   (x)         => grouping
-      --   (x, y, z)   => tuple
-      Just (TokSym SymLParen) =>
-        case expectSymbol SymLParen tokens of
-          Left err => Left err
-          Right ((), tokens1) =>
-            case peekToken tokens1 of
-              Just (TokSym SymRParen) =>
-                case expectSymbol SymRParen tokens1 of
-                  Left err => Left err
-                  Right ((), tokens2) =>
-                    Right (ELit LitUnit, tokens2)
-              _ =>
-                case parseExprPrec fuelLeft 0 tokens1 of
-                  Left err => Left err
-                  Right (firstExpr, tokens2) =>
-                    case peekToken tokens2 of
-                      Just (TokSym SymComma) =>
-                        case expectSymbol SymComma tokens2 of
-                          Left err => Left err
-                          Right ((), tokens3) =>
-                            case parseCommaSep0Until fuelLeft SymRParen (parseExprPrec fuelLeft 0) tokens3 of
+                          Right (moreExprs, tokens4) =>
+                            case expectSymbol SymRParen tokens4 of
                               Left err => Left err
-                              Right (moreExprs, tokens4) =>
-                                case expectSymbol SymRParen tokens4 of
-                                  Left err => Left err
-                                  Right ((), tokens5) =>
-                                    Right (ETuple (firstExpr :: moreExprs), tokens5)
-                      _ =>
-                        case expectSymbol SymRParen tokens2 of
-                          Left err => Left err
-                          Right ((), tokens3) =>
-                            Right (firstExpr, tokens3)
+                              Right ((), tokens5) =>
+                                Right (ETuple (firstExpr :: moreExprs), tokens5)
 
-      -- Array:
-      --   [e1, e2, e3] => EArrayLiteral
-      --   [e; 8]       => EArrayRepeat (Expr) (Nat)
-      Just (TokSym SymLBracket) =>
-        case expectSymbol SymLBracket tokens of
-          Left err => Left err
-          Right ((), tokens1) =>
-            case peekToken tokens1 of
-              Just (TokSym SymRBracket) =>
-                case expectSymbol SymRBracket tokens1 of
-                  Left err => Left err
-                  Right ((), tokens2) =>
-                    Right (EArrayLiteral [], tokens2)
+                  _ =>
+                    case expectSymbol SymRParen tokens2 of
+                      Left err => Left err
+                      Right ((), tokens3) =>
+                        Right (firstExpr, tokens3)
 
-              _ =>
-                case parseExprPrec fuelLeft 0 tokens1 of
-                  Left err => Left err
-                  Right (firstExpr, tokens2) =>
-                    case peekToken tokens2 of
-                      Just (TokSym SymSemi) =>
-                        -- Repeat form: [expr; Nat]
-                        case expectSymbol SymSemi tokens2 of
-                          Left err => Left err
-                          Right ((), tokens3) =>
-                            case tokens3 of
-                              (B (TokIntLitRaw rawDigits) rawBounds :: tokens4) =>
-                                case digitsToNat rawDigits of
-                                  Nothing => Left (B (ParseExpected "natural number after ';' in [x; n]") rawBounds)
-                                  Just n  =>
-                                    case expectSymbol SymRBracket tokens4 of
-                                      Left err => Left err
-                                      Right ((), tokens5) =>
-                                        Right (EArrayRepeat firstExpr n, tokens5)
-                              _ =>
-                                failAtHead (ParseExpected "Nat literal after ';' in [x; n]") tokens3
+  -- Array:
+  --   [e1, e2, e3] => EArrayLiteral
+  --   [e; 8]       => EArrayRepeat (Expr) (Nat)
+  parseArrayAtom : Nat -> Parser Expr
+  parseArrayAtom fuelLeft tokens =
+    case expectSymbol SymLBracket tokens of
+      Left err => Left err
+      Right ((), tokens1) =>
+        case peekToken tokens1 of
+          Just (TokSym SymRBracket) =>
+            case expectSymbol SymRBracket tokens1 of
+              Left err => Left err
+              Right ((), tokens2) =>
+                Right (EArrayLiteral [], tokens2)
 
-                      Just (TokSym SymComma) =>
-                        -- Literal list form: [e1, e2, ...]
-                        case expectSymbol SymComma tokens2 of
-                          Left err => Left err
-                          Right ((), tokens3) =>
-                            case parseCommaSep0Until fuelLeft SymRBracket (parseExprPrec fuelLeft 0) tokens3 of
-                              Left err => Left err
-                              Right (moreExprs, tokens4) =>
+          _ =>
+            case parseExprPrec fuelLeft 0 tokens1 of
+              Left err => Left err
+              Right (firstExpr, tokens2) =>
+                case peekToken tokens2 of
+                  Just (TokSym SymSemi) =>
+                    -- Repeat form: [expr; Nat]
+                    case expectSymbol SymSemi tokens2 of
+                      Left err => Left err
+                      Right ((), tokens3) =>
+                        case tokens3 of
+                          (B (TokIntLitRaw rawDigits) rawBounds :: tokens4) =>
+                            case digitsToNat rawDigits of
+                              Nothing => Left (B (ParseExpected "natural number after ';' in [x; n]") rawBounds)
+                              Just n  =>
                                 case expectSymbol SymRBracket tokens4 of
                                   Left err => Left err
                                   Right ((), tokens5) =>
-                                    Right (EArrayLiteral (firstExpr :: moreExprs), tokens5)
+                                    Right (EArrayRepeat firstExpr n, tokens5)
+                          _ =>
+                            failAtHead (ParseExpected "Nat literal after ';' in [x; n]") tokens3
 
-                      Just (TokSym SymRBracket) =>
-                        case expectSymbol SymRBracket tokens2 of
+                  Just (TokSym SymComma) =>
+                    -- Literal list form: [e1, e2, ...]
+                    case expectSymbol SymComma tokens2 of
+                      Left err => Left err
+                      Right ((), tokens3) =>
+                        case parseCommaSep0Until fuelLeft SymRBracket (parseExprPrec fuelLeft 0) tokens3 of
                           Left err => Left err
-                          Right ((), tokens3) =>
-                            Right (EArrayLiteral [firstExpr], tokens3)
+                          Right (moreExprs, tokens4) =>
+                            case expectSymbol SymRBracket tokens4 of
+                              Left err => Left err
+                              Right ((), tokens5) =>
+                                Right (EArrayLiteral (firstExpr :: moreExprs), tokens5)
 
-                      _ =>
-                        failAtHead (ParseExpected "',' or ']' after array element") tokens2
+                  Just (TokSym SymRBracket) =>
+                    case expectSymbol SymRBracket tokens2 of
+                      Left err => Left err
+                      Right ((), tokens3) =>
+                        Right (EArrayLiteral [firstExpr], tokens3)
 
-      -- Identifier: variable or macro call name!(...)
-      Just (TokIdent name) =>
+                  _ =>
+                    failAtHead (ParseExpected "',' or ']' after array element") tokens2
+
+  -- Identifier: variable or macro call name!(...)
+  parseIdentOrMacroAtom : Nat -> Parser Expr
+  parseIdentOrMacroAtom fuelLeft tokens =
+    case tokens of
+      (B (TokIdent name) _ :: _) =>
         case popToken tokens of
           Left err => Left err
           Right (_, tokensAfterIdent) =>
@@ -1497,34 +1585,104 @@ mutual
                               Left err => Left err
                               Right ((), tokens4) =>
                                 Right (EMacroCall name macroArgs, tokens4)
+
               _ =>
                 Right (EVarName name, tokensAfterIdent)
 
-      -- Literals
+      _ =>
+        failAtHead (ParseExpected "expression atom") tokens
+
+  --------------------------------------------------------------------------------
+  -- ATOMS (Expr forms that do not start with infix operators)
+  --------------------------------------------------------------------------------
+  parseAtom : Nat -> Parser Expr
+  parseAtom Z tokens =
+    Left (outOfFuelErr tokens)
+
+  parseAtom (S fuelLeft) tokens =
+    case peekToken tokens of
+      -- Blocks: { ... }
+      Just (TokSym SymLBrace) =>
+        parseBlockExprAtom fuelLeft tokens
+
+      -- if cond { ... } else expr?
+      Just (TokKw KwIf) =>
+        parseIfExprAtom fuelLeft tokens
+
+      -- qif cond { ... } qelse expr?
+      Just (TokKw KwQif) =>
+        parseQIfExprAtom fuelLeft tokens
+
+      -- loop { ... }
+      Just (TokKw KwLoop) =>
+        parseLoopAtom fuelLeft tokens
+
+      -- while cond { ... }
+      Just (TokKw KwWhile) =>
+        parseWhileAtom fuelLeft tokens
+
+      -- for pat in iterable { ... }
+      Just (TokKw KwFor) =>
+        parseForAtom fuelLeft tokens
+
+      -- match scrutinee { pat => expr, ... }
+      Just (TokKw KwMatch) =>
+        parseMatchAtom fuelLeft tokens
+
+      -- qmatch scrutinee { 0 => { ... } b"01" => { ... } }
+      Just (TokKw KwQmatch) =>
+        parseQMatchAtom fuelLeft tokens
+
+      -- Builtins (keywords)
+      Just (TokKw kw) =>
+        case builtinFromKeyword kw of
+          Just builtinName =>
+            parseBuiltinCall fuelLeft builtinName tokens
+
+          Nothing =>
+            case kw of
+              -- Gate / control pipeline:
+              --   ctrl(...) negctrl(...) H(q)
+              --   H(q)
+              KwCtrl =>
+                parseGateOrControl fuelLeft tokens
+
+              KwNegCtrl =>
+                parseGateOrControl fuelLeft tokens
+
+              -- Literals
+              KwTrue =>
+                parseLiteralExpr tokens
+
+              KwFalse =>
+                parseLiteralExpr tokens
+
+              _ =>
+                failAtHead (ParseExpected "expression atom") tokens
+
+      Just (TokGate _) =>
+        parseGateOrControl fuelLeft tokens
+
+      Just (TokSym SymLParen) =>
+        parseParenAtom fuelLeft tokens
+
+      Just (TokSym SymLBracket) =>
+        parseArrayAtom fuelLeft tokens
+
+      Just (TokIdent _) =>
+        parseIdentOrMacroAtom fuelLeft tokens
+
       Just (TokIntLitRaw _) =>
-        case parseLiteral tokens of
-          Left err => Left err
-          Right (lit, rest) => Right (ELit lit, rest)
+        parseLiteralExpr tokens
 
       Just (TokFloatLitRaw _) =>
-        case parseLiteral tokens of
-          Left err => Left err
-          Right (lit, rest) => Right (ELit lit, rest)
+        parseLiteralExpr tokens
 
       Just (TokStringLit _) =>
-        case parseLiteral tokens of
-          Left err => Left err
-          Right (lit, rest) => Right (ELit lit, rest)
+        parseLiteralExpr tokens
 
-      Just (TokKw KwTrue) =>
-        case parseLiteral tokens of
-          Left err => Left err
-          Right (lit, rest) => Right (ELit lit, rest)
-
-      Just (TokKw KwFalse) =>
-        case parseLiteral tokens of
-          Left err => Left err
-          Right (lit, rest) => Right (ELit lit, rest)
+      Just (TokBitStringLit _) =>
+        parseLiteralExpr tokens
 
       _ =>
         failAtHead (ParseExpected "expression atom") tokens
@@ -1539,37 +1697,7 @@ mutual
     failAtHead (ParseExpected "builtin call (out of fuel)") tokens
 
   parseBuiltinCall (S fuelLeft) builtinName tokens =
-    let expectedKw : Keyword =
-          case builtinName of
-          BuiltinAbs      => KwAbs
-          BuiltinAdjoint  => KwAdjoint
-          BuiltinAcos     => KwAcos
-          BuiltinAsin     => KwAsin
-          BuiltinAtan     => KwAtan
-          BuiltinBarrier  => KwBarrier
-          BuiltinCeil     => KwCeil
-          BuiltinCos      => KwCos
-          BuiltinDiscard  => KwDiscard
-          BuiltinExp      => KwExp
-          BuiltinFloor    => KwFloor
-          BuiltinImport   => KwImport
-          BuiltinLn       => KwLn
-          BuiltinLog10    => KwLog10
-          BuiltinLog2     => KwLog2
-          BuiltinMax      => KwMax
-          BuiltinMeasr   => KwMeasr
-          BuiltinMin     => KwMin
-          BuiltinParam   => KwParam
-          BuiltinPow     => KwPow
-          BuiltinQAlloc  => KwQAlloc
-          BuiltinReset   => KwReset
-          BuiltinRound   => KwRound
-          BuiltinSin     => KwSin
-          BuiltinSqrt    => KwSqrt
-          BuiltinTan     => KwTan
-          BuiltinUncompute => KwUncompute
-    in
-    case expectKeyword expectedKw tokens of
+    case expectKeyword (builtinKeyword builtinName) tokens of
       Left err => Left err
       Right ((), tokens1) =>
         case acceptSymbol SymLParen tokens1 of
@@ -1585,11 +1713,15 @@ mutual
             case parseCommaSep0Until fuelLeft SymRParen (parseExprPrec fuelLeft 0) tokensAfterLParen of
               Left err => Left err
               Right (args, tokensAfterArgs) =>
-                case expectSymbol SymRParen tokensAfterArgs of
-                  Left err => Left err
-                  Right ((), tokensAfterRParen) =>
-                    Right (EBuiltinCall builtinName args, tokensAfterRParen)
+                case validateBuiltinCallArgs builtinName args of
+                  Just expectedText =>
+                    failAtHead (ParseExpected expectedText) tokensAfterArgs
 
+                  Nothing =>
+                    case expectSymbol SymRParen tokensAfterArgs of
+                      Left err => Left err
+                      Right ((), tokensAfterRParen) =>
+                        Right (EBuiltinCall builtinName args, tokensAfterRParen)
 
 --------------------------------------------------------------------------------
 -- TOP-LEVEL: function declarations + program parsing
@@ -1618,7 +1750,7 @@ parseFnDecl tokens =
           case expectSymbol SymLParen tokens2 of
             Left err => Left err
             Right ((), tokens3) =>
-              let fnFuel : Nat = 2 * length tokens3 + 16 in
+              let fnFuel : Nat = fuelFor tokens3 in
               case parseCommaSep0Until fnFuel SymRParen parseFnParam tokens3 of
                 Left err => Left err
                 Right (params, tokens4) =>
@@ -1646,7 +1778,7 @@ parseFnDecl tokens =
 -- Top-level statements: must end with ';' (no tail expression at top-level).
 parseTopStmt : Parser Stmt
 parseTopStmt tokens =
-  let topFuel : Nat = 3 * length tokens + 32 in
+  let topFuel : Nat = exprFuelFor tokens in
   case peekToken tokens of
     Just (TokKw KwLet) =>
       parseLetStmt topFuel tokens
@@ -1665,19 +1797,21 @@ parseTopStmt tokens =
         Left err => Left err
         Right (expr, tokensAfterExpr) =>
           case peekToken tokensAfterExpr of
-            Just (TokSym SymEq)        => finishTopAssign topFuel AssignEq expr tokensAfterExpr
-            Just (TokSym SymPlusEq)    => finishTopAssign topFuel AssignAddEq expr tokensAfterExpr
-            Just (TokSym SymMinusEq)   => finishTopAssign topFuel AssignSubEq expr tokensAfterExpr
-            Just (TokSym SymStarEq)    => finishTopAssign topFuel AssignMulEq expr tokensAfterExpr
-            Just (TokSym SymSlashEq)   => finishTopAssign topFuel AssignDivEq expr tokensAfterExpr
-            Just (TokSym SymPercentEq) => finishTopAssign topFuel AssignRemEq expr tokensAfterExpr
-            Just (TokSym SymWalrusEq)  => finishTopAssign topFuel AssignWalrusEq expr tokensAfterExpr
+            Just (TokSym sym) =>
+              case assignOpFromSymbol sym of
+                Just assignOp =>
+                  finishTopAssign topFuel assignOp expr tokensAfterExpr
 
-            Just (TokSym SymSemi) =>
-              case expectSymbol SymSemi tokensAfterExpr of
-                Left err => Left err
-                Right ((), remainingTokens) =>
-                  Right (StmtExpr expr True, remainingTokens)
+                Nothing =>
+                  case sym of
+                    SymSemi =>
+                      case expectSymbol SymSemi tokensAfterExpr of
+                        Left err => Left err
+                        Right ((), remainingTokens) =>
+                          Right (StmtExpr expr True, remainingTokens)
+
+                    _ =>
+                      failAtHead (ParseExpected "top-level statement must end with ';' or be an assignment") tokensAfterExpr
 
             _ =>
               failAtHead (ParseExpected "top-level statement must end with ';' or be an assignment") tokensAfterExpr
@@ -1712,23 +1846,23 @@ parseItem tokens =
 public export
 parseProgram : Parser Program
 parseProgram tokens =
-  let programFuel : Nat = 2 * length tokens + 16 in
+  let programFuel : Nat = fuelFor tokens in
   go programFuel [] tokens
   where
     go : Nat -> List Item -> List (Bounded Token) -> Either (Bounded ParseErr) (Program, List (Bounded Token))
     go Z _ currentTokens =
       failAtHead (ParseFuelExhausted "program") currentTokens
 
-    go (S remainingFuel) accumulatedItems currentTokens =
+    go (S remainingFuel) revAccumulatedItems currentTokens =
       case peekToken currentTokens of
         Nothing =>
-          Right (MkProgram accumulatedItems, currentTokens)
+          Right (MkProgram (reverse revAccumulatedItems), currentTokens)
 
         _ =>
           case parseItem currentTokens of
             Left err => Left err
             Right (item, tokensAfterItem) =>
-              go remainingFuel (accumulatedItems ++ [item]) tokensAfterItem
+              go remainingFuel (item :: revAccumulatedItems) tokensAfterItem
 
 -- Convenience: require full consumption.
 public export

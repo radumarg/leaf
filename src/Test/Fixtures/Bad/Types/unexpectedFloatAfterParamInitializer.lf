@@ -1,1 +1,1 @@
-let theta: Param = param("theta") 2.34;
+let theta: param = Param("theta") 2.34;

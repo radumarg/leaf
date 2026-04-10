@@ -1,1 +1,1 @@
-let theta = param("theta") param("gamma");
+let theta = Param("theta") Param("gamma");

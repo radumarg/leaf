@@ -1,1 +1,1 @@
-let theta : Param = param() ;
+let theta : param = Param() ;

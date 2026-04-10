@@ -150,6 +150,7 @@ let scratch q: qubit = qalloc();
 let scratch qs: [qubit; 2] = qalloc(2);
 
 // linear/affine type qualifiers can be combined with scratch
+// both "scratch linear" and "linear scratch" are accepted syntax for linear scratch qubits, and the same applies for affine scratch qubits
 let scratch linear q: qubit = qalloc();
 let scratch linear qs: [qubit; 2] = qalloc(2);
 let scratch affine q: qubit = qalloc();

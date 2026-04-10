@@ -40,6 +40,20 @@ mkBoundedHere value startPosition endPosition =
   bounded value startPosition endPosition
 
 --------------------------------------------------------------------------------
+-- Small generic helpers.
+--------------------------------------------------------------------------------
+
+-- Fuel helper for the lexer.
+-- We keep the same idea as before: enough steps if each iteration consumes
+-- at least one character.
+fuelForChars : List Char -> Nat
+fuelForChars chars = S (length chars)
+
+mkBoundedToken : Token -> Position -> Position -> Bounded Token
+mkBoundedToken token startPosition endPosition =
+  mkBoundedHere token startPosition endPosition
+
+--------------------------------------------------------------------------------
 -- Identifier character classes.
 -- [A-Za-z_] start, then [A-Za-z0-9_] continue.
 --------------------------------------------------------------------------------
@@ -58,8 +72,11 @@ takeWhileList predicate xs =
     [] => ([], [])
     x :: rest =>
       if predicate x
-        then let (taken, remaining) = takeWhileList predicate rest in (x :: taken, remaining)
-        else ([], xs)
+        then
+          let (taken, remaining) = takeWhileList predicate rest in
+            (x :: taken, remaining)
+        else
+          ([], xs)
 
 --------------------------------------------------------------------------------
 -- startsWithList: checks prefix matching for multi-character operators/comments
@@ -73,9 +90,90 @@ startsWithList (p :: ps) (f :: fs) =
 
 dropList : Nat -> List a -> List a
 dropList Z xs = xs
-dropList (S k) xs = case xs of
-  [] => []
-  _ :: rest => dropList k rest
+dropList (S k) xs =
+  case xs of
+    [] => []
+    _ :: rest => dropList k rest
+
+--------------------------------------------------------------------------------
+-- Identifier / symbol classification helpers.
+--
+-- These helpers keep the main lexing loop readable by isolating the logic for
+-- "what token does this already-consumed text correspond to?".
+--------------------------------------------------------------------------------
+
+-- Order matters:
+--   1) "_" => TokUnderscore
+--   2) reserved keywords (let, if, ...)
+--   3) reserved type keywords (int, QReg, ...)
+--   4) gate keywords (H, CX, ...)
+--   5) otherwise identifier
+classifyIdentString : String -> Token
+classifyIdentString identString =
+  if identString == "_"
+    then TokUnderscore
+    else
+      case keywordFromString identString of
+        Just kw => TokKw kw
+        Nothing =>
+          case typeFromString identString of
+            Just typPrimName => TokTypPrim typPrimName
+            Nothing =>
+              case gateFromString identString of
+                Just gateName => TokGate gateName
+                Nothing => TokIdent identString
+
+-- Single-character symbol lookup.
+-- Multi-character operators are handled separately in lexSymbol.
+singleCharSymbolToken : Char -> Maybe Token
+singleCharSymbolToken c =
+  case c of
+    '?' => Just (TokSym SymQuestion)
+    '&' => Just (TokSym SymAmp)
+    '(' => Just (TokSym SymLParen)
+    ')' => Just (TokSym SymRParen)
+    '[' => Just (TokSym SymLBracket)
+    ']' => Just (TokSym SymRBracket)
+    '{' => Just (TokSym SymLBrace)
+    '}' => Just (TokSym SymRBrace)
+    ',' => Just (TokSym SymComma)
+    ';' => Just (TokSym SymSemi)
+    ':' => Just (TokSym SymColon)
+    '.' => Just (TokSym SymDot)
+    '!' => Just (TokSym SymBang)
+    '=' => Just (TokSym SymEq)
+    '+' => Just (TokSym SymPlus)
+    '-' => Just (TokSym SymMinus)
+    '*' => Just (TokSym SymStar)
+    '/' => Just (TokSym SymSlash)
+    '%' => Just (TokSym SymPercent)
+    '>' => Just (TokSym SymGt)
+    '<' => Just (TokSym SymLt)
+    '|' => Just (TokSym SymPipe)
+    '^' => Just (TokSym SymCaret)
+    _   => Nothing
+
+-- Multi-character operators are matched longest-first.
+multiCharSymbolCandidates : List (List Char, Symbol)
+multiCharSymbolCandidates =
+  [ (unpack "..=", SymDotDotEq)
+  , (unpack "..",  SymDotDot)
+  , (unpack "=>",  SymFatArrow)
+  , (unpack "->",  SymArrow)
+  , (unpack "::",  SymDoubleColon)
+  , (unpack "==",  SymEqEq)
+  , (unpack "!=",  SymNotEq)
+  , (unpack ">=",  SymGe)
+  , (unpack "<=",  SymLe)
+  , (unpack "&&",  SymAndAnd)
+  , (unpack "||",  SymOrOr)
+  , (unpack "+=",  SymPlusEq)
+  , (unpack "-=",  SymMinusEq)
+  , (unpack "*=",  SymStarEq)
+  , (unpack "/=",  SymSlashEq)
+  , (unpack "%=",  SymPercentEq)
+  , (unpack ":=",  SymWalrusEq)
+  ]
 
 --------------------------------------------------------------------------------
 -- Comment skipping
@@ -114,8 +212,8 @@ skipBlockComment commentStartPosition charsAfterStart =
 
         -- Found the closing "*/"
         '*' :: '/' :: rest =>
-          let endPosition = advanceMany currentPosition ['*','/'] in
-          Right (endPosition, rest)
+          let endPosition = advanceMany currentPosition ['*', '/'] in
+            Right (endPosition, rest)
 
         c :: rest =>
           go (advanceMany currentPosition [c]) rest
@@ -132,6 +230,17 @@ skipBlockComment commentStartPosition charsAfterStart =
 --     * charsAfterQuote          = characters AFTER the opening quote
 --   This gives better spans for LexUnterminatedString.
 --------------------------------------------------------------------------------
+
+decodeStringEscape : Char -> Char
+decodeStringEscape esc =
+  case esc of
+    'n'  => '\n'
+    't'  => '\t'
+    'r'  => '\r'
+    '"'  => '"'
+    '\\' => '\\'
+    other => other
+
 lexStringLiteral : Position -> List Char -> Either (Bounded LexerErr) (String, Position, List Char)
 lexStringLiteral stringQuoteStartPosition charsAfterQuote =
   let
@@ -148,19 +257,12 @@ lexStringLiteral stringQuoteStartPosition charsAfterQuote =
         -- closing quote
         '"' :: rest =>
           let endPosition = advanceMany currentPosition ['"'] in
-          Right (pack (reverse accumulatorChars), endPosition, rest)
+            Right (pack (reverse accumulatorChars), endPosition, rest)
 
         -- escape sequence
         '\\' :: esc :: rest =>
-          let decodedChar =
-                case esc of
-                  'n'  => '\n'
-                  't'  => '\t'
-                  'r'  => '\r'
-                  '"'  => '"'
-                  '\\' => '\\'
-                  other => other
-          in go (advanceMany currentPosition ['\\', esc]) (decodedChar :: accumulatorChars) rest
+          let decodedChar = decodeStringEscape esc in
+            go (advanceMany currentPosition ['\\', esc]) (decodedChar :: accumulatorChars) rest
 
         -- ordinary character
         c :: rest =>
@@ -190,7 +292,7 @@ lexBitStringLiteral bitStringStartPosition charsAfterPrefix =
 
         '"' :: rest =>
           let endPosition = advanceMany currentPosition ['"'] in
-          Right (pack (reverse accumulatorChars), endPosition, rest)
+            Right (pack (reverse accumulatorChars), endPosition, rest)
 
         '0' :: rest =>
           go (advanceMany currentPosition ['0']) ('0' :: accumulatorChars) rest
@@ -217,28 +319,27 @@ lexBitStringLiteral bitStringStartPosition charsAfterPrefix =
 --------------------------------------------------------------------------------
 lexNumberLiteral : Position -> List Char -> Either (Bounded LexerErr) (Token, Position, List Char)
 lexNumberLiteral startPosition charsRemaining =
-  let (digitChars, restAfterDigits) = takeWhileList isDigit charsRemaining in
-  case restAfterDigits of
-    '.' :: '.' :: _ =>
-      -- Range begins: keep integer only
-      let endPosition = advanceMany startPosition digitChars in
-      Right (TokIntLitRaw (pack digitChars), endPosition, restAfterDigits)
+  let (digitChars, restAfterDigits) = takeWhileList isDigit charsRemaining
+      integerToken = TokIntLitRaw (pack digitChars)
+      integerEndPosition = advanceMany startPosition digitChars in
+    case restAfterDigits of
+      '.' :: '.' :: _ =>
+        -- Range begins: keep integer only
+        Right (integerToken, integerEndPosition, restAfterDigits)
 
-    '.' :: nextChar :: restTail =>
-      if isDigit nextChar
-        then
-          let (fractionChars, remainingChars) = takeWhileList isDigit (nextChar :: restTail) in
-          let fullChars = digitChars ++ ('.' :: fractionChars) in
-          let endPosition = advanceMany startPosition fullChars in
-          Right (TokFloatLitRaw (pack fullChars), endPosition, remainingChars)
-        else
-          -- Treat "123." as int "123" + '.' symbol later
-          let endPosition = advanceMany startPosition digitChars in
-          Right (TokIntLitRaw (pack digitChars), endPosition, restAfterDigits)
+      '.' :: nextChar :: restTail =>
+        if isDigit nextChar
+          then
+            let (fractionChars, remainingChars) = takeWhileList isDigit (nextChar :: restTail)
+                fullChars = digitChars ++ ('.' :: fractionChars)
+                endPosition = advanceMany startPosition fullChars in
+              Right (TokFloatLitRaw (pack fullChars), endPosition, remainingChars)
+          else
+            -- Treat "123." as int "123" + '.' symbol later
+            Right (integerToken, integerEndPosition, restAfterDigits)
 
-    _ =>
-      let endPosition = advanceMany startPosition digitChars in
-      Right (TokIntLitRaw (pack digitChars), endPosition, restAfterDigits)
+      _ =>
+        Right (integerToken, integerEndPosition, restAfterDigits)
 
 --------------------------------------------------------------------------------
 -- Ident / keyword / type / gate lexing
@@ -252,113 +353,57 @@ lexNumberLiteral startPosition charsRemaining =
 --------------------------------------------------------------------------------
 lexIdentOrKeywordOrTypeOrGate : Position -> List Char -> (Token, Position, List Char)
 lexIdentOrKeywordOrTypeOrGate startPosition charsRemaining =
-  let (identChars, restChars) = takeWhileList isIdentContinueChar charsRemaining in
-  let identString = pack identChars in
-  let endPosition = advanceMany startPosition identChars in
-  if identString == "_"
-    then (TokUnderscore, endPosition, restChars)
-    else case keywordFromString identString of
-      Just kw => (TokKw kw, endPosition, restChars)
-      Nothing =>
-        case typeFromString identString of
-          Just typPrimName => (TokTypPrim typPrimName, endPosition, restChars)
-          Nothing =>
-            case gateFromString identString of
-              Just gateName => (TokGate gateName, endPosition, restChars)
-              Nothing => (TokIdent identString, endPosition, restChars)
+  let (identChars, restChars) = takeWhileList isIdentContinueChar charsRemaining
+      identString = pack identChars
+      endPosition = advanceMany startPosition identChars
+      token = classifyIdentString identString
+  in
+    (token, endPosition, restChars)
 
 --------------------------------------------------------------------------------
 -- Symbol lexing: longest-match first (..= before .., >= before >, etc.)
 --------------------------------------------------------------------------------
+
+trySymbolPattern : Position -> List Char -> (List Char, Symbol) -> Maybe (Token, Position, List Char)
+trySymbolPattern startPosition charsRemaining (patternChars, sym) =
+  if startsWithList patternChars charsRemaining
+    then
+      let endPosition = advanceMany startPosition patternChars
+          remainingChars = dropList (length patternChars) charsRemaining in
+        Just (TokSym sym, endPosition, remainingChars)
+    else
+      Nothing
+
+trySymbolPatterns : Position -> List Char -> List (List Char, Symbol) -> Maybe (Token, Position, List Char)
+trySymbolPatterns startPosition charsRemaining candidates =
+  case candidates of
+    [] => Nothing
+    candidate :: rest =>
+      case trySymbolPattern startPosition charsRemaining candidate of
+        Just ok => Just ok
+        Nothing => trySymbolPatterns startPosition charsRemaining rest
+
 lexSymbol : Position -> List Char -> Either (Bounded LexerErr) (Token, Position, List Char)
 lexSymbol startPosition charsRemaining =
-  let
-    tryPattern : List Char -> Symbol -> Maybe (Token, Position, List Char)
-    tryPattern patternChars sym =
-      if startsWithList patternChars charsRemaining
-        then
-          let endPosition = advanceMany startPosition patternChars
-              remainingChars = dropList (length patternChars) charsRemaining
-          in Just (TokSym sym, endPosition, remainingChars)
-        else
-          Nothing
+  case trySymbolPatterns startPosition charsRemaining multiCharSymbolCandidates of
+    Just ok =>
+      Right ok
 
-    tryAll : List (List Char, Symbol) -> Maybe (Token, Position, List Char)
-    tryAll candidates =
-      case candidates of
-        [] => Nothing
-        (pat, sym) :: rest =>
-          case tryPattern pat sym of
-            Just ok => Just ok
-            Nothing => tryAll rest
+    Nothing =>
+      case charsRemaining of
+        [] =>
+          -- Defensive; lexSymbol is normally called with non-empty input.
+          Left (mkBoundedHere (LexUnexpectedChar '\0') startPosition startPosition)
 
-    -- multi-character operators first
-    candidates : List (List Char, Symbol)
-    candidates =
-      [ (unpack "..=", SymDotDotEq)
-      , (unpack "..",  SymDotDot)
-      , (unpack "=>",  SymFatArrow)
-      , (unpack "->",  SymArrow)
-      , (unpack "::",  SymDoubleColon)
-      , (unpack "==",  SymEqEq)
-      , (unpack "!=",  SymNotEq)
-      , (unpack ">=",  SymGe)
-      , (unpack "<=",  SymLe)
-      , (unpack "&&",  SymAndAnd)
-      , (unpack "||",  SymOrOr)
-      , (unpack "+=",  SymPlusEq)
-      , (unpack "-=",  SymMinusEq)
-      , (unpack "*=",  SymStarEq)
-      , (unpack "/=",  SymSlashEq)
-      , (unpack "%=",  SymPercentEq)
-      , (unpack ":=",  SymWalrusEq)
-      ]
-  in
-    case tryAll candidates of
-      Just ok => Right ok
+        c :: rest =>
+          case singleCharSymbolToken c of
+            Just token =>
+              let endPosition = advanceMany startPosition [c] in
+                Right (token, endPosition, rest)
 
-      Nothing =>
-        case charsRemaining of
-          [] =>
-            -- Defensive; lexSymbol is normally called with non-empty input.
-            Left (mkBoundedHere (LexUnexpectedChar '\0') startPosition startPosition)
-
-          c :: rest =>
-            let (maybeToken, consumedChars) : (Maybe Token, List Char) =
-                case c of
-                  '?' => (Just (TokSym SymQuestion), [c])
-                  '&' => (Just (TokSym SymAmp), [c])
-                  '(' => (Just (TokSym SymLParen), [c])
-                  ')' => (Just (TokSym SymRParen), [c])
-                  '[' => (Just (TokSym SymLBracket), [c])
-                  ']' => (Just (TokSym SymRBracket), [c])
-                  '{' => (Just (TokSym SymLBrace), [c])
-                  '}' => (Just (TokSym SymRBrace), [c])
-                  ',' => (Just (TokSym SymComma), [c])
-                  ';' => (Just (TokSym SymSemi), [c])
-                  ':' => (Just (TokSym SymColon), [c])
-                  '.' => (Just (TokSym SymDot), [c])
-                  '!' => (Just (TokSym SymBang), [c])
-                  '=' => (Just (TokSym SymEq), [c])
-                  '+' => (Just (TokSym SymPlus), [c])
-                  '-' => (Just (TokSym SymMinus), [c])
-                  '*' => (Just (TokSym SymStar), [c])
-                  '/' => (Just (TokSym SymSlash), [c])
-                  '%' => (Just (TokSym SymPercent), [c])
-                  '>' => (Just (TokSym SymGt), [c])
-                  '<' => (Just (TokSym SymLt), [c])
-                  '|' => (Just (TokSym SymPipe), [c])
-                  '^' => (Just (TokSym SymCaret), [c])
-                  _   => (Nothing, [c])
-            in
-              case maybeToken of
-                Just token =>
-                  let endPosition = advanceMany startPosition consumedChars in
-                  Right (token, endPosition, rest)
-
-                Nothing =>
-                  let endPosition = advanceMany startPosition [c] in
-                  Left (mkBoundedHere (LexUnexpectedChar c) startPosition endPosition)
+            Nothing =>
+              let endPosition = advanceMany startPosition [c] in
+                Left (mkBoundedHere (LexUnexpectedChar c) startPosition endPosition)
 
 --------------------------------------------------------------------------------
 -- Main entry point: lexProgram
@@ -371,7 +416,7 @@ public export
 lexProgram : String -> Either (Bounded LexerErr) (List (Bounded Token))
 lexProgram inputString =
   let charsAll = unpack inputString
-      fuel    = S (length charsAll)  -- enough steps if each iteration consumes ≥ 1 char
+      fuel = fuelForChars charsAll
   in go fuel begin charsAll
 where
   go : Nat -> Position -> List Char -> Either (Bounded LexerErr) (List (Bounded Token))
@@ -385,64 +430,76 @@ where
         Right []
 
       c :: rest =>
-        -- 1) skip whitespace
+        -- The main loop is organized as a priority order of lexical forms.
+        --
+        -- The ordering matters:
+        --   * comments must be recognized before '/' as a symbol
+        --   * bitstring literals b"..." must be recognized before identifiers
+        --   * numbers must handle the range case 1..6 specially
         if isSpace c then
+          -- 1) skip whitespace
           go fuelLeft (advanceMany currentPosition [c]) rest
 
-        -- 2) skip line comments: //
         else if startsWithList (unpack "//") (c :: rest) then
+          -- 2) skip line comments: //
           let afterSlashesPosition = advanceMany currentPosition ['/', '/']
-              afterSlashesChars    = dropList 2 (c :: rest)
+              afterSlashesChars = dropList 2 (c :: rest)
               (newPosition, remainingChars) =
                 skipLineComment afterSlashesPosition afterSlashesChars
-          in go fuelLeft newPosition remainingChars
+          in
+            go fuelLeft newPosition remainingChars
 
-        -- 3) skip block comments: /* ... */
         else if startsWithList (unpack "/*") (c :: rest) then
+          -- 3) skip block comments: /* ... */
           let afterStartChars = dropList 2 (c :: rest) in
-          case skipBlockComment currentPosition afterStartChars of
-            Left err => Left err
-            Right (newPosition, remainingChars) =>
-              go fuelLeft newPosition remainingChars
+            case skipBlockComment currentPosition afterStartChars of
+              Left err => Left err
+              Right (newPosition, remainingChars) =>
+                go fuelLeft newPosition remainingChars
 
-        -- 4) string literal
         else if c == '"' then
+          -- 4) string literal
           case lexStringLiteral currentPosition rest of
             Left err => Left err
             Right (stringValue, endPosition, remainingChars) =>
               let boundedToken =
-                    mkBoundedHere (TokStringLit stringValue) currentPosition endPosition
-              in (boundedToken ::) <$> go fuelLeft endPosition remainingChars
+                    mkBoundedToken (TokStringLit stringValue) currentPosition endPosition
+              in
+                (boundedToken ::) <$> go fuelLeft endPosition remainingChars
 
-        -- 5) number literal
         else if isDigit c then
+          -- 5) number literal
           case lexNumberLiteral currentPosition (c :: rest) of
             Left err => Left err
             Right (token, endPosition, remainingChars) =>
-              let boundedToken = mkBoundedHere token currentPosition endPosition
-              in (boundedToken ::) <$> go fuelLeft endPosition remainingChars
+              let boundedToken = mkBoundedToken token currentPosition endPosition
+              in
+                (boundedToken ::) <$> go fuelLeft endPosition remainingChars
 
-        -- 6) bitstring literal: b"..."
         else if c == 'b' && startsWithList ['b', '"'] (c :: rest) then
+          -- 6) bitstring literal: b"..."
           let charsAfterPrefix = dropList 2 (c :: rest) in
-          case lexBitStringLiteral currentPosition charsAfterPrefix of
-            Left err => Left err
-            Right (bitStringValue, endPosition, remainingChars) =>
-              let boundedToken =
-                    mkBoundedHere (TokBitStringLit bitStringValue) currentPosition endPosition
-              in (boundedToken ::) <$> go fuelLeft endPosition remainingChars
+            case lexBitStringLiteral currentPosition charsAfterPrefix of
+              Left err => Left err
+              Right (bitStringValue, endPosition, remainingChars) =>
+                let boundedToken =
+                      mkBoundedToken (TokBitStringLit bitStringValue) currentPosition endPosition
+                in
+                  (boundedToken ::) <$> go fuelLeft endPosition remainingChars
 
-        -- 7) identifier/keyword/type/gate
         else if isIdentStartChar c then
+          -- 7) identifier/keyword/type/gate
           let (token, endPosition, remainingChars) =
                 lexIdentOrKeywordOrTypeOrGate currentPosition (c :: rest)
-              boundedToken = mkBoundedHere token currentPosition endPosition
-          in (boundedToken ::) <$> go fuelLeft endPosition remainingChars
+              boundedToken = mkBoundedToken token currentPosition endPosition
+          in
+            (boundedToken ::) <$> go fuelLeft endPosition remainingChars
 
-        -- 8) symbols/operators
         else
+          -- 8) symbols/operators
           case lexSymbol currentPosition (c :: rest) of
             Left err => Left err
             Right (token, endPosition, remainingChars) =>
-              let boundedToken = mkBoundedHere token currentPosition endPosition
-              in (boundedToken ::) <$> go fuelLeft endPosition remainingChars
+              let boundedToken = mkBoundedToken token currentPosition endPosition
+              in
+                (boundedToken ::) <$> go fuelLeft endPosition remainingChars

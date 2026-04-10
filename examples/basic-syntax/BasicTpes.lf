@@ -25,7 +25,7 @@ let theta: angle64 = 1.2345678901234567;
 
 let unit: () = ();
 
-let theta: Param = param("theta");
+let theta: param = Param("theta");
 
 // inferred types
 
