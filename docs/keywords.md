@@ -34,5 +34,6 @@ scratch
 true
 unitary
 uncompute
+weaken
 while
 ```

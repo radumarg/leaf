@@ -25,7 +25,7 @@ data Keyword
   | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
   | KwMatch | KwMax | KwMeasr | KwMin | KwNegCtrl
   | KwParam | KwPow | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwReturn
-  | KwScratch | KwSin | KwSqrt | KwTan | KwTrue | KwUncompute | KwUnitary | KwWhile
+  | KwScratch | KwSin | KwSqrt | KwTan | KwTrue | KwUncompute | KwUnitary | KwWeaken | KwWhile
 
 ----------------------------------------------------------------------
 -- Symbols: punctuation and operators.
@@ -136,6 +136,7 @@ keywordFromString s =
     "true"      => Just KwTrue
     "uncompute" => Just KwUncompute
     "unitary"   => Just KwUnitary
+    "weaken"    => Just KwWeaken
     "while"     => Just KwWhile
     _           => Nothing
 
@@ -271,6 +272,7 @@ showKeywordLeaf kw =
     KwTrue      => "true"
     KwUncompute => "uncompute"
     KwUnitary   => "unitary"
+    KwWeaken    => "weaken"
     KwWhile     => "while"
 
 public export
