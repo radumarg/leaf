@@ -6,7 +6,7 @@ Leaf is deliberately designed to replicate Rust’s basic syntax, with minimal e
 ### The lifecycle of Leaf code:
 
 - Frontend: Rust-like surface syntax.
-- Type checker: Silq-inspired typing.
+- Type checker: Silq-inspired typing for quantum programming, optional automatic uncomputation.
 - First compiler pass: translation to a typed high-level IR.
 - Typed high-level IR: based on lambda calculus and quantum lambda calculus.
 - Second compiler pass: translation to the Idris2 DSL.
