@@ -1,4 +1,4 @@
-### Type annotations
+### Qubit type annotations
 
 Linear qubits ('linear') must be used exactly once, no copying or discarding allowed. This is the default, so the 'linear' keyword is optional.
 ```leaf
