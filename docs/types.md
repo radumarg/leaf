@@ -23,6 +23,5 @@ f32, f64
 bool
 
 // unit type:
-()
-
+let () = ();
 ```
