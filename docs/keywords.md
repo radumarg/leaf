@@ -2,7 +2,7 @@
 
 ```leaf
 adjoint
-affin
+affine
 as
 barrier
 break
@@ -19,7 +19,7 @@ if
 import
 in
 let
-lin
+linear
 loop
 measr
 negctrl
