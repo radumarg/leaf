@@ -18,7 +18,7 @@ let scratch q: qubit = qalloc();
 let scratch qs: [qubit; 2] = qalloc(2);
 ```
 
-Obviously linear or affine qubit type qualifiers can be combined with scratch qubits.
+Linear or affine qubit type qualifiers can be combined with scratch type qualifier.
 ```leaf
 let scratch linear q: qubit = qalloc();
 let scratch linear qs: [qubit; 2] = qalloc(2);
