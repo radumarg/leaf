@@ -58,7 +58,6 @@ data BuiltinName
   | BuiltinMeasr
   | BuiltinMin
   | BuiltinParam
-  | BuiltinPow
   | BuiltinQAlloc
   | BuiltinReset
   | BuiltinRound

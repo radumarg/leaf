@@ -251,7 +251,6 @@ builtinSpecs =
   , (BuiltinMeasr,      KwMeasr,      True)
   , (BuiltinMin,        KwMin,        True)
   , (BuiltinParam,      KwParam,      True)
-  , (BuiltinPow,        KwPow,        True)
   , (BuiltinQAlloc,     KwQAlloc,     True)
   , (BuiltinReset,      KwReset,      True)
   , (BuiltinRound,      KwRound,      True)

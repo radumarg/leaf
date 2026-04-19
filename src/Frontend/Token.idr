@@ -24,7 +24,7 @@ data Keyword
   | KwElse | KwExp | KwFalse | KwFloor | KwFn | KwFor | KwGeneral | KwIf | KwImport | KwIn
   | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
   | KwMatch | KwMax | KwMeasr | KwMin | KwNegCtrl
-  | KwParam | KwPow | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwReturn
+  | KwParam | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwReturn
   | KwScratch | KwSin | KwSqrt | KwTan | KwTrue | KwUncompute | KwUnitary | KwWeaken | KwWhile
 
 ----------------------------------------------------------------------
@@ -121,7 +121,6 @@ keywordFromString s =
     "min"       => Just KwMin
     "negctrl"   => Just KwNegCtrl
     "Param"     => Just KwParam
-    "pow"       => Just KwPow
     "qalloc"    => Just KwQAlloc
     "qelse"     => Just KwQelse
     "qif"       => Just KwQif
@@ -258,7 +257,6 @@ showKeywordLeaf kw =
     KwMin       => "min"
     KwNegCtrl   => "negctrl"
     KwParam     => "Param"
-    KwPow       => "pow"
     KwRound     => "round"
     KwQAlloc    => "qalloc"
     KwQelse     => "qelse"

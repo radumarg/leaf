@@ -8,7 +8,7 @@ qalloc(), measr(), discard(), reset(), uncompute(), weaken()
 
 Circuit operations:
 ```leaf
-adjoint(), pow(), barrier()
+barrier()
 ```
 
 Trigonometric functions:
