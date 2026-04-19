@@ -27,14 +27,14 @@ discard(q1, q2, q3);
 discard(qs);
 ```
 
-- Downgrade qubit type from `linear` to `affine`
+- Downgrade qubit type from `linear` to `affine`:
 ```leaf
 weaken(q);
 weaken(q1, q2, q3);
 weaken(qs);
 ```
 
-- Automatic uncomputation: works only over circuits generated with `uncompsafe` functions.
+- Automatic uncomputation: works only over circuits generated with `uncompsafe` functions:
 ```leaf
 uncompute(q);
 uncompute(q1, q2, q3);
