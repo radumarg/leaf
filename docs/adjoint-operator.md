@@ -1,4 +1,4 @@
-### Adjoint Operator
+### Unitary Adjoint Operator
 
 ```leaf
 adjoint f(q1, q2, q3);

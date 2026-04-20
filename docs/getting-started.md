@@ -1,7 +1,7 @@
 
 ### Starting point:
 
-Leaf is deliberately designed to replicate Rust’s basic syntax, with minimal extensions for quantum programming designed to look and feel like Rust. It follows Rust’s philosophy of strong static type support and extends it to quantum operations.
+Leaf is deliberately designed to replicate Rust’s basic syntax, with minimal extensions for quantum programming, designed to look and feel like Rust. It follows Rust’s philosophy of strong static type support and extends it to quantum operations.
 
 More precisely, Leaf is intended to be a statically typed, sound, and safe language. This means that types are checked by the compiler before execution. A sound type system ensures that well-typed programs come with formal guarantees that they behave according to the language’s semantics, without undefined behaviors, type-related execution errors, or attempts to perform unphysical quantum operations, enjoying ancilla qubits management and automatic uncomputation support. Safety ensures that bad runtime behaviors are ruled out by the type system or, where necessary, by runtime checks.
 
