@@ -14,24 +14,11 @@ let bs = measr(qs);
 ```
 
 - Downgrade qubit type from `linear` to `affine`:
-```
-Γ ⊢ q : linear qubit
-----------------------------
-Γ ⊢ weaken(q) : affine qubit
-``` 
-
 ```leaf
 weaken(q);
 weaken(q1, q2, q3);
 weaken(qs);
 ```
-
-Type judgements for remaining operations:
-```
-Γ ⊢ q : qubit
---------------
-Γ ⊢ op(q) : ()
-``` 
 
 - Reseting qubits:
 ```leaf
@@ -47,7 +34,7 @@ discard(q1, q2, q3);
 discard(qs);
 ```
 
-- Automatic uncomputation: works only over circuits generated with `uncompsafe` functions:
+- Automatic uncomputation, works only over circuits generated with `uncompsafe` functions:
 ```
 uncompute(q);
 uncompute(q1, q2, q3);

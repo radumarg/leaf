@@ -1,4 +1,4 @@
-### Adjoint Function Modifier
+### Adjoint Operator
 
 ```leaf
 adjoint f(q1, q2, q3);
@@ -10,7 +10,6 @@ adjoint f(q1, q2, q3);
 adjoint {
     f(q1, q2, q3);
 }
-
 ```
 
 ```leaf
