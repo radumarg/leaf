@@ -23,7 +23,6 @@ linear
 loop
 measr
 negctrl
-pow
 qalloc
 qif
 qelse
@@ -34,6 +33,7 @@ scratch
 true
 unitary
 uncompute
+uncompsafe
 weaken
 while
 ```
