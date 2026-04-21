@@ -9,7 +9,7 @@ More precisely, Leaf is intended to be a statically typed, sound, and safe langu
 
 1. Frontend - Rust-like surface syntax.
 2. Type checker - provides strong type safety for quantum programming with optional automatic uncomputation support.
-3. First compiler pass - translation of the surface syntax to a typed, small core, high-level IR based on lambda calculus/quantum lambda calculus.
+3. First compiler pass - translation of the surface syntax to a typed, small core, high-level IR based on quantum lambda calculus.
 4. Second compiler pass - translates high level IR code to an intermediate IR represented by an Idris2 DSL.
 5. Third compiler pass - serialization of Idris2 DSL to a low-level IR.
 6. Backend target - OpenQASM3 for now, QIR to be added later.
