@@ -22,4 +22,15 @@ This formulation first ensures that the size of the input register is the same a
 ### What does uncomputation mean?
 During a quantum program, we often need [ancilla qubits](defining-terms.md#what-are-ancilla-qubits) to perform different operations, for example in order to implement a [boolean oracle](defining-terms.md#what-is-an-oracle). These ancilla qubits typically need to be reused several times throughout a longer quantum program. Discarding a quantum register during computation is physically equivalent to measuring it because implies that a reset operation will be executed on those qubits. This implicit measurement needed during reset may impact the other qubits used to execute the quantum program if their state is entangled with ancilla qubits. This is why dropping temporary quantum data values from the program state requires explicitly applying quantum operations that un-compute those values (note that due to the principle of deferred measurement, keeping those qubits and discarding them at the end of the computation may still impact the final computation result). To be more precise, uncomputing means cleaning up temporary effects on ancilla qubits. Uncomputation is possible in principle because quantum circuits are reversible and consequently a computation can be run in reverse. A useful feature for a quantum programming language would be safe (possibly automatic) uncomputation which means that a temporary quantum variable can be discarded from a program like we can discard without consequences any classical variable. In a general quantum program, not any temporary quantum data can be uncomputed since it may be entangled with multiple registers. Uncomputation is guaranteed to be done safely if the initial evaluation of data to be uncomputed can be described classically, meaning that neither does not produce a superposition state out of an input basis state, nor does not destroy a superposition state, and also if the input quantum data needed for uncomputation is still present in an unaltered state.
 
+### What are quantum conditionals?
+
+A quantum conditional on qubit q means applying different quantum operations depending on the state of q, coherently and without measuring it. A simple example is shown below:
+
+pseudo-code: if q then U else V
+
+given: ∣q⟩ = α∣0⟩ + β∣1⟩
+
+targeting: ∣q⟩ ⊗ ∣ψ⟩
+
+produces: α∣0⟩ ⊗ (V∣ψ⟩) + β∣1⟩ ⊗ (U∣ψ⟩)
 

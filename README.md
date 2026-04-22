@@ -25,10 +25,13 @@
 
 WIP
 
-<!-- * Frontend (syntax based on Rust): 65%
-* Type Checker: 0%
-* Quantum Lambda Calculus (QLC) based IR (inspired by [Silq](https://files.sri.inf.ethz.ch/website/papers/pldi20-silq.pdf)): 0%
-* Code Generator: Frontend -> QLC IR: 0%
-* Code Generator: QLC IR -> Idris2 DSL: 0%
-* Idris2 DSL: 80%
-* OpenQasm3 Serializer: 80% -->
+<!-- Language:
+- Frontend - wip
+- High level IR
+- Idris2 DSL 90%
+
+Code generator:
+- Type checker
+- First compiler pass (surface syntax ->  high level IR)
+- Second compiler pass (high level IR -> Idris2 DSL).
+- Third compiler pass (serialization to OpenQasm3) -->
