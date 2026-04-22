@@ -34,7 +34,7 @@ discard(q1, q2, q3);
 discard(qs);
 ```
 
-- Automatic [uncomputation](defining-terms.md#what-uncomputation-means), works only over circuits generated with `uncompsafe` functions:
+- Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean), works only over circuits generated with `uncompsafe` functions:
 ```
 uncompute(q);
 uncompute(q1, q2, q3);

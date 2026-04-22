@@ -12,7 +12,7 @@ classical < uncompsafe < unitary < general
 classical fn parity (x : u32) -> bool { ... }
 ```
 
-- Automatic [uncomputation](defining-terms.md#what-uncomputation-means) works when the computation of the temporary value can be described classically. The `uncompsafe` effect is used to annotate functions containing a subset of strictly unitary quantum operations that do not generate or destroy entanglement. These basis-preserving quantum gates are used to generate circuits whose effects can be undone automatically such that the ancilla qubits can be subsequently discarded safely:
+- Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean) works when the computation of the temporary value can be described classically. The `uncompsafe` effect is used to annotate functions containing a subset of strictly unitary quantum operations that do not generate or destroy entanglement. These basis-preserving quantum gates are used to generate circuits whose effects can be undone automatically such that the ancilla qubits can be subsequently discarded safely:
 
 ```leaf
 uncompsafe fn oracle (ancillas : [qubit; 3]) -> [qubit; 3] { ... }
