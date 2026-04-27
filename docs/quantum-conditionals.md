@@ -1,15 +1,19 @@
 
 ### Quantum Conditional Statement
 
+A quantum conditional on qubit q means applying different quantum operations depending on the state of `q`, [coherently](defining-terms.md#what-are-quantum-conditionals) and without measuring it:
+
 ```leaf
 qif q1 {
-    f1(q2, q3);
+  f1(q2, q3);
 } qelse {
-    f2(q2, q3);
+  f2(q2, q3);
 }
 ```
 
 ### Quantum Match Statements
+
+A generalization of quantum conditional for multiple branches implies coherent control over qubits `qs` without performing measurements:
 
 ```leaf
   qmatch qs {
