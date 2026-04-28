@@ -6,6 +6,11 @@ Qubit operations:
 qalloc(), measr(), discard(), reset(), uncompute(), weaken()
 ```
 
+State expression operations:
+```leaf
+then(), tensor(), synth()
+```
+
 Circuit operations:
 ```leaf
 barrier()

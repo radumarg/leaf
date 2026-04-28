@@ -35,8 +35,28 @@ discard(qs);
 ```
 
 - Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean), works only over circuits generated with `uncompsafe` functions:
-```
+```leaf
 uncompute(q);
 uncompute(q1, q2, q3);
 uncompute(qs);
+```
+
+- Compose two state expressions horizontally - $|00\rangle$:  
+```leaf
+let sq1 : squbit = zero
+let sq2 : squbit = zero
+let sq : squbit = sq1.then(sq2);
+```
+
+- Compose two state expressions vertically - $|1\rangle \otimes |1\rangle$:
+```leaf
+let sq1 : squbit = one
+let sq2 : squbit = one
+let sq : [squbit; 2] = sq1.tensor(sq2);
+```
+
+- Trigger circuit synthesis by casting `squbit` to `qubit`:
+```leaf
+let q : qubit = synth(sq);
+let qs : [qubit; 2] = synth(sqs);
 ```
