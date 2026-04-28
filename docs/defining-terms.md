@@ -3,7 +3,12 @@
 We present here a short glossary of useful terms in order to avoid cluttering the documentation with definitions.
 
 ### What is quantum data
-By quantum data one usually means quantum bits as a programming abstraction. However, one should keep in mind that qubits are also a physical resource in a QPU. This means that the laws of physics apply when dealing with qubits. Two no-go theorems are often mentioned in the context of quantum computing: the [no-cloning](defining-terms.md#no-cloning-theorem) theorem and no-program theorem.
+By quantum data one usually means qubits viewed as a programming abstraction. In quantum programming languages, qubits are typically modeled in one of two ways:
+
+- Resource-oriented model — qubits are treated as mutable computational resources whose quantum state evolves when quantum gates are applied.
+- State-oriented model — qubits are represented as language expressions denoting vectors or states in a Hilbert space, which can be composed horisontally and vertically.
+  
+ However, one should keep in mind that qubits are also a physical resource in a QPU. This means that the laws of physics apply when dealing with qubits. Two no-go theorems are often mentioned in the context of quantum computing: the [no-cloning](defining-terms.md#no-cloning-theorem) theorem and no-program theorem.
 
 ### What are quantum operations?
 These are first of all unitary quantum gates used to apply a unitary transformation on a single qubit or on a qubit register. Non-unitary quantum operations include: **measure**, **reset**, **discard** operations applied to qubits. Within the Leaf language, a qubit register is specified as an array of qubits without any other decoration added to it.
