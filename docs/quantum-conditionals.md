@@ -1,7 +1,7 @@
 
 ### Quantum Conditional Statement
 
-A quantum conditional on qubit q means applying different quantum operations depending on the state of `q`, [coherently](defining-terms.md#what-are-quantum-conditionals) without measuring it:
+A quantum conditional on qubit q means applying two quantum operations on other set of qubits depending on the state of `q` [coherently](defining-terms.md#what-are-quantum-conditionals) without measuring it:
 
 ```leaf
 qif q1 {

@@ -3,7 +3,7 @@
 We present here a short glossary of useful terms in order to avoid cluttering the documentation with definitions.
 
 ### What is quantum data
-By quantum data one usually means quantum bits as a programming abstraction. However, one should keep in mind that qubits are also a physical resource in a QPU. This means that the laws pf quantum mechanics apply when dealing with qubits. Two no-go theorems are often mentioned in the context of quantum computing: the [no-cloning](defining-terms.md#no-cloning-theorem) theorem and no-program theorem.
+By quantum data one usually means quantum bits as a programming abstraction. However, one should keep in mind that qubits are also a physical resource in a QPU. This means that the laws of physics apply when dealing with qubits. Two no-go theorems are often mentioned in the context of quantum computing: the [no-cloning](defining-terms.md#no-cloning-theorem) theorem and no-program theorem.
 
 ### What are quantum operations?
 These are first of all unitary quantum gates used to apply a unitary transformation on a single qubit or on a qubit register. Non-unitary quantum operations include: **measure**, **reset**, **discard** operations applied to qubits. Within the Leaf language, a qubit register is specified as an array of qubits without any other decoration added to it.
@@ -104,7 +104,7 @@ Early measurement → final measurement
 
 ### What are quantum conditionals?
 
-A quantum conditional on qubit q means applying different quantum operations depending on the state of q, coherently, without measuring it. A simple example is shown below:
+A quantum conditional with a condition on a qubit `q` means applying two quantum operations on other set of qubits depending on the state of `q` coherently, without measuring it. A simple example is shown below:
 
 Pseudocode:
 
