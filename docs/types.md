@@ -13,8 +13,8 @@ let q : qubit = H(q);
 while the `squbit` is used for expression that declare quantum states like this:
 
 ```leaf
-let plusState  : squbit = 1/sqrt(2) * (zero + one) 
-let minusState : squbit = 1/sqrt(2) * (plus - minus) 
+let plusAlias : squbit = 1/sqrt(2) * (zero + one)
+let oneAlias  : squbit = 1/sqrt(2) * (plus - minus)
 ```
 
 a `squbit` can be cast to a `qubit` using the synthesize built-in:
