@@ -5,7 +5,7 @@
     </td>
     <td style="vertical-align: middle;">
       <h2 style="margin: 0;">
-        Write Leaf, get Lean.<br/>
+        Write Leaf, get Lean 🍃⚡<br/>
         Quantum Programming
       </h2>
       <div style="margin-top: 10px;">
