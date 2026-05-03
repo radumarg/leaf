@@ -109,6 +109,10 @@ Early measurement → final measurement
 
 ### What are quantum conditionals?
 
+There are two flavors of quantum conditionals depending on the type of qubit. Both can be generalized quite naturally to `match` style statements where instead of just two, multiple choices can apply.
+
+#### (1) Resource-oriented qubit model
+
 A quantum conditional with a condition on a qubit `q` means applying two quantum operations on other set of qubits depending on the state of `q` coherently, without measuring it. A simple example is shown below:
 
 Pseudocode:
@@ -129,3 +133,49 @@ The example code produces:
 
 $\alpha |0\rangle \otimes V|\psi\rangle + \beta |1\rangle \otimes U|\psi\rangle$
 
+#### (2) State-oriented qubit model
+
+This quantum conditional was introduced in this [paper](https://arxiv.org/pdf/quant-ph/0409065) and expanded upon in the [paper here](https://arxiv.org/pdf/0806.2735). Following the authors, here is the pseudocode for defining how CNOT gate acts on a qubit producing a state expression:
+
+```text
+qnot q = 1/sqrt(2) * (if° q then qfalse else qtrue)
+```
+
+where:
+
+```text
+qfalse ≡ |0⟩
+qtrue  ≡ |1⟩
+```
+
+QML’s if°/quantum conditional is intended for quantum control without measurement, with orthogonality restrictions such as qfalse ⟂ qtrue. The code in the two branches can be arbitrary state expressions, not just |0⟩ and |1⟩ as long as these are orthogonal. The orthogonality condition is necessary on order for the norm of the state and implicitly the unitarity of the operation to be preserved. This may seem pretty simple at first sight, but this construction is very powerful. It can be used for example to specify a QFT transformation in code starting from the mathematical denotation of the transform without the user having to have any knowledge on how the QFT quantum circuit should look like:
+
+```text
+qft1 x =
+  qcase° x of
+    | qfalse => plus
+    | qtrue  => minus
+```
+
+where:
+
+```text
+plus  = (|0⟩ + |1⟩) / √2
+minus = (|0⟩ - |1⟩) / √2
+```
+
+and:
+
+```text
+qft2 (x1, x0) =
+  if° x1 then
+    if° x0 then
+      (minus, phase(3π/2))    -- input |11⟩
+    else
+      (plus,  minus)          -- input |10⟩
+  else
+    if° x0 then
+      (minus, phase(π/2))     -- input |01⟩
+    else
+      (plus,  plus)           -- input |00⟩
+```
