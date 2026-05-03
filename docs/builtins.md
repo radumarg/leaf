@@ -1,4 +1,4 @@
-### Builtin Functions
+### Built-in Functions
 
 
 Qubit operations:
