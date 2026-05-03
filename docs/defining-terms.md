@@ -148,7 +148,7 @@ There are two flavors of quantum conditionals depending on the type of qubit. Bo
    qtrue  ≡ |1⟩
    ```
 
-   QML’s if°/quantum conditional is intended for quantum control without measurement, with orthogonality restrictions such as qfalse ⟂ qtrue. The code in the two branches can be arbitrary state expressions, not just |0⟩ and |1⟩ as long as these are orthogonal. The orthogonality condition is necessary on order for the norm of the state and implicitly the unitarity of the operation to be preserved. This may seem pretty simple at first sight, but this construction is very powerful. It can be used for example to specify a QFT transformation in code starting from the mathematical denotation of the transform without the user having to have any knowledge on how the QFT quantum circuit should look like:
+   QML’s if°/quantum conditional is intended for quantum control without measurement, with orthogonality restrictions such as qfalse ⟂ qtrue. The code in the two branches can be arbitrary state expressions, not just |0⟩ and |1⟩ as long as these are orthogonal. The orthogonality condition is necessary on order for the norm of the state and implicitly the unitarity of the operation to be preserved. This may seem pretty simple at first sight, but this construction is very powerful. It can be used for example to specify a QFT transformation in code starting from the mathematical denotation of the transform without the user needing to know on how the QFT quantum circuit should look like:
 
    ```text
    qft1 x =
