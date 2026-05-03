@@ -20,9 +20,9 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/radumarg/leaf/blob/main/LICENSE)
 [![Issues](https://img.shields.io/github/issues/radumarg/leaf)](https://github.com/radumarg/leaf/issues)
 
-## Documentation
+## About
 
-[Docs](docs/README.md)
+[Documentation](docs/README.md)
 
 ## Progress Status
 
