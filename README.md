@@ -8,11 +8,6 @@
         Write Leaf, go Lean. 🍃⚡<br/>
         Quantum Programming
       </h2>
-      <div style="margin-top: 10px;">
-        <a href="https://unitary.fund">
-          <img src="https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge" alt="Supported By Unitary Fund">
-        </a>
-      </div>
     </td>
   </tr>
 </table>
@@ -21,6 +16,7 @@
 [![Issues](https://img.shields.io/github/issues/radumarg/leaf)](https://github.com/radumarg/leaf/issues)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/radumarg/leaf/blob/main/LICENSE)
 [![Idris 2](https://img.shields.io/badge/Idris%202-v0.8.0-blue.svg)](https://github.com/idris-lang/Idris2/releases/tag/v0.8.0)
+[![Supported By Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.foundation/)
 
 ## About
 
