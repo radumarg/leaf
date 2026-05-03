@@ -6,7 +6,7 @@ Function effects are annotations used by the Lean type checker to verify Leaf co
 classical < uncompsafe < unitary < general
 ```
 
-- `classical` is the default effect used to classify strictly classical functions i.e. function that do not have qubit arguments, do not return qubits and do not perform any quantum operations like `qubit` allocation or operations on quantum data. Being the default effect, the `classical` keyword is optional and is mainly used for generating explicit API specification:
+- `classical` is the default effect used to classify strictly classical functions i.e. function that do not have qubit arguments, do not return qubits and do not perform any quantum operations like qubit allocation or operations on quantum data. Being the default effect, the `classical` keyword is optional and is mainly used for generating explicit API specification:
 
 ```leaf
 classical fn parity (x : u32) -> bool { ... }
