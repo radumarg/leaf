@@ -135,7 +135,7 @@ There are two flavors of quantum conditionals depending on the type of qubit. Bo
 
 2. State-oriented qubit model
 
-   This quantum conditional was introduced in this [paper](https://arxiv.org/pdf/quant-ph/0409065) and expanded upon in the [paper here](https://arxiv.org/pdf/0806.2735). Following the authors, here is the pseudocode for defining how CNOT gate acts on a qubit producing a state expression:
+   This quantum conditional was introduced in this [paper](https://arxiv.org/pdf/quant-ph/0409065) and expanded upon in the [paper here](https://arxiv.org/pdf/0806.2735). Following the authors, here is the pseudocode for defining how a CNOT gate acts on a qubit state generating a new state expression:
 
    ```text
    qnot q = 1/sqrt(2) * (if° q then qfalse else qtrue)
@@ -148,7 +148,7 @@ There are two flavors of quantum conditionals depending on the type of qubit. Bo
    qtrue  ≡ |1⟩
    ```
 
-   QML’s if°/quantum conditional is intended for quantum control without measurement, with orthogonality restrictions such as qfalse ⟂ qtrue. The code in the two branches can be arbitrary state expressions, not just |0⟩ and |1⟩ as long as these are orthogonal. The orthogonality condition is necessary on order for the norm of the state and implicitly the unitarity of the operation to be preserved. This may seem pretty simple at first sight, but this construction is very powerful. It can be used for example to specify a QFT transformation in code starting from the mathematical denotation of the transform without the programmer needing to know on how the QFT quantum circuit should look like:
+   QML’s if°/quantum conditional is intended for quantum control without measurement, with orthogonality restrictions such as qfalse ⟂ qtrue. The code in the two branches can be arbitrary state superpositions, not just |0⟩ and |1⟩ as long as these have the same result type, and are provably orthogonal. This orthogonality condition is essential: without it, the conditional could fail to preserve norms and inner products, and therefore could not be interpreted as a measurement-free reversible/unitary operation. Such expression may seem simple at first sight, but this construction can be very powerful. It can be used, for example, to specify a QFT transformation in code, directly from its mathematical denotation, without requiring the programmer having to know how the corresponding QFT quantum circuit should look like:
 
    ```text
    qft1 x =
