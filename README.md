@@ -5,8 +5,8 @@
     </td>
     <td style="vertical-align: middle;">
       <h2 style="margin: 0;">
-        Write Leaf, go Lean. 🍃⚡<br/>
-        Quantum Programming
+        Write in Leaf, prove with Lean.<br/>
+        Quantum Programming  🍃⚡ 
       </h2>
     </td>
   </tr>
