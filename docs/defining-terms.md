@@ -109,7 +109,7 @@ Early measurement → final measurement
 
 ### What are quantum conditionals?
 
-There are two flavors of quantum conditionals depending on the type of qubit. Both can be generalized quite naturally to `match` style statements where instead of just two, multiple choices can apply.
+There are two flavors of quantum conditionals depending on the [model](defining-terms.md#what-is-quantum-data) used to represent qubits in the programming language. Both can be generalized naturally to `match` style statements where instead of only two, multiple choices will apply.
 
 1. Resource-oriented qubit model
 
@@ -135,7 +135,7 @@ There are two flavors of quantum conditionals depending on the type of qubit. Bo
 
 2. State-oriented qubit model
 
-   This quantum conditional was introduced in this [paper](https://arxiv.org/pdf/quant-ph/0409065) and expanded upon in the [paper here](https://arxiv.org/pdf/0806.2735). Following the authors, here is the pseudocode for defining how a CNOT gate acts on a qubit state generating a new state expression:
+   This quantum conditional was introduced in this [paper](https://arxiv.org/pdf/quant-ph/0409065) and expanded upon in the [paper here](https://arxiv.org/pdf/0806.2735). Following the authors, here is the pseudocode for defining how a cnot gate acts on the state of a qubit generating a new qubit state expression:
 
    ```text
    qnot q = 1/sqrt(2) * (if° q then qfalse else qtrue)
@@ -148,7 +148,7 @@ There are two flavors of quantum conditionals depending on the type of qubit. Bo
    qtrue  ≡ |1⟩
    ```
 
-   QML’s if°/quantum conditional is intended for quantum control without measurement, with orthogonality restrictions such as qfalse ⟂ qtrue. The code in the two branches can be arbitrary state superpositions, not just |0⟩ and |1⟩ as long as these have the same result type, and are provably orthogonal. This orthogonality condition is essential: without it, the conditional could fail to preserve norms and inner products, and therefore could not be interpreted as a measurement-free reversible/unitary operation. Such expression may seem simple at first sight, but this construction can be very powerful. It can be used, for example, to specify a QFT transformation in code, directly from its mathematical denotation, without requiring the programmer having to know how the corresponding QFT quantum circuit should look like:
+   QML’s if°/quantum conditional is intended for quantum control without measurement, with orthogonality restrictions such as qfalse ⟂ qtrue. The code in the two branches can be arbitrary state superpositions, not just |0⟩ and |1⟩ as long as these have the same result type, and are provably orthogonal. This orthogonality condition is essential: without it, the conditional could fail to preserve norms and inner products, and therefore could not be interpreted as a measurement-free reversible/unitary operation. Such expression may seem simple at first sight, but this construction can be very powerful. It can be used, for example, to specify a QFT transformation in code, directly from its mathematical denotation, without requiring that the programmer should to know how the corresponding QFT quantum circuit should look like:
 
    ```text
    qft1 x =
