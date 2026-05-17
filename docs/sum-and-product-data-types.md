@@ -44,7 +44,7 @@ struct Pair {
     let q0: qubit = qalloc();
     let q1: qubit = qalloc();
     let pair = Pair { q0, q1 };
-    let Pair { q0: q3, q1: q4 } = pair;
-    discard(q3, q4);
+    let Pair { q0: q2, q1: q3 } = pair;
+    discard(q2, q3);
 }
 ```
