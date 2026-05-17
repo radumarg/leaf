@@ -39,7 +39,7 @@ struct Pair {
     let b0 = measr(q0); 
 }
 
-// the Rust destructuring syntax is legal, also all qubits have been consumed:
+// all qubits have been consumed:
 {
     let q0: qubit = qalloc();
     let q1: qubit = qalloc();
