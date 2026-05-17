@@ -623,6 +623,10 @@ let x = t.0;
 let y = t.1;
 let z = t.2;
 
+let qubits = CNOT(q0, q1);
+let q0 = qubits.0;
+let q1 = qubits.1;
+
 //////////////////////////////////////////
 // (31) Extracting variables from tuples:
 //////////////////////////////////////////
@@ -920,6 +924,14 @@ struct Point {
 
 let p = Point { x: 1.0, y: 2.0 };
 let x = p.x;
+
+// destructuring a struct:
+struct Pair {
+    q0: qubit,
+    q1: qubit,
+}
+let mypair = Pair { q0, q1 };
+let Pair { q0: q3, q1: q4 } = mypair;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // (55) Quantum Contracts Function Clauses: requires, ensures + clean, basis, pminus, pure
