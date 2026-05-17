@@ -1,4 +1,4 @@
-### Product and Sum Data Types
+### Sum and Product Data Types
 
 Like Rust, Leaf supports sum data types (Enum) and product data types (Tuple & Struct).
 
