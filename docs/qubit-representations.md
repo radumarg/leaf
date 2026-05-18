@@ -45,4 +45,4 @@ fn had(q: qubit) -> qubit {
 }
 ```
 
-The state oriented model is useful for generating quantum programs starting from physics denotation instead of using on an abstract quantum circuit model. The prototypical example for this use case is generating a circuit for QFT from its mathematical definition within the Leaf programming language.
+The state oriented representation of qubits establishes a denotational unitary expression fragment which useful for generating quantum programs starting from physics denotation instead of using on an abstract quantum circuit model. The prototypical example for this use case is generating a circuit for QFT from its mathematical definition within the Leaf programming language.
