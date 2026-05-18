@@ -1,7 +1,7 @@
 
 ### Quantum Conditionals and Quantum Match Statements
 
-#### (1) Resource-oriented qubits model
+#### (1) Resource-oriented qubits model: `qif`/`qelse`/`qmatch`
 
 For a [resource oriented](qubit-representations.md#resource-oriented-qubit-model) qubits model, a quantum conditional on qubit q means applying two quantum operations on some other set of qubits depending on the state of `q` [coherently](defining-terms.md#what-are-quantum-conditionals) without measuring it:
 
@@ -18,11 +18,12 @@ It is required of f1 and f2 to be unitary functions (no discarding on input qubi
 A generalization of quantum conditional for multiple branches implies coherent control over qubits `qs` without performing measurements:
 
 ```leaf
+  // Note: "_ => f()" syntax is supported
   qmatch qs {
-    b"00" => f00(q1, q2, q3);
-    b"01" => f01(q1, q2, q3);
-    b"10" => f10(q1, q2, q3);
-    b"11" => f11(q1, q2, q3);
+    s"0+" => f00(q1, q2, q3);
+    s"0-" => f01(q1, q2, q3);
+    s"1+" => f10(q1, q2, q3);
+    s"1-" => f11(q1, q2, q3);
   }
 
   qmatch qs {
@@ -35,7 +36,7 @@ A generalization of quantum conditional for multiple branches implies coherent c
 
 Similar conditions that apply to quantum conditionals apply here as well for functions in `qmatch` branches.
 
-#### (2) State-oriented qubits model
+#### (2) State-oriented qubits model: `sif`/`selse`/`smatch`
 
 For a [state oriented](qubit-representations.md#state-oriented-qubit-model) qubits model the elementary quantum conditional example is the CNOT gate represented as a coherent operation via:
 
