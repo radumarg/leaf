@@ -34,7 +34,7 @@ fn had(q: qubit) -> qubit {
 }
 ```
 
-Alternatively using `squbit` type Hadamard gate can be implemented as:
+Using `squbit` type, the Hadamard operation can be implemented as well as:
 
 ```leaf
 let plusAlias : squbit = 1/sqrt(2) * (zero + one);
