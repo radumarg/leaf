@@ -60,9 +60,3 @@ let sq1 : squbit = one
 let sq2 : squbit = one
 let sq : [squbit; 2] = sq1.tensor(sq2);
 ```
-
-- Trigger circuit synthesis by casting `squbit` to `qubit`:
-```leaf
-let q : qubit = synth(sq);
-let qs : [qubit; 2] = synth(sqs);
-```

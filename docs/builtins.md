@@ -13,7 +13,7 @@ basis(), clean(), pminus(), pure(), sep(), stabilized()
 
 State expression operations:
 ```leaf
-then(), tensor(), synth()
+then(), tensor()
 ```
 
 Circuit operations:

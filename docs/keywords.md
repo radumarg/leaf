@@ -38,7 +38,6 @@ scratch
 sif
 selse
 smatch
-synth
 true
 unitary
 uncompute

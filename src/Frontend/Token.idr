@@ -149,7 +149,6 @@ keywordFromString s =
     "sqrt"      => Just KwSqrt
     "scratch"   => Just KwScratch
     "struct"    => Just KwStruct
-    "synth"     => Just KwSynth
     "tan"       => Just KwTan
     "true"      => Just KwTrue
     "uncompute" => Just KwUncompute

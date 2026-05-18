@@ -17,11 +17,6 @@ let plusAlias : squbit = 1/sqrt(2) * (zero + one)
 let oneAlias  : squbit = 1/sqrt(2) * (plus - minus)
 ```
 
-a `squbit` can be cast to a `qubit` using to synthesize built-in function:
-```leaf
-let q : qubit = synth(sq); 
-```
-
 (2) Angle types: 32-bit or 64-bit floating-point values in the range [0, 2π)
 ```leaf
 angle32, angle64
