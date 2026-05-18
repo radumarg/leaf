@@ -13,7 +13,11 @@ let q = H(q);
 fn qnot(q: qubit) -> qubit {
     sif q then zero selse one
 }
+```
 
+Here `zero`, `one`, `plus` and `minus` should be regarded as language constants:
+
+```leaf
 fn had(q: qubit) -> qubit {
     sif q then
         1/sqrt(2) * (zero - one)
@@ -22,7 +26,15 @@ fn had(q: qubit) -> qubit {
 }
 ```
 
-This can be further elaborated as:
+same as:
+
+```leaf
+fn had(q: qubit) -> qubit {
+    sif q then plus selse minus
+}
+```
+
+Alternatively using `squbit` type Hadamard gate can be implemented as:
 
 ```leaf
 let plusAlias : squbit = 1/sqrt(2) * (zero + one);
