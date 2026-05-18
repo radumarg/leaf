@@ -141,7 +141,7 @@ There are two flavors of quantum conditionals depending on the [model](defining-
 
 2. State-oriented qubit model
 
-   This quantum conditional is proposed in [this paper](https://arxiv.org/pdf/0806.2735). Following the authors, we show the pseudocode for how a cnot gate acts on a qubit states generating a symbolic state expression:
+   This type of quantum conditional is proposed in [this paper](https://arxiv.org/pdf/0806.2735). The `if°` quantum conditional is intended for quantum control without measurement. Following the authors, we show the pseudocode modeling a X gate acting on a qubit:
 
    ```leaf
    qnot q = if° q then qfalse else qtrue
@@ -154,7 +154,7 @@ There are two flavors of quantum conditionals depending on the [model](defining-
    qtrue  ≡ |1⟩
    ```
 
-   QML’s if°/quantum conditional is intended for quantum control without measurement, with orthogonality restrictions such as qfalse ⟂ qtrue. The code in the two branches can be arbitrary state superpositions, not just |0⟩ and |1⟩ as long as these have the same result type, and are provably orthogonal. This orthogonality condition is essential: without it, the conditional could fail to preserve norms and inner products, and therefore could not be interpreted as a measurement-free reversible/unitary operation. Such expression may seem simple at first sight, but this construction can be very powerful. It can be used, for example, to specify a QFT transformation in code, directly from its mathematical denotation, without requiring that the programmer should to know how the corresponding QFT quantum circuit should look like:
+   One should note that the operation above maps a qubit type `q` to another qubit represented as a symbolic qubit state expression and must represent a unitary transformation. The code in the two branches can be arbitrary state superpositions, not just |0⟩ and |1⟩ as long as these denote a qubit state, and are provably orthogonal. The orthogonality condition is essential: without it, the conditional could fail to preserve norms and inner products, and therefore could not be interpreted as a measurement-free unitary operation. Such syntax may seem simple at first sight, but this construction can be very powerful. It can be used, for example, to specify a QFT transformation in code, directly from its mathematical denotation, without requiring the programmer should to know how the corresponding QFT quantum circuit should look like:
 
    ```leaf
    qft1 x =
