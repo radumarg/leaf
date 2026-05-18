@@ -1,21 +1,18 @@
 ### Modeling Qubits
 
-- Resource-oriented model — qubits are treated as mutable computational resources whose quantum state evolves when quantum gates are applied.
+#### (1) Resource-oriented qubit model
+
+Qubits are treated as mutable computational resources whose quantum state evolves when quantum gates are applied.
 
 ```leaf
 let q: qubit = qalloc();
 let q = H(q);
 ```
 
-- State-oriented model — qubits are represented using a language of expressions denoting vectors or states in a Hilbert space:
+#### (2) State-oriented qubit model
 
-```leaf
-fn qnot(q: qubit) -> qubit {
-    sif q then zero selse one
-}
-```
+Qubits are represented using a language of expressions denoting vectors or states in a Hilbert space built using the `squbit` typed language constants: `zero`, `one`, `plus` and `minus`.
 
-Here `zero`, `one`, `plus` and `minus` are `squbit` typed language constants:
 
 ```leaf
 fn had(q: qubit) -> qubit {
@@ -45,4 +42,4 @@ fn had(q: qubit) -> qubit {
 }
 ```
 
-The state oriented representation of qubits establishes a denotational unitary expression fragment which useful for generating quantum programs starting from physics denotation instead of using on an abstract quantum circuit model. The prototypical example for this use case is generating a circuit for QFT from its mathematical definition within the Leaf programming language.
+The state oriented representation of qubits establishes a denotational unitary expression fragment which useful among other for generating quantum programs starting from physics denotation instead of using on an abstract quantum circuit model. The prototypical example for this use case is generating a circuit for QFT from its mathematical definition within the Leaf programming language.
