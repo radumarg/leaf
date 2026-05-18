@@ -3,7 +3,7 @@
 
 #### (1) Resource-oriented qubits model
 
-For a [resource oriented qubits](qubit-representations.md#resource-oriented-qubit-model), a quantum conditional on qubit q means applying two quantum operations on some other set of qubits depending on the state of `q` [coherently](defining-terms.md#what-are-quantum-conditionals) without measuring it:
+For a [resource oriented](qubit-representations.md#resource-oriented-qubit-model) qubits model, a quantum conditional on qubit q means applying two quantum operations on some other set of qubits depending on the state of `q` [coherently](defining-terms.md#what-are-quantum-conditionals) without measuring it:
 
 ```leaf
 qif q1 {
@@ -37,7 +37,7 @@ Similar conditions that apply to quantum conditionals apply here as well for fun
 
 #### (2) State-oriented qubits model
 
-For a [state oriented qubits](qubit-representations.md#state-oriented-qubit-model) the prototypical example is the CNOT gate:
+For a [state oriented](qubit-representations.md#state-oriented-qubit-model) qubits model the elementary quantum conditional example is the CNOT gate represented as a coherent operation via:
 
 ```leaf
 fn qnot(q: qubit) -> qubit {
@@ -45,5 +45,4 @@ fn qnot(q: qubit) -> qubit {
 }
 ```
 
-In order for the transformation to describe a unitary transformation the`sif`/`selse` branches must be provably orthogonal.
-
+In order for the operation to describe a unitary transformation the `sif`/`selse` branches must be provably orthogonal.
