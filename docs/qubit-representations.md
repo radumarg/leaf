@@ -11,7 +11,7 @@ let q = H(q);
 
 #### (2) State-oriented qubit model
 
-Qubits are represented using a language of expressions denoting vectors or states in a Hilbert space built using the `squbit` typed language constants: `zero`, `one`, `plus` and `minus`.
+Qubits are represented using a language of expressions denoting vectors or states in a Hilbert space built using the `squbit` typed language constants: `zero`, `one`, `plus` and `minus`. These constants are used inside state expressions and do not denote allocated runtime qubits.
 
 
 ```leaf
@@ -23,7 +23,7 @@ fn had(q: qubit) -> qubit {
 }
 ```
 
-same as:
+Is the same as:
 
 ```leaf
 fn had(q: qubit) -> qubit {
