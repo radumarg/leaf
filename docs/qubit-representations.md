@@ -15,7 +15,7 @@ fn qnot(q: qubit) -> qubit {
 }
 ```
 
-Here `zero`, `one`, `plus` and `minus` should be regarded as language constants:
+Here `zero`, `one`, `plus` and `minus` are `squbit` typed language constants:
 
 ```leaf
 fn had(q: qubit) -> qubit {
