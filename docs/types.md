@@ -17,7 +17,7 @@ let plusAlias : squbit = 1/sqrt(2) * (zero + one)
 let oneAlias  : squbit = 1/sqrt(2) * (plus - minus)
 ```
 
-a `squbit` can be cast to a `qubit` using the synthesize built-in function:
+a `squbit` can be cast to a `qubit` using to synthesize built-in function:
 ```leaf
 let q : qubit = synth(sq); 
 ```
