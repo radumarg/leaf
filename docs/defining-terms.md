@@ -141,7 +141,7 @@ There are two flavors of quantum conditionals depending on the [model](defining-
 
 2. State-oriented qubit model
 
-   This quantum conditional was introduced in this [paper](https://arxiv.org/pdf/quant-ph/0409065) and expanded upon in the [paper here](https://arxiv.org/pdf/0806.2735). Following the authors, here is the pseudocode for defining how a cnot gate acts on the state of a qubit generating a new qubit state expression:
+   This quantum conditional is proposed in [this paper](https://arxiv.org/pdf/0806.2735). Following the authors, we show the pseudocode for how a cnot gate acts on a qubit state generating a qubit state expression:
 
    ```leaf
    qnot q = 1/sqrt(2) * (if° q then qfalse else qtrue)
