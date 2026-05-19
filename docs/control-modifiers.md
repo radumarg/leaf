@@ -48,5 +48,8 @@ ctrl(&q0 : one, &q1 : one, &q2 : zero) {
 };
 ```
 
-
-  
+```leaf
+(zero + one)
+ .tensor(zero - phase(pi/2) * one)
+ .tensor(zero - one)
+```

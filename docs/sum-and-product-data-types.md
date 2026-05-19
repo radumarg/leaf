@@ -39,7 +39,7 @@ struct Pair {
     let b0 = measr(q0); 
 }
 
-// all qubits have been consumed:
+// all qubits have been consumed in this case:
 {
     let q0: qubit = qalloc();
     let q1: qubit = qalloc();

@@ -11,11 +11,6 @@ Quantum contracts:
 basis(), clean(), pminus(), pure(), sep(), stabilized()
 ```
 
-State expression operations:
-```leaf
-then(), tensor()
-```
-
 Circuit operations:
 ```leaf
 barrier()
