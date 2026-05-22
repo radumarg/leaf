@@ -970,7 +970,7 @@ let mypair = Pair { q0, q1 };
 let Pair { q0: q3, q1: q4 } = mypair;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// (57) Quantum Contracts Function Clauses: requires, ensures + clean, basis, pminus, pure
+// (57) Quantum Contracts Function Clauses: requires, ensures + clean, paulibasis, pure
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 // These are optional code annotations for functions that specify pre- & post-conditions that the quantum data should satisfy:
@@ -988,4 +988,13 @@ fn oracle(q1: qubit, q2: qubit)
     // some code here
 }
 
+// Also supported:
+ensures paulibasis(q, X)
+requires paulibasis(q, Y) 
+requires paulibasis(q, Z)
 
+// Also supported:
+ensures stabilized(q, [ +Z(q) ])
+requires stabilized(qs, [ -ZY(qs), ])
+requires stabilized(qs, [Z(q0), X(q1), Z(q0) * Z(q1)])
+ensures stabilized(qs, [Z(q0), X(q1), Z(q0) * Z(q1)])
