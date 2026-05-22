@@ -1,19 +1,26 @@
 ### Built-in Functions
 
 
-Qubit operations:
+[Qubit operations](defining-terms.md#operations-on-qubits):
+
+
 ```leaf
 qalloc(), measr(), discard(), reset(), uncompute(), weaken()
 ```
 
-Quantum contracts:
+[Quantum contracts](quantum-contracts.md#quantum-contracts):
 ```leaf
-basis(), clean(), pminus(), pure(), sep(), stabilized()
+clean(), paulibasis(), pure(), sep(), stabilized()
 ```
 
-Circuit operations:
+[Circuit operations](quantum-gates.md#barrier):
 ```leaf
 barrier()
+```
+
+Utility complex function for quantum states specification:
+```leaf
+phase()
 ```
 
 Trigonometric functions:
@@ -25,3 +32,4 @@ Math utility functions:
 ```leaf
 abs(), exp(), ceil(), floor(), ln(), log2(), log10(), max(), min(), round(), sqrt()
 ```
+
