@@ -1,15 +1,15 @@
 
-### Motivation:
+### Motivation
 
 Leaf builds on a broad body of [research](bibliography.md) in quantum programming languages. Our goal is to make it a practical language designed for users to write easily and safely useful quantum programs that will run on today's and tomorrow's quantum processors.
 
-### Starting point:
+### Starting point
 
 Leaf is deliberately designed to replicate Rust’s basic syntax, with conservative extensions for quantum programming which are meant to look and feel like Rust. It follows Rust’s philosophy of strong static type support and extends it to [quantum data](defining-terms.md#what-is-quantum-data) and both unitary and non-unitary [quantum operations](defining-terms.md#what-are-quantum-operations).
 
 More precisely, Leaf is intended to be a statically typed, sound, and safe language. This means that types are checked by the compiler before execution. The sound type system ensures that well-typed programs come with formal guarantees that they behave according to the language’s semantics, without undefined behaviors, type-related execution errors, or attempts to perform non-physical quantum operations, enjoying ancilla qubits management and automatic uncomputation support. Safety ensures that bad runtime behaviors are ruled out by the type system.
 
-### The compilation lifecycle of Leaf code:
+### Compilation lifecycle of Leaf code
 
 1. Frontend - Rust-like surface syntax.
 2. Type checker - provides strong type safety for quantum programming with optional automatic uncomputation support.
@@ -19,7 +19,9 @@ More precisely, Leaf is intended to be a statically typed, sound, and safe langu
    - OpenQASM3 for now. 
    - QIR to be added later.
 
-### Leaf will provide strong formal verification support:
+### Formal verification support
+
+Leaf will provide strong formal verification support:
 
 - Type safety is ensured by a strong static type system at both the surface-syntax level and the typed high-level IR, with rigorous coverage of quantum operations and their physical constraints.
 - The developer will have the tools to test the semantic correctness of their program by writing Lean proofs at the level of the high-level IR representation of the quantum algorithm.
