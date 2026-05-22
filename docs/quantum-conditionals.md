@@ -29,21 +29,23 @@ qif &q1 {
 }
 ```
 
-It is required of f1 and f2 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded. A generalization of quantum conditional for multiple branches implies coherent control over qubits `qs` without performing measurements:
+It is required of f1 and f2 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded.
+
+A generalization of quantum conditional for multiple branches implies coherent control over qubits `qs` without performing measurements:
 
 ```leaf
   let (qs, q1, q2, q3) = qmatch qs {
-    s"00" => f00(q1, q2, q3),
-    s"01" => f01(q1, q2, q3),
-    s"10" => f10(q1, q2, q3),
-    s"11" => f11(q1, q2, q3),
+    bs"00" => f00(q1, q2, q3),
+    bs"01" => f01(q1, q2, q3),
+    bs"10" => f10(q1, q2, q3),
+    bs"11" => f11(q1, q2, q3),
   }
 
   qmatch &qs {
-    s"0+" => f00(&q1, &q2, &q3);
-    s"0-" => f01(&q1, &q2, &q3);
-    s"1+" => f10(&q1, &q2, &q3);
-    s"1-" => f11(&q1, &q2, &q3);
+    bs"0+" => f00(&q1, &q2, &q3),
+    bs"0-" => f01(&q1, &q2, &q3),
+    bs"1+" => f10(&q1, &q2, &q3),
+    bs"1-" => f11(&q1, &q2, &q3),
   }
 ```
 
@@ -51,23 +53,22 @@ It is required of f1 and f2 to be unitary functions (no discarding on input qubi
 
 ```leaf
   qmatch &qs {
-    0 => f00(&q1, &q2, &q3);
-    1 => f01(&q1, &q2, &q3);
-    2 => f10(&q1, &q2, &q3);
-    3 => f11(&q1, &q2, &q3);
+    0 => f00(&q1, &q2, &q3),
+    1 => f01(&q1, &q2, &q3),
+    2 => f10(&q1, &q2, &q3),
+    3 => f11(&q1, &q2, &q3),
   }
 
   // which is the same as:
 
   qmatch &qs {
-    s"00" => f00(&q1, &q2, &q3);
-    s"01" => f01(&q1, &q2, &q3);
-    s"10" => f10(&q1, &q2, &q3);
-    s"11" => f11(&q1, &q2, &q3);
+    bs"00" => f00(&q1, &q2, &q3),
+    bs"01" => f01(&q1, &q2, &q3),
+    bs"10" => f10(&q1, &q2, &q3),
+    bs"11" => f11(&q1, &q2, &q3),
   }
 ```
-
-Similar conditions that apply to quantum conditionals apply here as well for functions in `qmatch` branches.
+Similar conditions that apply to quantum conditionals branches apply here as well for functions in `qmatch` branches. Like in Rust, match must be exhaustive and `_ => ` is supported.
 
 #### (2) State-oriented qubits model: `sif`/`selse`/`smatch`
 

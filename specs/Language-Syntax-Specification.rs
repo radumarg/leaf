@@ -500,41 +500,54 @@ match x {
   _ => { /* other */ }
 }
 
-/////////////////////////////////////////////////////
-// (23) Quantum match expressions qmatch and smatch:
-/////////////////////////////////////////////////////
+////////////////////////////////////////////////
+// (23) Quantum match style expressions qmatch:
+////////////////////////////////////////////////
 
-qmatch &q {
-  0 => {
-      branch_statement0(data)
-  }
-  1 => {
-      branch_statement1(data);
-  }
+let (qs, q1, q2, q3) = qmatch qs {
+  s"00" => f00(q1, q2, q3),
+  s"01" => f01(q1, q2, q3),
+  s"10" => f10(q1, q2, q3),
+  s"11" => f11(q1, q2, q3),
 }
 
 qmatch &qs {
-  bs"00" => { branch_statement00(data); }
-  bs"01" => { branch_statement01(data); }
-  bs"10" => { branch_statement10(data); }
-  bs"11" => { branch_statement11(data); }
+  s"0+" => f00(&q1, &q2, &q3),
+  s"0-" => f01(&q1, &q2, &q3),
+  s"1+" => f10(&q1, &q2, &q3),
+  s"1-" => f11(&q1, &q2, &q3),
 }
+
+// following syntax integer based branch condition syntax is also supported:
 
 qmatch &qs {
-  0 => { branch_statement0(data); }
-  1 => { branch_statement1(data); }
-  2 => { branch_statement2(data); }
-  3 => { branch_statement3(data); }
+  0 => f00(&q1, &q2, &q3),
+  1 => f01(&q1, &q2, &q3),
+  2 => f10(&q1, &q2, &q3),
+  3 => f11(&q1, &q2, &q3),
 }
 
+// where the above is the same as:
+
+qmatch &qs {
+  s"00" => f00(&q1, &q2, &q3),
+  s"01" => f01(&q1, &q2, &q3),
+  s"10" => f10(&q1, &q2, &q3),
+  s"11" => f11(&q1, &q2, &q3),
+}
+
+// Like in Rust, wildcard patterns are supported for qmatch: 
+_ => f()
+
+////////////////////////////////////////////////
+// (24) Quantum match style expressions smatch:
+////////////////////////////////////////////////
+
+// Unlike in Rust, wildcard patterns are NOT supported for smatch. 
 
 smatch &q {
-  0 => {
-      branch_expression0(data)
-  }
-  1 => {
-      branch_expression1(data)
-  }
+  0 => branch_expression0(data),
+  1 => branch_expression1(data),
 }
 
 smatch &qs {
@@ -551,9 +564,8 @@ smatch &qs {
   3 => branch_expression_3(data),
 }
 
-
 ////////////////////////////////
-// (24) Rust block expressions:
+// (25) Rust block expressions:
 ////////////////////////////////
 
 let x = {
@@ -567,7 +579,7 @@ let unit = {
 };
 
 ///////////////////////////////////
-// (25) Syntax for declaring loops:
+// (26) Syntax for declaring loops:
 ///////////////////////////////////
 
 let mut count = 0;
@@ -579,7 +591,7 @@ loop {
 }
 
 ///////////////////////////////////////////////////////
-// (26) Syntax for declaring loops that return a value:
+// (27) Syntax for declaring loops that return a value:
 ///////////////////////////////////////////////////////
 
 let mut count = 0;
@@ -593,7 +605,7 @@ let result = loop {
 };
 
 ///////////////////////////
-// (27) While loop syntax:
+// (28) While loop syntax:
 ///////////////////////////
 
 while count <= 5 {
@@ -601,7 +613,7 @@ while count <= 5 {
 }
 
 ////////////////
-// (28) Ranges:
+// (29) Ranges:
 ///////////////
 
 // exclusive range:
@@ -623,7 +635,7 @@ a..=b
 ..      
 
 /////////////////////////
-// (29) For loop syntax:
+// (30) For loop syntax:
 /////////////////////////
 
 // using a range in a for loop:
@@ -633,14 +645,14 @@ for i in 1..6 {
 }
 
 /////////////////////////
-// (30) Declaring tuples:
+// (31) Declaring tuples:
 /////////////////////////
 
 let t: (i32, f64, bool) = (1, 3.14, true);
 let t = (1, 3.14, true);
   
 ////////////////////////////////////
-// (31) Tuples positional indexing:
+// (32) Tuples positional indexing:
 ////////////////////////////////////
 
 let x = t.0;
@@ -652,7 +664,7 @@ let q0 = qubits.0;
 let q1 = qubits.1;
 
 //////////////////////////////////////////
-// (32) Extracting variables from tuples:
+// (33) Extracting variables from tuples:
 //////////////////////////////////////////
 
 let (a, b, c) = (1, 2, 3);
@@ -660,21 +672,21 @@ let (x, _, z) = (1, 2, 3);
 let (q0, q1, q2) = (H(q0), H(q1), H(q2));
 
 ///////////////////////
-// (33) If expressions
+// (34) If expressions
 ////////////////////////
 
 let boolflag = true;
 let x : i32 = if boolflag { 1 } else { 2 };
 
 ///////////////////////
-// (34) Type casting:
+// (35) Type casting:
 ///////////////////////
 
 let b : bit = 1;
 let x = b as i32;
 
 //////////////////////
-// (35) Reset qubits:
+// (36) Reset qubits:
 //////////////////////
 
 let q : qubit = qalloc();
@@ -688,7 +700,7 @@ let qs = reset(qs);
 reset(&qs);
 
 //////////////////////
-// (36) Discard qubits:
+// (37) Discard qubits:
 //////////////////////
 
 let q : qubit = qalloc();
@@ -698,7 +710,7 @@ let qs : [qubit; 3] = qalloc(3);
 discard(qs);
 
 /////////////////////////////////////////////////////////////////////////////////
-// (37) uncompute qubits: reverse the reversible computation that produced these
+// (38) uncompute qubits: reverse the reversible computation that produced these
 // qubits, returning them to |0⟩ when the compiler can verify that this is valid.
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -713,7 +725,7 @@ let qs = uncompute(qs);
 uncompute(&qs);
 
 //////////////////////////////////////////////////////////
-// (38) Weakening qubits: demote linear qubits to affine:
+// (39) Weakening qubits: demote linear qubits to affine:
 //////////////////////////////////////////////////////////
 
 let linear q : qubit = qalloc();
@@ -723,14 +735,14 @@ let linear qs : [qubit; 3] = qalloc(3);
 let affine qs = weaken(qs);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (39) ':=' marks the resulting qubit binding as automatically uncomputed when the enclosing function returns:
+// (40) ':=' marks the resulting qubit binding as automatically uncomputed when the enclosing function returns:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 let q : qubit := fun(q);
 let qs : [qubit; 3] := fun(qs);
 
 //////////////////////////
-// (40) Measuring qubits:
+// (41) Measuring qubits:
 //////////////////////////
 
 let q : qubit = qalloc();
@@ -746,7 +758,7 @@ let bs : [bit; 3] = measr(qs);
 let bs : [bit; 3] = measr(&qs);
 
 ////////////////////////
-// (41) Barrier syntax:
+// (42) Barrier syntax:
 ////////////////////////
 
 barrier();
@@ -754,7 +766,7 @@ let (q0, q1, q2) = barrier(q0, q1, q2);
 barrier(&q0, &q1);
 
 ////////////////////////////////////////////////////////////////////
-// (42) declaring and using modules and imports follows Rust syntax:
+// (43) declaring and using modules and imports follows Rust syntax:
 ////////////////////////////////////////////////////////////////////
 
 mod my_module {
@@ -774,7 +786,7 @@ fn main() {
 }
 
 //////////////////////////
-// (43) Functions syntax:
+// (44) Functions syntax:
 //////////////////////////
 
 fn function_name() {
@@ -782,7 +794,7 @@ fn function_name() {
 }
 
 ///////////////////////////////////////
-// (44) Function with typed arguments:
+// (45) Function with typed arguments:
 ///////////////////////////////////////
 
 fn add(x: i32, y: i32) -> i32 {
@@ -790,7 +802,7 @@ fn add(x: i32, y: i32) -> i32 {
 }
 
 //////////////////////////////////////////
-// (45) Function returning some variable:
+// (46) Function returning some variable:
 //////////////////////////////////////////
 
 fn f(x: f32) -> f32 {
@@ -799,7 +811,7 @@ fn f(x: f32) -> f32 {
 }
 
 ///////////////////////////////////////////////////////////
-// (46) Alternative syntax for function returning a value:
+// (47) Alternative syntax for function returning a value:
 ///////////////////////////////////////////////////////////
 fn f() -> f64 {
     let x = 2.0;
@@ -807,14 +819,14 @@ fn f() -> f64 {
 }
 
 //////////////////////////////////////////////////////
-// (47) Variable declared in the scope of a function:
+// (48) Variable declared in the scope of a function:
 //////////////////////////////////////////////////////
 fn my_function() {
   let i = 10;
 }
 
 ///////////////////////////////////////////////////////////
-// (48) Functions using references and mutable references:
+// (49) Functions using references and mutable references:
 ///////////////////////////////////////////////////////////
 
 struct Person {
@@ -831,7 +843,7 @@ fn my_function(person: &mut Person) {
 }
 
 //////////////////////////////////////////////////////////
-// (49) mutable variable declared in a local block scope:
+// (50) mutable variable declared in a local block scope:
 //////////////////////////////////////////////////////////
 
 {
@@ -845,7 +857,7 @@ fn f(mut x: i32) -> i32 {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// (50) Function Effect Qualifiers: classical, uncompsafe, unitary, general
+// (51) Function Effect Qualifiers: classical, uncompsafe, unitary, general
 //////////////////////////////////////////////////////////////////////////////
 
 // function effects are optional Rust style function qualifiers used by the Leaf type checker to verify Leaf code.
@@ -875,7 +887,7 @@ general fn sample(q: qubit) -> bit {
 }
 
 /////////////////////////
-// (51) Integer literals
+// (52) Integer literals
 /////////////////////////
 
 let x = 1000;
@@ -899,7 +911,7 @@ let z = 123i32;
 let z = 123_i32;
 
 ////////////////////////////////
-// (52) Floating point literals
+// (53) Floating point literals
 ////////////////////////////////
 
 let x = 1.0;
@@ -915,7 +927,7 @@ let f = 0.1f32;
 let f = 5f32; 
 
 ///////////////////////////////////////
-// (53) Byte and bytes string literals
+// (54) Byte and bytes string literals
 ///////////////////////////////////////
 
 let b = b'a';
@@ -927,7 +939,7 @@ let bs = b"ABC\x41";
 
 
 /////////////////////////
-// (54) Rust style enums
+// (55) Rust style enums
 /////////////////////////
 
 enum ResultBit {
@@ -938,7 +950,7 @@ enum ResultBit {
 let r = ResultBit::Zero;
 
 ///////////////////////////
-// (55) Rust style structs
+// (56) Rust style structs
 ///////////////////////////
 
 struct Point {
@@ -958,7 +970,7 @@ let mypair = Pair { q0, q1 };
 let Pair { q0: q3, q1: q4 } = mypair;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// (56) Quantum Contracts Function Clauses: requires, ensures + clean, basis, pminus, pure
+// (57) Quantum Contracts Function Clauses: requires, ensures + clean, basis, pminus, pure
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 // These are optional code annotations for functions that specify pre- & post-conditions that the quantum data should satisfy:
