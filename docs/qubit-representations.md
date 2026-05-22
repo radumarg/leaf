@@ -17,9 +17,9 @@ Qubits are represented using a language of expressions denoting vectors or state
 ```leaf
 fn had(q: qubit) -> qubit {
     sif q then
-        1/sqrt(2) * (zero - one)
+        (zero - one)
     selse
-        1/sqrt(2) * (zero + one)
+        (zero + one)
 }
 ```
 
@@ -34,12 +34,12 @@ fn had(q: qubit) -> qubit {
 Using `squbit` type, the Hadamard operation can be implemented as well as:
 
 ```leaf
-let plusAlias : squbit = 1/sqrt(2) * (zero + one);
-let minusAlias : squbit = 1/sqrt(2) * (zero - one);
+let plusAlias : squbit = zero + one;
+let minusAlias : squbit = zero - one;
 
 fn had(q: qubit) -> qubit {
     sif q then minusAlias selse plusAlias
 }
 ```
 
-The state oriented representation of qubits establishes a denotational unitary expression fragment which useful among others for generating quantum programs starting from physics denotation instead of using on an abstract quantum circuit model. The prototypical example for this use case is generating a circuit for QFT from its mathematical definition within the Leaf programming language.
+Note that the overall normalization factor is ignored for state expressions. The state oriented representation of qubits establishes a denotational unitary expression fragment which useful among others for generating quantum programs starting from physics denotation instead of using on an abstract quantum circuit model. The prototypical example for this use case is generating a circuit for QFT from its mathematical definition within the Leaf programming language.
