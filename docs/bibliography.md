@@ -2,6 +2,8 @@
 
 - **Knill, E.** (1996). *Conventions for Quantum Pseudocode*. Technical Report LA-UR-96-2724, Los Alamos National Laboratory. DOI: [10.2172/366453](https://doi.org/10.2172/366453). [PDF](https://www.osti.gov/servlets/purl/366453)
 
+- **Selinger, P.** (2004). Towards a Quantum Programming Language. *Mathematical Structures in Computer Science* 14(4), pp. 527–586. DOI: [10.1017/S0960129504004256](https://doi.org/10.1017/S0960129504004256). [PDF](https://www.mathstat.dal.ca/~selinger/papers/qpl.pdf).
+
 - **van Tonder, A.** (2004). A Lambda Calculus for Quantum Computation. *SIAM Journal on Computing* 33(5), pp. 1109–1135. DOI: [10.1137/S0097539703432165](https://doi.org/10.1137/S0097539703432165). [arXiv:quant-ph/0307150](https://arxiv.org/abs/quant-ph/0307150).
 
 - **Altenkirch, T., & Grattage, J.** (2005). A Functional Quantum Programming Language. In *Proceedings of the 20th Annual IEEE Symposium on Logic in Computer Science (LICS 2005)*, pp. 249–258. IEEE Computer Society. [arXiv:quant-ph/0409065](https://arxiv.org/abs/quant-ph/0409065). Also available at the [authors' site](https://people.cs.nott.ac.uk/psztxa/publ/qml.pdf).
