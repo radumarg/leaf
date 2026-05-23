@@ -107,7 +107,7 @@ ZZ(1.0, &q1, &q2);
 ```
 
 ### Barrier
-Barrier is a built-in function not a quantum gate and is compiled directly to an OpenQasm3 barrier instructions:
+Barrier is a built-in function not a quantum gate and is compiled directly to an OpenQasm3 barrier instruction:
 ```leaf
 barrier();
 barrier(&q1, &q2);
