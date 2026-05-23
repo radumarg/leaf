@@ -4,22 +4,29 @@
 Example gate applications:
 ```leaf
 let q : qubit = H(q);
+
+// or:
+
+let q = H(q);
+
+// see also:
+
 let (q1, q2) = CNOT(q1, q2);
 ```
 
-These operations are built in, but conceptually they behave like functions that borrow their qubit arguments:
+These operations are built in, but conceptually they can also behave like functions that borrow their qubit arguments:
 
 ```leaf
 H(&q);
 CNOT(&q1, &q2);
 ```
 
-Since qubits are mutable by default so the `H(&q)` syntax in Leaf would have been written in Rust as: `H(&mut q)`.
+Since qubits are mutable by default so the `H(&q)` syntax accepted by Leaf would have been written in Rust as: `H(&mut q)`.
 
 ### Identity
 
 ```leaf
-Id(&q)
+Id(&q);
 ```
 
 ### Single-Qubit Gates
@@ -94,7 +101,7 @@ ZZ(1.0, &q1, &q2);
 ```
 
 ### Barrier
-Barrier is an instruction not a quantum gate, this translates directly to OpenQasm3 barrier instruction:
+Barrier is an instruction not a quantum gate, this is compiled directly to OpenQasm3 barrier instructions:
 ```leaf
 barrier();
 barrier(&q1, &q2);
