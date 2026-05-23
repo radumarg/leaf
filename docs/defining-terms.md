@@ -31,7 +31,7 @@ with:
 f(&q);
 ```
 
-Note that since qubits can only be acted upon and not read out or inspected like it can be done for a classical data, a reference to a qubit is by default mutable. Consequently, in Leaf for qubits, the supported syntax `f(&q)` would correspond to what in Rust is being represented as `f(&mut q)`. Leaf does support mutable borrowing for classical types exactly like Rust does.
+Note that since qubits can only be acted upon and not read out/inspected like classical data can, a reference to a qubit is by default mutable. Consequently, in Leaf for qubits, the supported syntax `f(&q)` would correspond to what in Rust is being represented as `f(&mut q)`. Leaf does support mutable borrowing for classical types exactly like Rust does.
 
 ### What are ancilla qubits?
 Ancilla qubits are often used as scratch qubits needed to implement oracles (boolean or vector boolean functions) as a quantum circuit. Ancilla qubits are also used in order to reduce the depth of the resulting circuit when decomposing a multi qubit unitary in one and two qubit physical gates. Usually ancilla qubits are discarded when the algorithm no longer needs them in order to be recycled and reused for subsequent operations since any quantum processor has a finite supply of qubits. Discarding quantum data is not trivial in quantum computing, unlike the case of classical data which the programmer can simply forget about. How and when ancilla qubits can be safely discarded is detailed below in the section discussing [uncomputation](defining-terms.md#what-does-uncomputation-mean).
