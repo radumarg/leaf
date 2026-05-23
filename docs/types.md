@@ -49,5 +49,5 @@ bool
 
 (8) Unit type:
 ```leaf
-let () = ();
+()
 ```
