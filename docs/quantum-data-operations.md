@@ -47,14 +47,7 @@ uncompute(q1, q2, q3);
 uncompute(qs);
 ```
 
-- Compose two state expressions horizontally - $|00\rangle$:  
-```leaf
-let sq1 : squbit = zero
-let sq2 : squbit = zero
-let sq : squbit = sq1.then(sq2);
-```
-
-- Compose two state expressions vertically - $|1\rangle \otimes |1\rangle$:
+- Tensor product for state expressions - $|1\rangle \otimes |1\rangle$:
 ```leaf
 let sq1 : squbit = one
 let sq2 : squbit = one
