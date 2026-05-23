@@ -8,8 +8,14 @@ let q : qubit = H(q);
 // or:
 
 let q = H(q);
+```
 
-// see also:
+See also:
+
+```leaf
+let (q0, q1) : (qubit, qubit) = CX(q0, q1);
+
+// or:
 
 let (q1, q2) = CNOT(q1, q2);
 ```
@@ -101,7 +107,7 @@ ZZ(1.0, &q1, &q2);
 ```
 
 ### Barrier
-Barrier is an instruction not a quantum gate, this is compiled directly to OpenQasm3 barrier instructions:
+Barrier is a built-in function not a quantum gate and is compiled directly to an OpenQasm3 barrier instructions:
 ```leaf
 barrier();
 barrier(&q1, &q2);
