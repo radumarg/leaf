@@ -18,7 +18,7 @@ clean(), paulibasis(), pure(), sep(), stabilized()
 barrier()
 ```
 
-Utility complex function for quantum states specification:
+Complex-valued helper function needed for quantum states specification:
 ```leaf
 phase()
 ```
