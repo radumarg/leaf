@@ -97,7 +97,7 @@ CCX(&q1, &q2, &q3);
 CSWAP(&q1, &q2, &q3);
 ```
 
-### Ion-Native Gates
+### IonQ-Native Gates
 
 ```leaf
 GPI(1.0, &q);
