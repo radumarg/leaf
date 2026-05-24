@@ -3,7 +3,17 @@
 These are Rust style function qualifiers used by the Lean type checker to verify Leaf code. The function effects form a lattice:
 
 ```leaf
-classical < uncompsafe < unitary < general
+         general
+            |
+         coherent
+          /   \
+    isometry coisometry
+          \   /
+         unitary
+            |
+        uncompsafe
+            |
+        classical
 ```
 
 - `classical` is the default effect used to classify strictly classical functions i.e. function that do not have qubit arguments, do not return qubits and do not perform any quantum operations like qubit allocation or operations on quantum data. Being the default effect, the `classical` keyword is optional and is mainly used for generating explicit API specification:
