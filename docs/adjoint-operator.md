@@ -32,4 +32,4 @@ Discarding a quantum register in code amounts allowing the physical qubits to di
 
  $\rho_{AB} = Tr_{B}(\rho_{AB}) \otimes  \lvert 0 \rangle  \langle 0 \rvert_{B}$
 
-Under such conditions a subroutine that contain no measurement, no side effects on classical inputs, and no classical output can be in principle reversed.
+Under such conditions a subroutine that contain no measurement, no side effects on classical inputs, and no classical output, can be in principle reversed.
