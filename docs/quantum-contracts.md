@@ -19,10 +19,12 @@ The following contracts are supported:
 - sep(qs1, qs2 ..) - these qubits sets are mutually separable, meaning their joint state is a product state. This implies pure(qs1), pure(qs2) etc.
 
 
-Contracts that by default target a single set of qubit(s) form a lattice where dirty is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
+Contracts form a lattice where dirty is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
 
 ```leaf
                       dirty(qs)
+                         |
+                    sep(qs, qs')
                          |
                       pure(qs)
                       /      \
