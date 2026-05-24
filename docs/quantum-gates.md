@@ -10,7 +10,7 @@ let q : qubit = H(q);
 let q = H(q);
 ```
 
-See also:
+For a two qubit gate:
 
 ```leaf
 let (q0, q1) : (qubit, qubit) = CX(q0, q1);
@@ -20,7 +20,7 @@ let (q0, q1) : (qubit, qubit) = CX(q0, q1);
 let (q1, q2) = CNOT(q1, q2);
 ```
 
-These operations are built in, but conceptually they can also behave like functions that borrow their qubit arguments:
+These operations are built in, but conceptually they can also act like functions that borrow their qubit arguments:
 
 ```leaf
 H(&q);
