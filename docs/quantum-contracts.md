@@ -16,10 +16,10 @@ The following contracts are supported:
 - clean(qs) - these qubits/registers are all in $|0\rangle$ state and separated from the rest of qubits.
 - paulibasis(qs, X/Y/Z) - each of these qubits/registers are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits.
 - pure(qs) - these qubits are independent of the rest of the program state (even if possibly entangled among them). Their evaluation is unaffected by other qubits measurement outcomes.
-- sep(sq1, qs2 ..) - all of these qubits sets are mutually separable, meaning their joint state is a product state.
+- sep(qs1, qs2 ..) - these qubits sets are mutually separable, meaning their joint state is a product state. This implies pure(qs1), pure(qs2) etc.
 
 
-Contracts targeting a single set of qubit(s) form a lattice where dirty is the most general state of qubit(s) that may be entangled with others qubit(s) in the program:
+Contracts that by default target a single set of qubit(s) form a lattice where dirty is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
 
 ```leaf
                       dirty(qs)
@@ -31,7 +31,7 @@ Contracts targeting a single set of qubit(s) form a lattice where dirty is the m
            clean(qs)
 ```
 
-Being the most general state of qubit(s), dirty is not a Leaf language keyword. Stabilizer contracts are not yet supported. These are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
+Being the most general state of qubit(s), dirty is the default is not a Leaf language keyword. Stabilizer contracts are not yet supported. These are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
 
 ```leaf
  Z(q) -> X(q)
