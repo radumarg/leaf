@@ -29,7 +29,7 @@ reset(q1, q2, q3);
 reset(qs);
 ```
 
-- Discarding it is one way to use a qubit at the programmatic level, without actually performing any physical operation on the corresponding physical qubit. This means: I will never use this qubit again, and I do not care what its state is. Semantically, discarding a qubit means taking a partial trace over that qubit. The remaining qubits are described by their reduced density matrix:
+- Discarding it is one way to use a qubit at the programmatic level, without actually performing any physical operation on the corresponding physical qubit. At the level of physical qubits this mean allowing the qubits to dissipate. Programmatically this means: I will never use this qubit again, and I do not care what its state is. Semantically, discarding a qubit means taking a partial trace over that qubit. The remaining qubits are described by their reduced density matrix:
   - if the qubit is not entangled: $|\psi\rangle = |+\rangle_{q} \otimes |\phi\rangle_{r}$ and you discard $q$, the rest of the system remains exactly $|\phi\rangle_{r}$. No harm is done to the remaining qubits.
   - if the qubit is entangled: $\frac{1}{\sqrt{2}} \left( \lvert 00 \rangle + \lvert 11 \rangle \right)$ and you discard the first qubit, the second qubit becomes $\frac{1}{2}\left(|0\rangle\langle 0| + |1\rangle\langle 1|\right)$. That is, it becomes a mixed state, not a pure state. The quantum coherence between the branches is lost from the perspective of the remaining program state. Discarding an entangled qubit leaks quantum information into the environment and can decohere the remaining qubits in the program.
 
