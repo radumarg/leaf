@@ -27,7 +27,7 @@ Is the same as:
 
 ```leaf
 fn had(q: qubit) -> qubit {
-    sif q then plus selse minus
+    sif q then minus selse plus
 }
 ```
 
