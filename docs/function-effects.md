@@ -34,9 +34,27 @@ uncompsafe fn oracle (ancillas : [qubit; 3]) -> [qubit; 3] { ... }
 unitary fn grover (qubits : [qubit; 7]) -> [qubit; 7] { ... }
 ```
 
-A function that internally allocates scratch qubits should count as unitary only if those qubits are provably returned clean and separable before return.
+A function qualified as `unitary` can have classical input data and can also have classical output data provided that data does not come from observing, measuring, discarding, or otherwise extracting information from quantum data. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits.
 
-- `general` is used to classify functions which in addition to quantum gates contain `measr`, `reset` or `discard` operations or are invoking `general` functions.
+- `isometry` is used to classify function containing unitary quantum gates or invoking `unitary` functions that:
+
+```leaf
+isometry fn fanOut (qubits : [qubit; 3]) -> [qubit; 7] { ... }
+```
+
+- a `coisometry` is the same as a `unitary` function except that the number of output qubits is strictly larger than the number of input qubits:
+
+```leaf
+coisometry fn fanIn (qubits : [qubit; 7]) -> [qubit; 3] { ... }
+```
+
+- sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are in a provable clean, all zero, separable state:
+
+```leaf
+coherent fn reversible (qubits : [qubit; 5]) -> [qubit; 5] { ... }
+```
+
+- `general` is used to classify functions which in addition to quantum gates contain `measr`, `reset` or `discard` operations or are invoking `general` functions:
 
 ```leaf
 general fn sample (qs : [qubit; 7]) -> [bit; 7] { ... }
