@@ -5,7 +5,11 @@ Although this may be obvious, it is important to note that classical functions a
 
 ### Unitary Adjoint Operator
 
-Technically these are higher-order operators that change the way functions with quantum operations behave. Adjoint is can be only applied to unitary code, in particular if applied to a function the function must be qualified with the `unitary` effect.
+Adjoint modifier turns a unitary call or block into its inverse operation. Technically these are higher-order operators that change the way functions with quantum operations behave. Adjoint is can be only applied to unitary code, in particular if applied to a function the function must be qualified with the `unitary` effect.
+
+```leaf
+let (q1, q2, q3) = adjoint f(q1, q2, q3);
+```
 
 ```leaf
 adjoint f(q1, q2, q3);
@@ -28,6 +32,19 @@ adjoint {
 adjoint CX(&q1, &q2)
 adjoint H(&q1);
 ```
+
+Internally `adjoint` is treated as a higher order function so:
+
+```leaf
+adjoint f(q1, q2, q3);
+```
+
+desugars to:
+
+```leaf
+(adjoint f)(q1, q2, q3);
+```
+
 
 ### Reversing Quantum Subroutines
 
