@@ -16,6 +16,7 @@ clean(), paulibasis(), pure(), sep(), stabilized()
 [Circuit operations](quantum-gates.md#barrier):
 ```leaf
 barrier()
+adjoint()
 ```
 
 Complex-valued helper function needed for quantum states specification:

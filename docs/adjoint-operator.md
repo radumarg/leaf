@@ -7,44 +7,54 @@ Although this may be obvious, it is important to note that classical functions a
 
 Adjoint modifier turns a unitary call or block into its inverse operation. Technically these are higher-order operators that change the way functions with quantum operations behave. Adjoint is can be only applied to unitary code, in particular if applied to a function the function must be qualified with the `unitary` effect.
 
+Adjoint acts as a higher order function:
+
 ```leaf
-let (q1, q2, q3) = adjoint f(q1, q2, q3);
+let f_adjoint = adjoint(f);
 ```
 
+Syntax with explicit qubit handling:
+
 ```leaf
-adjoint f(q1, q2, q3);
+let (q1, q2, q3) = adjoint(f)(q1, q2, q3);
+```
 
-// SAME AS:
+... or using qubit borrowing syntax:
 
+```leaf
+adjoint(f)(&q1, &q2, &q3);
+```
+
+Using a block expression:
+
+```leaf
 adjoint {
-    f(q1, q2, q3);
+    f(&q1, &q2, &q3);
 }
 ```
+
+Or using a block expression with built-in gates:
 
 ```leaf
 adjoint {
     H(&q1);
-    CX(&q1, &q2)
+    CT(&q1, &q2)
 }
-
-// SAME AS:
-
-adjoint CX(&q1, &q2)
-adjoint H(&q1);
 ```
 
-Internally `adjoint` is treated as a higher order function so:
+Which can be decomposed as:
 
 ```leaf
-adjoint f(q1, q2, q3);
+adjoint(CT)(&q1, &q2);
+adjoint(H)(&q1);
 ```
 
-desugars to:
+ ... which is the same with:
 
 ```leaf
-(adjoint f)(q1, q2, q3);
+CTDG(&q1, &q2);
+H(&q1);
 ```
-
 
 ### Reversing Quantum Subroutines
 
