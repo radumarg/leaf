@@ -5,15 +5,15 @@ Although this may be obvious, it is important to note that classical functions a
 
 ### Unitary Adjoint Operator
 
-Adjoint modifier turns a unitary call or block into its inverse operation. Technically these are higher-order operators that change the way functions with quantum operations behave. Adjoint is can be only applied to unitary code, in particular if applied to a function the function must be qualified with the `unitary` effect.
+Adjoint operation transformer turns a unitary call or block into its inverse operation. Technically these are higher-order operators that change the way functions with quantum operations behave. Adjoint is can be only applied to unitary code, in particular if applied to a function the function must be qualified with the `unitary` effect.
 
-Adjoint acts as a higher order function:
+Adjoint acting as a higher order function:
 
 ```leaf
 let f_adjoint = adjoint(f);
 ```
 
-Syntax with explicit qubit handling:
+Adjoint syntax with explicit qubit handling:
 
 ```leaf
 let (q1, q2, q3) = adjoint(f)(q1, q2, q3);
@@ -25,7 +25,7 @@ let (q1, q2, q3) = adjoint(f)(q1, q2, q3);
 adjoint(f)(&q1, &q2, &q3);
 ```
 
-Using a block expression:
+Adjoint block expression:
 
 ```leaf
 adjoint {
@@ -33,7 +33,7 @@ adjoint {
 }
 ```
 
-Or using a block expression with built-in gates:
+A block expression with built-in gates:
 
 ```leaf
 adjoint {
@@ -42,7 +42,7 @@ adjoint {
 }
 ```
 
-Which can be decomposed as:
+can be decomposed as:
 
 ```leaf
 adjoint(CT)(&q1, &q2);
