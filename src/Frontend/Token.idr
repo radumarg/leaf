@@ -24,8 +24,9 @@ data Keyword
   | KwCeil | KwClassical | KwClean | KwCos | KwCtrl | KwContinue | KwDiscard
   | KwElse | KwEnsures | KwEnum | KwExp | KwFalse | KwFloor | KwFn | KwFor | KwGeneral | KwIf | KwImport | KwIn
   | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
-  | KwMatch | KwMax | KwMeasr | KwMin | KwMod | KwNegCtrl | KwOne
-  | KwParam | KwPminus | KwPure | KwPub | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
+  | KwMatch | KwMax | KwMeasr | KwMin | KwMinus| KwMinusI | KwMod | KwNegCtrl | KwOne
+  | KwParam | KwPlus | KwPlusI | KwPure | KwPub
+  | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
   | KwSelse | KwSif | KwSmatch | KwScratch | KwSep | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
   | KwTan | KwTrue | KwUncompute | KwUnitary | KwUse | KwWeaken | KwWhile | KwZero
 
@@ -126,12 +127,15 @@ keywordFromString s =
     "max"       => Just KwMax
     "measr"     => Just KwMeasr
     "min"       => Just KwMin
+    "minus"     => Just KwMinus
+    "minusi"    => Just KwMinusI
     "mod"       => Just KwMod
     "negctrl"   => Just KwNegCtrl
     "one"       => Just KwOne
     "Param"     => Just KwParam
+    "plus"      => Just KwPlus
+    "plusi"     => Just KwPlusI
     "pub"       => Just KwPub
-    "pminus"    => Just KwPminus
     "pure"      => Just KwPure
     "qalloc"    => Just KwQAlloc
     "qelse"     => Just KwQelse
@@ -278,12 +282,15 @@ showKeywordLeaf kw =
     KwMatch     => "match"
     KwMax       => "max"
     KwMeasr     => "measr"
+    KwMinus     => "minus"
+    KwMinusI    => "minusi"
     KwMin       => "min"
     KwMod       => "mod"
     KwNegCtrl   => "negctrl"
     KwOne       => "one"
     KwParam     => "Param"
-    KwPminus    => "pminus"
+    KwPlus      => "plus"
+    KwPlusI     => "plusi"
     KwPub       => "pub"
     KwPure      => "pure"
     KwRound     => "round"
