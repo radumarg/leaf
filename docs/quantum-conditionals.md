@@ -1,6 +1,8 @@
 
 ### Quantum Conditionals and Quantum Match Statements
 
+Quantum conditionals are the first step in an attempt to go beyond the [quantum data + classical control](https://www.mathstat.dal.ca/~selinger/papers/qpl.pdf) paradigm of quantum programming which was based on [QRAM model](https://www.osti.gov/servlets/purl/366453-CZpmV6/webviewable/) of a quantum computer. The road from here towards general quantum control over quantum data is probably going to be a long one.
+
 #### (1) Resource-oriented qubits model: `qif`/`qelse`/`qmatch`
 
 For a [resource oriented](qubit-representations.md#resource-oriented-qubit-model) qubits model, a quantum conditional on qubit q means applying two quantum operations on some other set of qubits depending on the state of `q` coherently without measuring it. The precise semantics of this construction is discussed [here](defining-terms.md#what-are-quantum-conditionals).
