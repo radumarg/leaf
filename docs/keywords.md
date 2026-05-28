@@ -24,9 +24,11 @@ linear
 loop
 measr
 minus
+minusi
 negctrl
 one
 plus
+plusi
 qalloc
 qif
 qelse
