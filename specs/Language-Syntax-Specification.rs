@@ -296,50 +296,68 @@ let (q0, q1) = ZZ(1.0, q0, q1);
 //////////////////////////////////////////////////////////////////
 
 // canonical controlled gate
-let (q0, q1, q2): (qubit, qubit, qubit) = ctrl(q0, q1).H(q2);
+let (q0, q1, q2): (qubit, qubit, qubit) = ctrl(q0, q1).apply(H)(q2);
 // controlled gate with inferred types:
-let (q0, q1, q2) = ctrl(q0, q1).H(q2);
+let (q0, q1, q2) = ctrl(q0, q1).apply(H)(q2);
 // controlled gate with borrowed qubits:
-ctrl(&q0, &q1).H(&q2);
-
-// can chain ctrl and negctrl modifiers:
-ctrl(&q0).negctrl(&q1).H(&q2);
-ctrl(&q0).ctrl(&q1).H(&q2);
-
-// negctrl syntax for applying gates controlled on qubits being 0 instead of 1, with the same syntax variations of 'ctrl':
-negctrl(&q0, &q1).H(&q2);
-
-// alternative syntax for declaring controlled gates using explicit control-state annotations:
-let (q0, q1, q2) = ctrl(q0 : one, q1 : zero).H(q2);
-let (q0, q1, q2) = ctrl(q0 : plus, q1 : minus).H(q2);
-
-ctrl(&q0).negctrl(&q1) {
+ctrl(&q0, &q1).apply(H)(&q2);
+// block syntax
+ctrl(&q0, &q1) {
   H(&q2);
-  CX(&q3, &q4);
-};
+}
 
-ctrl(&q0 : one, &q1 : one, &q2 : zero) {
-  H(&q3);
-  CX(&q4, &q5);
-};
+// applying controlls on "10" state
+let (q0, q1, q2) = ctrl(q0, q1).on(bs"10").apply(H)(q2);
+// same with borrowed qubits:
+ctrl(&q0, &q1).on(bs"10").apply(H)(&q2);
+// block syntax
+ctrl(&q0, &q1).on(bs"10") {
+  H(&q2);
+}
+
+// apply controls on some generic function of qubits:
+let (q0, q1, q2, q3) = ctrl(q0, q1).apply(f)(q2, q3);
+// same with borrowed qubits:
+ctrl(&q0, &q1).apply(f)(&q2, &q3);
+// block syntax
+ctrl(&q0, &q1) {
+  f(&q2, &q3);
+}
+
+// apply controls on some generic function of qubits on ++ state:
+let (q0, q1, q2, q3) = ctrl(q0, q1).on(bs"++").apply(f)(q2, q3);
+// same with borrowed qubits:
+ctrl(&q0, &q1).on(bs"++").apply(f)(&q2, &q3);
+// block syntax
+ctrl(&q0, &q1).on(bs"++") {
+  f(&q2, &q3);
+}
 
 //////////////////////////
 // (15) Adjoint Operator:
 //////////////////////////
 
-let (q1, q2, q3) = adjoint f(q1, q2, q3);
+// adjoint as higher order function:
+let f_adjoint = adjoint(f);
 
+// applying adjoint to generic function of qubits:
+let (q1, q2, q3): (qubit, qubit, qubit)  = adjoint(f)(q1, q2, q3);
+// adjoint with inferred types
+let (q1, q2, q3)  = adjoint(f)(q1, q2, q3);
+// adjoint with borrowed qubits:
+adjoint(f)(&q1, &q2, &q3);
+// block syntax for adjoint:
 adjoint {
     f(&q1, &q2, &q3);
 }
-
+// applying adjoint to built-in gates:
 adjoint {
-  H(&q1);
-  CX(&q1, &q2);
+    H(&q1);
+    CT(&q1, &q2)
 }
-
-adjoint CX(&q1, &q2);
-adjoint H(&q1);
+// or equivalently:
+adjoint(CT)(&q1, &q2);
+adjoint(H)(&q1);
 
 //////////////////////////////
 // (16) Arithmetic Operators:
