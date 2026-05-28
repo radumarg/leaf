@@ -26,7 +26,7 @@ data Keyword
   | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
   | KwMatch | KwMax | KwMeasr | KwMin | KwMod | KwNegCtrl | KwOne
   | KwParam | KwPminus | KwPure | KwPub | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
-  | KwSelse | KwSif | KwSmatch | KwScratch | KwSep | KwSin | KwSqrt | KwStruct | KwSynth
+  | KwSelse | KwSif | KwSmatch | KwScratch | KwSep | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
   | KwTan | KwTrue | KwUncompute | KwUnitary | KwUse | KwWeaken | KwWhile | KwZero
 
 ----------------------------------------------------------------------
@@ -149,6 +149,7 @@ keywordFromString s =
     "sqrt"      => Just KwSqrt
     "scratch"   => Just KwScratch
     "struct"    => Just KwStruct
+    "supports"  => Just KwSupports
     "tan"       => Just KwTan
     "true"      => Just KwTrue
     "uncompute" => Just KwUncompute
@@ -302,6 +303,7 @@ showKeywordLeaf kw =
     KwSynth     => "synth"
     KwSqrt      => "sqrt"
     KwStruct    => "struct"
+    KwSupports  => "supports"
     KwTan       => "tan"
     KwTrue      => "true"
     KwUncompute => "uncompute"
