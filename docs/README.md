@@ -18,7 +18,7 @@
 - [Sum and Product Data Types](sum-and-product-data-types.md)
 - Code Patterns:
     - [Deutsch-Jozsa Algorithm](deutsch-jozsa.md)
-    - [Deutsch-Jozsa Algorithm](compact-deutsch-jozsa.md)
+    - [Deutsch-Jozsa Algorithm (Compact Implementation)](compact-deutsch-jozsa.md)
     <!-- - [Phase Kickback](pattern.md) -->
     <!-- - [Quantum Conditional](pattern.md) -->
     <!-- - [Quantum Fourier Transform](pattern.md) -->
