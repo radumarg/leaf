@@ -17,7 +17,7 @@
 - [Quantum Contracts](quantum-contracts.md)
 - [Sum and Product Data Types](sum-and-product-data-types.md)
 - Code Patterns:
-    - [Deutsch-Jozsa Algorithm](pattern.md)
+    - [Deutsch-Jozsa Algorithm](deutsch-jozsa.md)
     <!-- - [Phase Kickback](pattern.md) -->
     <!-- - [Quantum Conditional](pattern.md) -->
     <!-- - [Quantum Fourier Transform](pattern.md) -->
