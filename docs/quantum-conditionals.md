@@ -1,7 +1,7 @@
 
 ### Quantum Conditionals and Quantum Match Statements
 
-Quantum conditionals are the first step in an attempt to go beyond the [quantum data + classical control](https://www.mathstat.dal.ca/~selinger/papers/qpl.pdf) paradigm of quantum programming which was based on [QRAM model](https://www.osti.gov/servlets/purl/366453-CZpmV6/webviewable/) of a quantum computer. The road from here towards general quantum control over quantum data is probably going to be a long one.
+Quantum conditionals are the first step in an attempt to go beyond the quantum data + classical control  paradigm of quantum programming [[Sellinger (2004)]](./bibliography.md#selinger-2004-towards-quantum-programming-language) which was based on the QRAM model of a quantum computation [[Knill (1996)]](./bibliography.md#knill-1996-conventions-quantum-pseudocode). The road from here towards more general quantum control over quantum data is probably going to be a long one.
 
 #### (1) Resource-oriented qubits model: `qif`/`qelse`/`qmatch`
 
@@ -88,4 +88,4 @@ fn qnot(q: qubit) -> qubit {
  .tensor(zero - one)
 ```
 
-The whole function maps a qubit to a qubit and denotes a transformation on q. To grasp this more easily it is useful to realize that `zero` could have been named: `qfalse` and `one`: `qtrue`, following the notation from this [paper](https://arxiv.org/pdf/0806.2735). The function returns a symbolic state expression which cannot contain quantum gates or non-unitary qubit operations like measure, reset or discard. In order for the operation to describe a unitary transformation the `sif`/`selse` branches must be provably orthogonal which in the example above is obvious.
+The whole function maps a qubit to a qubit and denotes a transformation on q. To grasp this more easily it is useful to realize that `zero` could have been named: `qfalse` and `one`: `qtrue`, following the notation from [Grattage (2008)](./bibliography.md#grattage-2008-overview-qml-haskell). The function returns a symbolic state expression which cannot contain quantum gates or non-unitary qubit operations like measure, reset or discard. In order for the operation to describe a unitary transformation the `sif`/`selse` branches must be provably orthogonal which in the example above is obvious.

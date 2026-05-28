@@ -141,7 +141,7 @@ There are two flavors of quantum conditionals depending on the [model](defining-
 
 2. State-oriented qubit model
 
-   This type of quantum conditional is proposed in [this paper](https://arxiv.org/pdf/0806.2735). The `if°` quantum conditional is intended for quantum control without measurement. Following the authors, we show the pseudocode modeling a X gate acting on a qubit:
+   This type of quantum conditional is proposed in: [Altenkirch & Grattage (2005)](./bibliography.md#altenkirch-2005-functional-quantum-programming-language). The `if°` quantum conditional is intended for quantum control without measurement. Following the authors, we show the pseudocode modeling a X gate acting on a qubit:
 
    ```leaf
    qnot q = if° q then qfalse else qtrue
