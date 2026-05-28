@@ -1,1 +1,1 @@
-let qs : [qubit; 2] = qalloc(2),;
+let qs: [qubit; 2] = qalloc(2),;

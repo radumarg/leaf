@@ -7,7 +7,7 @@ bit, qubit, squbit
 
 where the `qubit` type is used for regular qubits, that accept gate(s) application:
 ```leaf
-let q : qubit = H(q); 
+let q: qubit = H(q); 
 ```
 
 while the `squbit` is used for expression that declare quantum states like this:

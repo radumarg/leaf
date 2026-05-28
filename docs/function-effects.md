@@ -57,7 +57,7 @@ coherent fn reversible (qubits : [qubit; 5]) -> [qubit; 5] { ... }
 - `general` is used to classify functions which in addition to quantum gates contain `measr`, `reset` or `discard` operations or are invoking `general` functions:
 
 ```leaf
-general fn sample (qs : [qubit; 7]) -> [bit; 7] { ... }
+general fn sample (qs: [qubit; 7]) -> [bit; 7] { ... }
 ```
 
 

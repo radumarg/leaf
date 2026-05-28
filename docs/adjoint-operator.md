@@ -71,7 +71,7 @@ H(&q1);
 A function that contains only unitary quantum gates always supports the adjoint operation. However, when the function has classical output, mutates classical data, generates side effects, measures, resets or discards qubits thing are no longer so simple. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are in a provable clean, all zero, separable state. Leaf has a special syntax for those functions where the compiler is able to infer that the function supports the adjoint operation using the `suppports` keyword:
 
 ```leaf
-unitary fn f(q : qubit) supports adjoint {
+unitary fn f(q: qubit) supports adjoint {
     H(&q);
 }
 ```

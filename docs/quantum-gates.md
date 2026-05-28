@@ -3,7 +3,7 @@
 
 Example gate applications:
 ```leaf
-let q : qubit = H(q);
+let q: qubit = H(q);
 
 // or:
 

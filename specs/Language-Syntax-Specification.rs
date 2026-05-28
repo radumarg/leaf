@@ -83,7 +83,7 @@ let i : i128 = -1;
 let i = -7;
 
 // qubit declaration 
-let q : qubit = qalloc();
+let q: qubit = qalloc();
 
 // inferred type for qubit allocation
 let q = qalloc();
@@ -160,9 +160,9 @@ let n = a.len();
 /////////////////////////////////////////////////////////////////
 
 // explicit type annotations for qubits and bits
-let q : qubit = qalloc();
-let qs : [qubit; 1] = qalloc(1);
-let qs : [qubit; 3] = qalloc(3);
+let q: qubit = qalloc();
+let qs: [qubit; 1] = qalloc(1);
+let qs: [qubit; 3] = qalloc(3);
 let b : bit = measr(q);
 let b : bit = 0;
 let bs : [bit; 3] = measr(qs);
@@ -213,7 +213,7 @@ let affine scratch qs: [qubit; 2] = qalloc(2);
 /////////////////////////////////////////
 
 // canonical gate application syntax:
-let q : qubit = H(q);
+let q: qubit = H(q);
 // gate application syntax with inferred types:
 let q = H(q);
 // borrowing qubit syntax if the qubit will be needed later.
@@ -221,7 +221,7 @@ let q = H(q);
 H(&q);
 
 // parameterized gates:
-let q : qubit = U3(1.0, 2.0, 3.0, q);
+let q: qubit = U3(1.0, 2.0, 3.0, q);
 let q = U3(1.0, 2.0, 3.0, q);
 U3(1.0, 2.0, 3.0, &q);
 
@@ -237,25 +237,25 @@ CX(&q0, &q1);
 Id, X, Y, Z, H, S, SDG, T, TDG, SX, SXDG, RX, RY, RZ, U1, U2, U3, CNOT, CX, CY, CZ, CS, CSDG, CT, CTDG, CSX, CSXDG, CRX, CRY, CRZ, CU1, CU2, CU3, SWAP, RXX, RYY, RZZ, CCX, CSWAP, GPI, GPI2, MS, ZZ
 
 // Single-Qubit Gates
-let q : qubit = Id(q);
-let q : qubit = X(q);
-let q : qubit = Y(q);
-let q : qubit = Z(q);
-let q : qubit = H(q);
-let q : qubit = S(q);
-let q : qubit = SDG(q);
-let q : qubit = T(q);
-let q : qubit = TDG(q);
-let q : qubit = SX(q);
-let q : qubit = SXDG(q);
+let q: qubit = Id(q);
+let q: qubit = X(q);
+let q: qubit = Y(q);
+let q: qubit = Z(q);
+let q: qubit = H(q);
+let q: qubit = S(q);
+let q: qubit = SDG(q);
+let q: qubit = T(q);
+let q: qubit = TDG(q);
+let q: qubit = SX(q);
+let q: qubit = SXDG(q);
 
 // Parametric Single-Qubit Gates
-let q : qubit = RX(1, q);
-let q : qubit = RY(1.0, q);
-let q : qubit = RZ(1.0, q);
-let q : qubit = U1(1.0, q);
-let q : qubit = U2(1.0, 2.0, q);
-let q : qubit = U3(1.0, 2.0, 3.0, q);
+let q: qubit = RX(1, q);
+let q: qubit = RY(1.0, q);
+let q: qubit = RZ(1.0, q);
+let q: qubit = U1(1.0, q);
+let q: qubit = U2(1.0, 2.0, q);
+let q: qubit = U3(1.0, 2.0, 3.0, q);
 
 // Controlled Gates
 let (q0, q1): (qubit, qubit) = CNOT(q0, q1);
@@ -286,8 +286,8 @@ let (q0, q1, q2) = CCX(q0, q1, q2);
 let (q0, q1, q2) = CSWAP(q0, q1, q2);
 
 // Ion-Native Gates
-let q : qubit = GPI(1.0, q);
-let q : qubit = GPI2(1.0, q);
+let q: qubit = GPI(1.0, q);
+let q: qubit = GPI2(1.0, q);
 let (q0, q1) = MS(1.0, 2.0, q0, q1);
 let (q0, q1) = ZZ(1.0, q0, q1);
 
@@ -689,11 +689,11 @@ let x = b as i32;
 // (36) Reset qubits:
 //////////////////////
 
-let q : qubit = qalloc();
+let q: qubit = qalloc();
 let q = reset(q);
 reset(&q);
 
-let qs : [qubit; 3] = qalloc(3);
+let qs: [qubit; 3] = qalloc(3);
 // qubits are consumed and returned in reset state
 let qs = reset(qs);
 // qubits are borrowed and reset in place
@@ -703,10 +703,10 @@ reset(&qs);
 // (37) Discard qubits:
 //////////////////////
 
-let q : qubit = qalloc();
+let q: qubit = qalloc();
 discard(q);
 
-let qs : [qubit; 3] = qalloc(3);
+let qs: [qubit; 3] = qalloc(3);
 discard(qs);
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -714,13 +714,13 @@ discard(qs);
 // qubits, returning them to |0⟩ when the compiler can verify that this is valid.
 //////////////////////////////////////////////////////////////////////////////////
 
-let q : qubit = qalloc();
+let q: qubit = qalloc();
 // qubit is consumed and returned after valid uncomputation
 let q = uncompute(q);
 // qubit is borrowed and uncomputed in place
 uncompute(&q);
 
-let qs : [qubit; 3] = qalloc(3);
+let qs: [qubit; 3] = qalloc(3);
 let qs = uncompute(qs);
 uncompute(&qs);
 
@@ -728,30 +728,30 @@ uncompute(&qs);
 // (39) Weakening qubits: demote linear qubits to affine:
 //////////////////////////////////////////////////////////
 
-let linear q : qubit = qalloc();
+let linear q: qubit = qalloc();
 let affine q = weaken(q);
 
-let linear qs : [qubit; 3] = qalloc(3);
+let linear qs: [qubit; 3] = qalloc(3);
 let affine qs = weaken(qs);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // (40) ':=' marks the resulting qubit binding as automatically uncomputed when the enclosing function returns:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-let q : qubit := fun(q);
-let qs : [qubit; 3] := fun(qs);
+let q: qubit := fun(q);
+let qs: [qubit; 3] := fun(qs);
 
 //////////////////////////
 // (41) Measuring qubits:
 //////////////////////////
 
-let q : qubit = qalloc();
+let q: qubit = qalloc();
 // qubit is consumed permanently
 let b : bit = measr(q);
 // qubit is borrowed
 let b : bit = measr(&q);
 
-let qs : [qubit; 3] = qalloc(3);
+let qs: [qubit; 3] = qalloc(3);
 // qubits are consumed permanently
 let bs : [bit; 3] = measr(qs);
 // qubits are borrowed
