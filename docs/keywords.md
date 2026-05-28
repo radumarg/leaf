@@ -38,6 +38,7 @@ scratch
 sif
 selse
 smatch
+supports
 true
 unitary
 uncompute

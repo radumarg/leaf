@@ -80,4 +80,10 @@ fn qnot(q: qubit) -> qubit {
 }
 ```
 
+```leaf
+(zero + one)
+ .tensor(zero - phase(pi/2) * one)
+ .tensor(zero - one)
+```
+
 The whole function maps a qubit to a qubit and denotes a transformation on q. To grasp this more easily it is useful to realize that `zero` could have been named: `qfalse` and `one`: `qtrue`, following the notation from this [paper](https://arxiv.org/pdf/0806.2735). The function returns a symbolic state expression which cannot contain quantum gates or non-unitary qubit operations like measure, reset or discard. In order for the operation to describe a unitary transformation the `sif`/`selse` branches must be provably orthogonal which in the example above is obvious.
