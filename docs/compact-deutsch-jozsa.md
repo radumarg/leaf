@@ -8,7 +8,9 @@ unitary fn balanced_oracle(qs: [qubit; 5]) -> [qubit; 5] {
     X(&qs[2]);
 
     for i in 0..4 {
-        ctrl(&qs[i]) { X(&qs[4]); }
+        ctrl(&qs[i]) {
+            X(&qs[4]);
+        }
     }
 
     // Restore qs[0] and qs[2].
