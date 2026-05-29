@@ -1,5 +1,6 @@
-### Deutsch-Jozsa Algorithm (More Compact Implementation)
+### Deutsch-Jozsa Algorithm
 
+This is a more compact implementation of Deutsch-Jozsa:
 
 ```rust
 unitary fn balanced_oracle(qs: [qubit; 5]) -> [qubit; 5] {
