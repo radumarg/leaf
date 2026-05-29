@@ -10,7 +10,7 @@ qalloc(), measr(), discard(), reset(), uncompute(), weaken()
 
 [Quantum contracts](quantum-contracts.md#quantum-contracts):
 ```leaf
-clean(), paulibasis(), pure(), sep(), stabilized()
+clean(), basis(), pure(), isolated(), product(), stabilized()
 ```
 
 [Circuit operations](quantum-gates.md#barrier):

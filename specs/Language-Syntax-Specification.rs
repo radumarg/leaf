@@ -990,12 +990,15 @@ struct Pair {
 let mypair = Pair { q0, q1 };
 let Pair { q0: q3, q1: q4 } = mypair;
 
-///////////////////////////////////////////////////////////////////////////////////////////
-// (57) Quantum Contracts Function Clauses: requires, ensures + clean, paulibasis, pure
-///////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// (57) Quantum Contracts Function Clauses: requires, ensures + clean, basis, pure, isolated, stabilized, product
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // These are optional code annotations for functions that specify pre- & post-conditions that the quantum data should satisfy:
-// they may be used as: requires, ensures or both requires and ensures clauses, and they may be used in any combination with the function effect qualifiers from (48) as well as with each other. They must be placed after the function signature and before the function body.
+// they may be used as: requires, ensures or both requires and ensures clauses, and they may be used in any combination with the function effect qualifiers
+// from as well as with each other. They must be placed after the function signature and before the function body.
+// either requires or ensures clauses may be used, both of them or neither as these are optional annotations.
+// There can be multiple requires or ensures clauses for a function, and they can be used in any combination with each other.
 
 fn oracle(x: qubit, ancillas: [qubit; 3])
   requires clean(ancillas)
@@ -1003,16 +1006,17 @@ fn oracle(x: qubit, ancillas: [qubit; 3])
     // some code here
 }
 
-fn oracle(q1: qubit, q2: qubit)
+fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
   requires clean(q1)
-  requires pminus(q2) {
+  requires pure(q2)
+  requires isolated(qs) {
     // some code here
 }
 
 // Also supported:
-ensures paulibasis(q, X)
-requires paulibasis(q, Y) 
-requires paulibasis(q, Z)
+ensures basis(q, X)
+requires basis(q, Y)
+requires basis(q, Z)
 
 // Also supported:
 ensures stabilized(q, [ +Z(q) ])
