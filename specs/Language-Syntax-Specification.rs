@@ -1017,6 +1017,7 @@ fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
 ensures basis(q, X)
 requires basis(q, Y)
 requires basis(q, Z)
+// in the above, the second argument can be X, Y or Z
 
 // Also supported:
 ensures stabilized(q, [ +Z(q) ])
