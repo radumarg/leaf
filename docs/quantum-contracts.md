@@ -36,7 +36,7 @@ Contracts form a lattice where dirty is the most general qubit condition denotin
       clean(qs)
 ```
 
-Being the most general state of qubit(s), dirty is the default is not a Leaf language keyword. Stabilizer contracts are not yet supported. These are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
+Being the most general state of qubit(s), dirty is the default and is not a Leaf language keyword. Stabilizer contracts are not yet supported. These are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
 
 ```leaf
  Z(q) -> X(q)
