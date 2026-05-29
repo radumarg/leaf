@@ -775,6 +775,9 @@ let bs : [bit; 3] = measr(qs);
 // qubits are borrowed
 let bs : [bit; 3] = measr(&qs);
 
+// casting bits array measurement results to a tuple of bits:
+let (q0, q1, q2) = measr(qs);
+
 ////////////////////////
 // (42) Barrier syntax:
 ////////////////////////
