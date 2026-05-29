@@ -1,5 +1,7 @@
 ### Deutsch-Jozsa Algorithm
 
+This is an elementary implementation of Deutsch-Jozsa:
+
 ```rust
 unitary fn balanced_oracle(
     q0: qubit,
