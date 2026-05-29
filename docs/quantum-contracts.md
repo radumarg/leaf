@@ -15,8 +15,9 @@ The following contracts are supported:
 
 - clean(qs) - these qubits/registers are all in $|0\rangle$ state and separated from the rest of qubits.
 - paulibasis(qs, X/Y/Z) - each of these qubits/registers are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits.
-- pure(qs) - these qubits are independent of the rest of the program state (even if possibly entangled among them). Their evaluation is unaffected by other qubits measurement outcomes.
-- sep(qs1, qs2 ..) - these qubits sets are mutually separable, meaning their joint state is a product state. This implies pure(qs1), pure(qs2) etc.
+- pure(qs) - these qubits are in a pure state.
+- isolated(qs) - these qubits are independent of the rest of the program state (even if possibly entangled among them). Their evaluation is unaffected by other qubits measurement outcomes.
+- product(qs, qs' ..) - these qubits sets are mutually separable, meaning their joint state is a product state.
 
 
 Contracts form a lattice where dirty is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
@@ -24,7 +25,9 @@ Contracts form a lattice where dirty is the most general qubit condition denotin
 ```leaf
                       dirty(qs)
                          |
-                    sep(qs, qs')
+                  product(qs, qs')
+                         |
+                    isolated(qs)
                          |
                       pure(qs)
                       /      \

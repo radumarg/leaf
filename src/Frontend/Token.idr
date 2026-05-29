@@ -22,12 +22,13 @@ data Keyword
   = KwAbs | KwAdjoint | KwAffine | KwAs | KwAcos | KwAsin | KwAtan
   | KwBasis | KwBarrier | KwBreak
   | KwCeil | KwClassical | KwClean | KwCos | KwCtrl | KwContinue | KwDiscard
-  | KwElse | KwEnsures | KwEnum | KwExp | KwFalse | KwFloor | KwFn | KwFor | KwGeneral | KwIf | KwImport | KwIn
+  | KwElse | KwEnsures | KwEnum | KwExp | KwFalse | KwFloor | KwFn | KwFor | KwGeneral
+  | KwIf | KwImport | KwIn | KwIsolated
   | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
   | KwMatch | KwMax | KwMeasr | KwMin | KwMinus| KwMinusI | KwMod | KwNegCtrl | KwOne
-  | KwParam | KwPlus | KwPlusI | KwPure | KwPub
+  | KwParam | KwPlus | KwProduct | KwPlusI | KwPure | KwPub
   | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
-  | KwSelse | KwSif | KwSmatch | KwScratch | KwSep | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
+  | KwSelse | KwSif | KwSmatch | KwScratch | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
   | KwTan | KwTrue | KwUncompute | KwUnitary | KwUse | KwWeaken | KwWhile | KwZero
 
 ----------------------------------------------------------------------
@@ -117,6 +118,7 @@ keywordFromString s =
     "general"   => Just KwGeneral
     "if"        => Just KwIf
     "in"        => Just KwIn
+    "isolated"  => Just KwIsolated
     "let"       => Just KwLet
     "linear"    => Just KwLinear
     "ln"        => Just KwLn
@@ -135,6 +137,7 @@ keywordFromString s =
     "Param"     => Just KwParam
     "plus"      => Just KwPlus
     "plusi"     => Just KwPlusI
+    "product"   => Just KwProduct
     "pub"       => Just KwPub
     "pure"      => Just KwPure
     "qalloc"    => Just KwQAlloc
@@ -146,7 +149,6 @@ keywordFromString s =
     "reset"     => Just KwReset
     "return"    => Just KwReturn
     "selse"     => Just KwSelse
-    "sep"       => Just KwSep
     "sif"       => Just KwSif
     "sin"       => Just KwSin
     "smatch"    => Just KwSmatch
@@ -273,6 +275,7 @@ showKeywordLeaf kw =
     KwGeneral   => "general"
     KwIf        => "if"
     KwIn        => "in"
+    KwIsolated  => "isolated"
     KwLet       => "let"
     KwLn        => "ln"
     KwLinear    => "linear"
@@ -291,6 +294,7 @@ showKeywordLeaf kw =
     KwParam     => "Param"
     KwPlus      => "plus"
     KwPlusI     => "plusi"
+    KwProduct   => "product"
     KwPub       => "pub"
     KwPure      => "pure"
     KwRound     => "round"
@@ -303,7 +307,6 @@ showKeywordLeaf kw =
     KwReturn    => "return"
     KwScratch   => "scratch"
     KwSelse     => "selse"
-    KwSep       => "sep"
     KwSif       => "sif"
     KwSin       => "sin"
     KwSmatch    => "smatch"
