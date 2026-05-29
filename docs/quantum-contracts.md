@@ -14,7 +14,7 @@ fn oracle(x: qubit, scratch: [qubit; 3])
 The following contracts are supported:
 
 - clean(qs) - these qubits/registers are all in $|0\rangle$ state and separated from the rest of qubits in the program.
-- basis(qs, X/Y/Z) - each of these qubits/registers are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits in the program.
+- basis(qs, "X"/"Y"/"Z") - each of these qubits/registers are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits in the program.
 - separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
 - isolated(qs) - these qubits are separated from the rest of qubits in the program even if possibly entangled among them. Their evaluation is unaffected by measurement outcomes for other qubits.
 - product(qs, qs') - these qubits sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled to other unspecified qubits in the program.
@@ -29,7 +29,7 @@ Contracts form a lattice where `dirty` is the most general qubit condition denot
                |
           separable(qs)
             /      \
-    basis(qs, Z)   basis(qs, X/Y)
+  basis(qs, "Z")   basis(qs, "X"/"Y")
          |
       clean(qs)
 ```

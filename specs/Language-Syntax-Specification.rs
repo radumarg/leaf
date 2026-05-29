@@ -1000,6 +1000,18 @@ let Pair { q0: q3, q1: q4 } = mypair;
 // either requires or ensures clauses may be used, both of them or neither as these are optional annotations.
 // There can be multiple requires or ensures clauses for a function, and they can be used in any combination with each other.
 
+// clean, basis, pure, isolated take one argument:
+clean(q1)
+basis(q1, "X"), basis(q1, "Y"), basis(q1, "Z")
+pure(q1)
+isolated(q1)
+
+// stabilized, take multiple arguments an array of strings:
+stabilized(qs, [ "Z(q0)", "X(q1)", "Z(q0) * Z(q1)" ])
+
+// product takes multiple arguments which are either qubits or arrays of qubits:
+product(q1, q2, qs)
+
 fn oracle(x: qubit, ancillas: [qubit; 3])
   requires clean(ancillas)
   ensures clean(ancillas) {
@@ -1009,18 +1021,7 @@ fn oracle(x: qubit, ancillas: [qubit; 3])
 fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
   requires clean(q1)
   requires pure(q2)
-  requires isolated(qs) {
+  requires isolated(qs) 
+  ensures product(q1, q2, qs){
     // some code here
 }
-
-// Also supported:
-ensures basis(q, X)
-requires basis(q, Y)
-requires basis(q, Z)
-// in the above, the second argument can be X, Y or Z
-
-// Also supported:
-ensures stabilized(q, [ +Z(q) ])
-requires stabilized(qs, [ -ZY(qs), ])
-requires stabilized(qs, [Z(q0), X(q1), Z(q0) * Z(q1)])
-ensures stabilized(qs, [Z(q0), X(q1), Z(q0) * Z(q1)])
