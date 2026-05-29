@@ -23,17 +23,17 @@ The following contracts are supported:
 Contracts form a lattice where dirty is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
 
 ```leaf
-                      dirty(qs)
-                         |
-                  product(qs, qs')
-                         |
-                    isolated(qs)
-                         |
-                      pure(qs)
-                      /      \
-        basis(qs, Z)   basis(qs, X)
-             |
-           clean(qs)
+            dirty(qs)
+               |
+        product(qs, qs')
+               |
+          isolated(qs)
+               |
+            pure(qs)
+            /      \
+    basis(qs, Z)   basis(qs, X)
+         |
+      clean(qs)
 ```
 
 Being the most general state of qubit(s), dirty is the default is not a Leaf language keyword. Stabilizer contracts are not yet supported. These are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
