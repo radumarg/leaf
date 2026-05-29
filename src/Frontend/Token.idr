@@ -26,9 +26,9 @@ data Keyword
   | KwIf | KwImport | KwIn | KwIsolated
   | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
   | KwMatch | KwMax | KwMeasr | KwMin | KwMinus| KwMinusI | KwMod | KwNegCtrl | KwOne
-  | KwParam | KwPlus | KwProduct | KwPlusI | KwPure | KwPub
+  | KwParam | KwPlus | KwProduct | KwPlusI | KwPub
   | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
-  | KwSelse | KwSif | KwSmatch | KwScratch | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
+  | KwSelse | KwSeparable | KwSif | KwSmatch | KwScratch | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
   | KwTan | KwTrue | KwUncompute | KwUnitary | KwUse | KwWeaken | KwWhile | KwZero
 
 ----------------------------------------------------------------------
@@ -139,7 +139,6 @@ keywordFromString s =
     "plusi"     => Just KwPlusI
     "product"   => Just KwProduct
     "pub"       => Just KwPub
-    "pure"      => Just KwPure
     "qalloc"    => Just KwQAlloc
     "qelse"     => Just KwQelse
     "qif"       => Just KwQif
@@ -149,6 +148,7 @@ keywordFromString s =
     "reset"     => Just KwReset
     "return"    => Just KwReturn
     "selse"     => Just KwSelse
+    "separable" => Just KwSeparable
     "sif"       => Just KwSif
     "sin"       => Just KwSin
     "smatch"    => Just KwSmatch
@@ -296,7 +296,6 @@ showKeywordLeaf kw =
     KwPlusI     => "plusi"
     KwProduct   => "product"
     KwPub       => "pub"
-    KwPure      => "pure"
     KwRound     => "round"
     KwQAlloc    => "qalloc"
     KwQelse     => "qelse"
@@ -307,6 +306,7 @@ showKeywordLeaf kw =
     KwReturn    => "return"
     KwScratch   => "scratch"
     KwSelse     => "selse"
+    KwSeparable => "separable"
     KwSif       => "sif"
     KwSin       => "sin"
     KwSmatch    => "smatch"

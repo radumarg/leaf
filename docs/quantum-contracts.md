@@ -15,7 +15,7 @@ The following contracts are supported:
 
 - clean(qs) - these qubits/registers are all in $|0\rangle$ state and separated from the rest of qubits.
 - basis(qs, X/Y/Z) - each of these qubits/registers are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits.
-- pure(qs) - these qubits are in a pure state.
+- separable(qs) - these qubits are in a separable state meaning that they are not entangled among them.
 - isolated(qs) - these qubits are independent of the rest of the program state (even if possibly entangled among them). Their evaluation is unaffected by other qubits measurement outcomes.
 - product(qs, qs' ..) - these qubits sets are mutually separable, meaning their joint state is a product state.
 
@@ -29,9 +29,9 @@ Contracts form a lattice where dirty is the most general qubit condition denotin
                |
           isolated(qs)
                |
-            pure(qs)
+          separable(qs)
             /      \
-    basis(qs, Z)   basis(qs, X)
+    basis(qs, Z)   basis(qs, X/Y)
          |
       clean(qs)
 ```
