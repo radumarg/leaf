@@ -1,7 +1,7 @@
 
 ### Quantum Conditionals and Quantum Match Statements
 
-Quantum conditionals are the first step in an attempt to go beyond the quantum data + classical control  paradigm of quantum programming [[Sellinger (2004)]](./bibliography.md#selinger-2004-towards-quantum-programming-language) which was based on the QRAM model of a quantum computation [[Knill (1996)]](./bibliography.md#knill-1996-conventions-quantum-pseudocode). The road from here towards more general quantum control over quantum data is probably going to be a long one.
+Quantum conditionals are the first step in an attempt to go beyond the *quantum data + classical control* paradigm of quantum programming [[Sellinger (2004)]](./bibliography.md#selinger-2004-towards-quantum-programming-language) which is based on the QRAM model of a quantum computation [[Knill (1996)]](./bibliography.md#knill-1996-conventions-quantum-pseudocode). The path from here toward more general quantum control over quantum data will probably be an interesting journey.
 
 #### (1) Resource-oriented qubits model: `qif`/`qelse`/`qmatch`
 
@@ -70,6 +70,7 @@ A generalization of quantum conditional for multiple branches implies coherent c
     bs"11" => f11(&q1, &q2, &q3),
   }
 ```
+
 Similar conditions that apply to quantum conditionals branches apply here as well for functions in `qmatch` branches. Like in Rust, match must be exhaustive and `_ => ` is supported.
 
 #### (2) State-oriented qubits model: `sif`/`selse`/`smatch`
