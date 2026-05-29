@@ -24,6 +24,9 @@
 <a id="selinger-2009-quantum-lambda-calculus"></a>
 - **Selinger, P., & Valiron, B.** (2009). Quantum Lambda Calculus. In S. Gay & I. Mackie (Eds.), *Semantic Techniques in Quantum Computation* (pp. 135–172). Cambridge University Press. DOI: [10.1017/CBO9781139193313.005](https://www.cambridge.org/core/books/abs/semantic-techniques-in-quantum-computation/quantum-lambda-calculus/0FFF8F7D9091CE1215F8D30077443777). [Preprint PDF](https://www.mscs.dal.ca/~selinger/papers/qlambdabook.pdf).
 
+<a id="yung-yu-feng-2012-definining-quantum-control-flow"></a>
+- **Ying, M., Yu, N., & Feng, Y.** (2012). *Defining Quantum Control Flow*. [arXiv:1209.4379](https://arxiv.org/abs/1209.4379).
+
 <a id="green-2013-quipper-scalable-quantum-programming-language"></a>
 - **Green, A. S., Lumsdaine, P. L., Ross, N. J., Selinger, P., & Valiron, B.** (2013). Quipper: A Scalable Quantum Programming Language. In *Proceedings of the 34th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI 2013)*, pp. 333–342. DOI: [10.1145/2491956.2462177](https://doi.org/10.1145/2491956.2462177). [arXiv:1304.3390](https://arxiv.org/abs/1304.3390).
 
