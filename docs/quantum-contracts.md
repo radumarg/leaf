@@ -13,21 +13,19 @@ fn oracle(x: qubit, scratch: [qubit; 3])
 
 The following contracts are supported:
 
-- clean(qs) - these qubits/registers are all in $|0\rangle$ state and separated from the rest of qubits.
-- basis(qs, X/Y/Z) - each of these qubits/registers are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits.
-- separable(qs) - these qubits are in a separable state meaning that they are not entangled among them.
-- isolated(qs) - these qubits are independent of the rest of the program state (even if possibly entangled among them). Their evaluation is unaffected by other qubits measurement outcomes.
-- product(qs, qs' ..) - these qubits sets are mutually separable, meaning their joint state is a product state.
+- clean(qs) - these qubits/registers are all in $|0\rangle$ state and separated from the rest of qubits in the program.
+- basis(qs, X/Y/Z) - each of these qubits/registers are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits in the program.
+- separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
+- isolated(qs) - these qubits are separated from the rest of qubits in the program even if possibly entangled among them. Their evaluation is unaffected by measurement outcomes for other qubits.
+- product(qs, qs') - these qubits sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled to other unspecified qubits in the program.
 
 
-Contracts form a lattice where dirty is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
+Contracts form a lattice where `dirty` is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
 
 ```leaf
-            dirty(qs)
-               |
-        product(qs, qs')
-               |
-          isolated(qs)
+            dirty(qs)                              entangled(qs, qs')
+               |                                          |
+          isolated(qs)                              product(qs, qs')
                |
           separable(qs)
             /      \
@@ -36,7 +34,9 @@ Contracts form a lattice where dirty is the most general qubit condition denotin
       clean(qs)
 ```
 
-Being the most general state of qubit(s), dirty is the default and is not a Leaf language keyword. Stabilizer contracts are not yet supported. These are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
+Being the most general state of qubit(s), `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`. 
+
+Stabilizer contracts are not yet supported. These are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
 
 ```leaf
  Z(q) -> X(q)
