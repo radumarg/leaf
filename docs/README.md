@@ -12,7 +12,7 @@
 - [Quantum Gates](quantum-gates.md)
 - [Qubit Type Annotations](type-annotations.md)
 - [Control Gate Modifiers](control-modifiers.md)
-- [Inverting Quantum Operations](adjoint-operator.md)
+- [Adjoints and Inverting Operations](adjoint-operator.md)
 - [Quantum Conditionals](quantum-conditionals.md)
 - [Quantum Contracts](quantum-contracts.md)
 - [Sum and Product Data Types](sum-and-product-data-types.md)
