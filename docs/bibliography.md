@@ -42,6 +42,9 @@
 <a id="paykin-2017-qwire-core-language-quantum-circuits"></a>
 - **Paykin, J., Rand, R., & Zdancewic, S.** (2017). QWIRE: A Core Language for Quantum Circuits. In *Proceedings of the 44th ACM SIGPLAN Symposium on Principles of Programming Languages (POPL 2017)*, pp. 846–858. DOI: [10.1145/3009837.3009894](https://dl.acm.org/doi/10.1145/3009837.3009894).
 
+<a id="putri-2017-quantum-guarded-command-language"></a>
+- **Putri, A., Titaley, J., & Pinontoan, B.** (2017). Quantum Guarded-Command Language (qGCL) for Maximum Value. *D’Cartesian* 6(1), pp. 8–16. DOI: [10.35799/dc.6.1.2017.14988](https://doi.org/10.35799/dc.6.1.2017.14988). [PDF](https://ejournal.unsrat.ac.id/v3/index.php/decartesian/article/download/14988/14560/30088).
+
 <a id="rand-2018-qwire-practice-formal-verification"></a>
 - **Rand, R., Paykin, J., & Zdancewic, S.** (2018). QWIRE Practice: Formal Verification of Quantum Circuits in Coq. In *Proceedings of the 14th International Conference on Quantum Physics and Logic (QPL 2017)*. *Electronic Proceedings in Theoretical Computer Science* 266, pp. 119–132. DOI: [10.4204/EPTCS.266.8](https://doi.org/10.4204/EPTCS.266.8). [arXiv:1803.00699](https://arxiv.org/abs/1803.00699).
 
@@ -90,4 +93,5 @@
 <a id="mints-2025-compositional-quantum-control-flow-qunity"></a>
 - **Mints, M., Voichick, F., Lampropoulos, L., & Rand, R.** (2025). *Compositional Quantum Control Flow with Efficient Compilation in Qunity*. [arXiv:2508.02857](https://arxiv.org/abs/2508.02857).
 
+<a id="barsse-2025-quantum-control-and-general-recursion-beyond-the-unitary-case"></a>
 - **Barsse, K., Péchoux, R., & Perdrix, S.** (2025). *Quantum Control and General Recursion beyond the Unitary Case*. [arXiv:2507.10466](https://arxiv.org/abs/2507.10466).
