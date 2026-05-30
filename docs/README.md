@@ -13,7 +13,7 @@
 - [Qubit Type Annotations](type-annotations.md)
 - [Control Gate Modifiers](control-modifiers.md)
 - [Inverting Quantum Operations](adjoint-operator.md)
-- [Quantum Conditionals and Generalizations](quantum-conditionals.md)
+- [Quantum Conditionals](quantum-conditionals.md)
 - [Quantum Contracts](quantum-contracts.md)
 - [Sum and Product Data Types](sum-and-product-data-types.md)
 - Code Patterns:

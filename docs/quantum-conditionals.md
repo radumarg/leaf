@@ -1,5 +1,5 @@
 
-### Quantum Conditionals and Quantum Match Statements
+### Quantum Conditionals and Generalization
 
 Quantum conditionals are the first step in an attempt to go beyond the *quantum data + classical control* paradigm of quantum programming [[Sellinger (2004)]](./bibliography.md#selinger-2004-towards-quantum-programming-language) which is based on the QRAM model of a quantum computation [[Knill (1996)]](./bibliography.md#knill-1996-conventions-quantum-pseudocode). The path from here toward more general quantum control over quantum data will probably be an interesting journey.
 
