@@ -1,5 +1,5 @@
 
-### Introduction
+### Reversing Operations
 
 Although this may be obvious, it is important to note that classical functions are not reversible in general. A classical function may map multiple inputs to the same output, thereby losing information needed to reconstruct the original input.
 
