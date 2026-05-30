@@ -27,7 +27,7 @@ H(&q);
 CNOT(&q1, &q2);
 ```
 
-Since qubits are mutable by default so the `H(&q)` syntax accepted by Leaf would have been written in Rust as: `H(&mut q)`.
+Qubits are mutable by default so the `H(&q)` syntax accepted by Leaf would have been written in Rust as: `H(&mut q)`.
 
 ### Identity
 
