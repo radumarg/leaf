@@ -95,3 +95,6 @@
 
 <a id="barsse-2025-quantum-control-and-general-recursion-beyond-the-unitary-case"></a>
 - **Barsse, K., Péchoux, R., & Perdrix, S.** (2025). *Quantum Control and General Recursion beyond the Unitary Case*. [arXiv:2507.10466](https://arxiv.org/abs/2507.10466).
+
+<a id="heunen-2026-quantum-circuits-are-just-a-phase"></a>
+- **Heunen, C., Lemonnier, L., McNally, C., & Rice, A.** (2026). Quantum Circuits Are Just a Phase. *Proceedings of the ACM on Programming Languages* 10(POPL), Article 89, pp. 2586–2613. DOI: [10.1145/3776731](https://doi.org/10.1145/3776731). [arXiv:2507.11676](https://arxiv.org/abs/2507.11676).
