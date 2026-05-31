@@ -34,12 +34,12 @@ general fn deutsch_jozsa_balanced() -> [bit; 4] {
         H(&qs[i]);
     }
 
-    let (b0, b1, b2, b3) = measr(qs[0], qs[1], qs[2], qs[3]);
+    let bs = measr(qs[0], qs[1], qs[2], qs[3]);
 
     // qs[4] is not part of the Deutsch-Jozsa result.
     discard(qs[4]);
 
-    [b0, b1, b2, b3]
+    bs
 }
 
 general fn main() -> [bit; 4] {
