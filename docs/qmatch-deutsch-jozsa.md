@@ -1,0 +1,53 @@
+### Deutsch-Jozsa Algorithm
+
+Implementing of Deutsch-Jozsa using a generalization of quantum conditionals:
+
+```rust
+unitary fn prepare_minus(q: qubit) -> qubit {
+    let q = X(q);
+    let q = H(q);
+    q
+}
+
+uncompsafe fn balanced_oracle(
+    qs: [qubit; 3],
+    ancilla: qubit
+) -> ([qubit; 3], qubit) {
+    qmatch &qs {
+        s"000" => Id(&ancilla),   // 0 ones  → f = 0
+        s"001" => Id(&ancilla),   // 1 one   → f = 0
+        s"010" => Id(&ancilla),   // 1 one   → f = 0
+        s"011" => X(&ancilla),    // 2 ones  → f = 1
+        s"100" => Id(&ancilla),   // 1 one   → f = 0
+        s"101" => X(&ancilla),    // 2 ones  → f = 1
+        s"110" => X(&ancilla),    // 2 ones  → f = 1
+        s"111" => X(&ancilla),    // 3 ones  → f = 1
+    }
+    (qs, ancilla)
+}
+
+general fn deutsch_jozsa() -> [bit; 3] {
+    let qs    = qalloc(3);
+    let ancilla = qalloc();
+
+    for q in &qs {
+        H(&q);
+    }
+
+    let ancilla = prepare_minus(ancilla);
+
+    let (qs, ancilla) = balanced_oracle(qs, ancilla);
+
+    for q in &qs {
+        H(&q);
+    }
+
+    let bs = measr(qs);
+    discard(ancilla);
+    bs
+}
+
+general fn main() -> [bit; 3] {
+    deutsch_jozsa()
+}
+```

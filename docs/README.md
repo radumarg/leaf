@@ -20,8 +20,8 @@
     - [Deutsch-Jozsa Algorithm (1)](deutsch-jozsa.md)
     - [Deutsch-Jozsa Algorithm (2)](compact-deutsch-jozsa.md)
     - [Deutsch-Jozsa Algorithm (3)](even-more-compact-deutsch-jozsa.md)
-    - [Deutsch-Jozsa Algorithm (4)](phase-kicback-deutsch-jozsa.md)
-    <!-- - [Phase Kickback](pattern.md) -->
-    <!-- - [Quantum Conditional](pattern.md) -->
+    - [Deutsch-Jozsa Algorithm (4)](phase-kickback-deutsch-jozsa.md)
+    - [Deutsch-Jozsa Algorithm (5)](qmatch-deutsch-jozsa.md)
+
     <!-- - [Quantum Fourier Transform](pattern.md) -->
 - [Previous Work](bibliography.md)
