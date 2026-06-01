@@ -30,7 +30,7 @@ unitary fn phase_kickback(
         ensures basis(target, "X")
         ensures product(target, qs)
 ) -> [qubit; 4] {
-    // scratch ancilla qubit is reclaimed
+    // scratch ancilla qubit is uncomputed and reclaimed
     // automatically at the end of its scope
     let scratch ancilla = qalloc();
     let ancilla = prepare_minus(ancilla);
