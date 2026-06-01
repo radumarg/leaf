@@ -23,8 +23,6 @@ uncompsafe fn balanced_reversible_oracle(
     (qs, target)
 }
 
-
-// phase kickback: turning a bit-flip oracle into a phase oracle
 unitary fn phase_kickback(
     qs: [qubit; 4],
     oracle: uncompsafe fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
@@ -49,6 +47,7 @@ general fn deutsch_jozsa(
         H(&q);
     }
 
+    // turn a bit-flip oracle into a phase oracle
     let qs = phase_kickback(qs, oracle);
 
     for q in &qs {
