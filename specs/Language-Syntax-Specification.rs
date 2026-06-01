@@ -193,7 +193,7 @@ let linear qs: [qubit; 2] = qalloc(2);
 let affine q: qubit = qalloc();
 let affine qs: [qubit; 2] = qalloc(2);
 
-// scratch qubits are automatically uncomputed when they go out of scope
+// scratch qubits are automatically uncomputed when they go out of scope and reclaimed automatically (no explicit discard is needed)
 let scratch q: qubit = qalloc();
 let scratch qs: [qubit; 2] = qalloc(2);
 
