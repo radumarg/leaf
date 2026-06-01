@@ -9,6 +9,7 @@ unitary fn prepare_minus(q: qubit) -> qubit {
     q
 }
 
+// U_f : |x⟩|y⟩ ↦ |x⟩|y ⊕ f(x)⟩
 uncompsafe fn balanced_reversible_oracle(
     qs: [qubit; 4],
     target: qubit

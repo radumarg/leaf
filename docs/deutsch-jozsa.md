@@ -3,6 +3,7 @@
 This is an elementary implementation of Deutsch-Jozsa:
 
 ```rust
+// U_f : |x⟩|y⟩ ↦ |x⟩|y ⊕ f(x)⟩
 unitary fn balanced_oracle(
     q0: qubit,
     q1: qubit,

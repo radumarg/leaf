@@ -3,6 +3,7 @@
 This is an even more compact implementation of Deutsch-Jozsa:
 
 ```rust
+// U_f : |x⟩|y⟩ ↦ |x⟩|y ⊕ f(x)⟩
 unitary fn balanced_oracle(qs: [qubit; 4], ancilla: qubit) -> ([qubit; 4], ancilla: qubit) {
     // Negative controls on qs[0] and qs[2] by X-conjugation.
     X(&qs[0]);

@@ -9,6 +9,7 @@ unitary fn prepare_minus(q: qubit) -> qubit {
     q
 }
 
+// U_f : |x⟩|y⟩ ↦ |x⟩|y ⊕ f(x)⟩
 fn balanced_oracle(
     qs: [qubit; 3],
     ancilla: qubit
