@@ -1,6 +1,6 @@
 ### Deutsch-Jozsa Algorithm
 
-Implementing of Deutsch-Jozsa using a generalization of quantum conditionals:
+Implementing Deutsch-Jozsa using `qmatch`, a generalization of quantum conditionals:
 
 ```rust
 unitary fn prepare_minus(q: qubit) -> qubit {
