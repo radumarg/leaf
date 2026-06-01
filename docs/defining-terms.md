@@ -137,7 +137,7 @@ There are two flavors of quantum conditionals depending on the [model](defining-
 
    $\alpha |0\rangle \otimes V|\psi\rangle + \beta |1\rangle \otimes U|\psi\rangle$
 
-   Coherent control over a superposed condition must itself be a valid reversible quantum operation (unitary). Consequently, it is required of U and V to be unitary operations (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and do not act on the control qubit (such construction could ruin unitarity making it nonphysical). If ancilla qubits are used by U or V they must be returned by the end in a clean, pure state to avoid leaving hidden quantum garbage.
+   Coherent control over a superposed condition must itself be a valid reversible quantum operation (unitary). Consequently, it is required of U and V to be unitary operations (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit since accessing the control qubit could ruin unitarity making the construction nonphysical. If ancilla qubits are used by U or V they must be returned by the end in a clean, pure state to avoid leaving hidden quantum garbage.
 
 2. State-oriented qubit model
 
