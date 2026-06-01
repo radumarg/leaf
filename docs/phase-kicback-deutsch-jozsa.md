@@ -29,8 +29,8 @@ unitary fn phase_kickback(
     qs: [qubit; 4],
     oracle: uncompsafe fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
         requires basis(target, "X")
-        ensures  basis(target, "X")
-        ensures  product(target, qs)
+        ensures basis(target, "X")
+        ensures product(target, qs)
 ) -> [qubit; 4] {
     // scratch ancilla qubit is reclaimed
     // automatically at the end of its scope
