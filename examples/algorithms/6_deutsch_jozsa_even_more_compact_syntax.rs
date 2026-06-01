@@ -1,3 +1,7 @@
+///////////////////////////////////////////////////////////////
+// Even more compact implementation of Deutsch-Jozsa algorithm
+///////////////////////////////////////////////////////////////
+
 unitary fn balanced_oracle(qs: [qubit; 4], ancilla: qubit) -> ([qubit; 4], ancilla: qubit) {
     // Negative controls on qs[0] and qs[2] by X-conjugation.
     X(&qs[0]);

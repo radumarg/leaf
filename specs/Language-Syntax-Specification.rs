@@ -28,7 +28,7 @@
 // (3) Reserved Keywords: 
 //////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, let, linear, loop, mod, measr, match, mut, minus, negctrl, one, plus, pminus, pub, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, smatch, struct, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, let, linear, loop, mod, measr, match, mut, minus, one, plus, pminus, pub, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, smatch, struct, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
 
 //////////////////////////////////////////////////////////////
 // (4) Reserved delimiters, punctuation, and operator tokens:
@@ -291,9 +291,9 @@ let q: qubit = GPI2(1.0, q);
 let (q0, q1) = MS(1.0, 2.0, q0, q1);
 let (q0, q1) = ZZ(1.0, q0, q1);
 
-//////////////////////////////////////////////////////////////////
-// (14) Apply higher-order control gate modifiers: ctrl & negctrl 
-//////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+// (14) Apply higher-order control gate modifiers: ctrl
+////////////////////////////////////////////////////////
 
 // canonical controlled gate
 let (q0, q1, q2): (qubit, qubit, qubit) = ctrl(q0, q1).apply(H)(q2);
@@ -1024,4 +1024,17 @@ fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
   requires isolated(qs) 
   ensures product(q1, q2, qs){
     // some code here
+}
+
+///////////////////////////////////////////////////////////////
+// (58) Using function as arguments to higher-order functions:
+///////////////////////////////////////////////////////////////
+unitary fn phase_kickback(
+    qs: [qubit; 4],
+    oracle: unitary fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
+) -> [qubit; 4] {
+    let scratch ancilla = qalloc();
+    let ancilla = prepare_minus(ancilla);
+    let (qs, ancilla) = oracle(qs, ancilla);
+    qs
 }
