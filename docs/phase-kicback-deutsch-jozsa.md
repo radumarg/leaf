@@ -9,10 +9,13 @@ unitary fn prepare_minus(q: qubit) -> qubit {
     q
 }
 
-unitary fn balanced_reversible_oracle(
+uncompsafe fn balanced_reversible_oracle(
     qs: [qubit; 4],
     target: qubit
-) -> ([qubit; 4], qubit) {
+) -> ([qubit; 4], qubit)
+        requires basis(target, "X")
+        ensures  basis(target, "X")
+        ensures  product(target, qs) {
     ctrl(&qs[0]).on("0").apply(X)(&target);
     ctrl(&qs[1]).on("1").apply(X)(&target);
     ctrl(&qs[2]).on("0").apply(X)(&target);
@@ -20,11 +23,17 @@ unitary fn balanced_reversible_oracle(
     (qs, target)
 }
 
+
 // phase kickback: turning a bit-flip oracle into a phase oracle
 unitary fn phase_kickback(
     qs: [qubit; 4],
-    oracle: unitary fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
+    oracle: uncompsafe fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
+        requires basis(target, "X")
+        ensures  basis(target, "X")
+        ensures  product(target, qs)
 ) -> [qubit; 4] {
+    // scratch ancilla qubit is reclaimed
+    // automatically at the end of its scope
     let scratch ancilla = qalloc();
     let ancilla = prepare_minus(ancilla);
     let (qs, ancilla) = oracle(qs, ancilla);
