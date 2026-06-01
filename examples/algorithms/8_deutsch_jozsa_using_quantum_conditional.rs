@@ -22,7 +22,7 @@ uncompsafe fn balanced_oracle(
 }
 
 general fn deutsch_jozsa() -> [bit; 3] {
-    let qs    = qalloc(3);
+    let qs = qalloc(3);
     let ancilla = qalloc();
 
     for q in &qs {
