@@ -9,7 +9,7 @@ unitary fn prepare_minus(q: qubit) -> qubit {
     q
 }
 
-uncompsafe fn balanced_oracle(
+fn balanced_oracle(
     qs: [qubit; 3],
     ancilla: qubit
 ) -> ([qubit; 3], qubit) {
