@@ -4,8 +4,6 @@ These are Rust style function qualifiers used by the Lean type checker to verify
 
 ```leaf
          general
-            |
-         coherent
           /   \
     isometry coisometry
           \   /
