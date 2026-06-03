@@ -51,7 +51,7 @@ ctrl(&q0, &q1).on(bs"+-") {
 
 ### Control Operator vs Block Expression
 
-The control block expression has the effect to apply the control operation to all unitary gates within the block expression and sub-expressions. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary` effects. On the other hand, the control function operator `ctrl().on().apply(f)` can be applied only to functions that declare control support in function signature (see below).
+The control block expression has the effect to apply the control operation to all unitary gates within the block expression and sub-expressions. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary`, `isometry` or `coisometry` effects. On the other hand, the control function operator `ctrl().on().apply(f)` can be applied only to functions that declare control support in function signature (see below).
 
 ### Declaring Controlling Support
 

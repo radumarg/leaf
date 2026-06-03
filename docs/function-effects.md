@@ -22,7 +22,7 @@ These are Rust style function qualifiers used by the Lean type checker to verify
 classical fn parity (x : u32) -> bool { ... }
 ```
 
-- Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean) is possible when the computation of the temporary value can be described classically. The `uncompsafe` effect is used to classify functions containing a subset of strictly unitary quantum operations that do not generate or destroy entanglement. These basis-preserving quantum gates are used to generate circuits whose effects can be undone automatically such that the ancilla qubits can be subsequently discarded safely. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded.
+- `uncompsafe` effect is used to classify functions containing a subset of strictly unitary quantum gates that do not generate or destroy entanglement *on basis states*. For example X and CNOT gates are `uncompsafe` while H is not, These basis-preserving quantum gates are used to generate circuits whose effects can be undone automatically such that the ancilla qubits can be subsequently discarded safely. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded. Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean) is possible when the computation of the temporary value can be described classically on basis states which is exactly what `uncompsafe` effect is capturing. In addition to this condition, if the operation to be uncomputed depends on some variable, this variable needs to be available at the moment of uncomputation, so it needs to act like a constant value.
 
 ```leaf
 uncompsafe fn oracle (ancillas : [qubit; 3]) -> [qubit; 3] { ... }
@@ -53,7 +53,3 @@ coisometry fn fanIn (qubits : [qubit; 7]) -> [qubit; 3] { ... }
 ```leaf
 general fn sample (qs: [qubit; 7]) -> [bit; 7] { ... }
 ```
-
-
-
-

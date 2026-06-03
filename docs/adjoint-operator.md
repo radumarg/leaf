@@ -15,7 +15,7 @@ Under such conditions a subroutine that contain no measurement, no side effects,
 
 ### The Adjoint Operation
 
-Adjoint operation transformer turns a unitary call or block into its inverse operation. Technically these are higher-order operators that change the way functions with quantum operations behave. Adjoint is can be only applied to unitary code, in particular if applied to a function the function must be qualified with the `unitary` or `uncompsafe` effect.
+The adjoint operation transformer turns a unitary function call or a block of unitary gates into its quantum inverse. Technically these are higher-order operators that change the way functions with quantum gates behave.
 
 Adjoint acting as a higher order function:
 
@@ -68,7 +68,7 @@ H(&q1);
 
 ### Adjoint Operator vs Block Expression
 
-The adjoint block expression has the effect to apply the adjoint all unitary gates within the block expression and sub-expressions after reversing the order of quantum gates application. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary` effects. On the other hand, the adjoint function operator `adjoint(f)` can be applied only to functions that declare adjoint support in function signature (see below).
+The adjoint block expression replaces each unitary gate within the block and its sub-expressions with its unitary adjoint, while also reversing the order in which the gates are applied. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary` effects. On the other hand, the adjoint function operator `adjoint(f)` can be applied only to functions that declare adjoint support in function signature (see below).
 
 ### Declaring Adjoint Support
 

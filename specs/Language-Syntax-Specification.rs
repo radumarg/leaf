@@ -122,6 +122,11 @@ let r: &i32 = &x;
 let mut x = 10;
 let r: &mut i32 = &mut x;
 
+
+// const variables
+const PI: f64 = 3.141592653589793;
+const X: i32 = 5;
+
 ///////////////////////////////////
 // (7) Syntax for declaring arrays
 ///////////////////////////////////
