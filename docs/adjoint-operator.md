@@ -80,4 +80,12 @@ unitary fn f(q: qubit) supports adjoint {
 }
 ```
 
-A function that returns classical data or generates side effects cannot in general support adjoint operation since classical functions are not always invertible. A function that contains only unitary quantum gates always supports the adjoint operation and usually does not when it measures, resets or discards qubit. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are provably driven to the all zero, separable state.
+Control and adjoint supports clauses can be combined:
+
+```leaf
+unitary fn f(q: qubit) supports adjoint, ctrl {
+    H(&q);
+}
+```
+
+A function that returns classical data or generates side effects cannot in general support adjoint operation since classical functions are not always invertible. A function that contains only unitary quantum gates always supports the adjoint operation and usually does not when it measures, resets or discards qubits. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are provably driven to the all zero, separable state.

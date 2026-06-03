@@ -49,12 +49,26 @@ ctrl(&q0, &q1).on(bs"+-") {
 }
 ```
 
+### Control Operator vs Block Expression
+
+The control block expression has the effect to apply the control operation to all unitary gates within the block expression and sub-expressions. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary` effects. On the other hand, the control function operator `ctrl().on().apply(f)` can be applied only to functions that declare control support in function signature (see below).
+
 ### Declaring Controlling Support
 
-A function that contains only unitary quantum gates can always be controlled. However, when the function has classical output, mutates classical data, generates side effects, measures, resets or discards qubits thing are no longer so simple. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are in a provable clean, all zero, separable state. Leaf has a special syntax for those functions where the compiler is able to infer that the function can be quantum controlled using the `suppports` keyword:
+Leaf has a special syntax for those functions where the compiler is able to infer that the function can be quantum controlled using the `suppports` keyword:
 
 ```leaf
 unitary fn f(q: qubit) supports ctrl {
     H(&q);
 }
 ```
+
+Control and adjoint supports clauses can be combined:
+
+```leaf
+unitary fn f(q: qubit) supports adjoint, ctrl {
+    H(&q);
+}
+```
+
+A function that contains only unitary quantum gates can always be controlled and usually cannot when it measures, resets or discards qubits. Sometimes quantum code containing measure/reset/discard operations can be controlled as long as those operations are applied to qubits that are in driven to a provable clean, all zero, separable state. However, a function that returns classical data in general is not controllable since there is no method to adjust classical output data for positive/negative control.
