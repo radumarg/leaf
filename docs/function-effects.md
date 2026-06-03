@@ -22,7 +22,7 @@ These are Rust style function qualifiers used by the Lean type checker to verify
 classical fn parity (x : u32) -> bool { ... }
 ```
 
-- Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean) is possible when the computation of the temporary value can be described classically. The `uncompsafe` effect is used to classify functions containing a subset of strictly unitary quantum operations that do not generate or destroy entanglement. These basis-preserving quantum gates are used to generate circuits whose effects can be undone automatically such that the ancilla qubits can be subsequently discarded safely. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate ancilla qubits as long as these are being restored to a clean state before discarding.
+- Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean) is possible when the computation of the temporary value can be described classically. The `uncompsafe` effect is used to classify functions containing a subset of strictly unitary quantum operations that do not generate or destroy entanglement. These basis-preserving quantum gates are used to generate circuits whose effects can be undone automatically such that the ancilla qubits can be subsequently discarded safely. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded.
 
 ```leaf
 uncompsafe fn oracle (ancillas : [qubit; 3]) -> [qubit; 3] { ... }
@@ -34,7 +34,7 @@ uncompsafe fn oracle (ancillas : [qubit; 3]) -> [qubit; 3] { ... }
 unitary fn grover (qubits : [qubit; 7]) -> [qubit; 7] { ... }
 ```
 
-A function qualified as `unitary` containing only unitary quantum operations. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate ancilla qubits as long as these are being restored to a clean state before discarding.
+A function qualified as `unitary` containing only unitary quantum operations. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded.
 
 - a `isometry` function is the same as a `unitary` function except that the number of output qubits is strictly larger than the number of input qubits:
 
@@ -46,12 +46,6 @@ isometry fn fanOut (qubits : [qubit; 3]) -> [qubit; 7] { ... }
 
 ```leaf
 coisometry fn fanIn (qubits : [qubit; 7]) -> [qubit; 3] { ... }
-```
-
-- sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are in a provable clean, all zero, separable state. Such functions are annotated with the `coherent` qualifier:
-
-```leaf
-coherent fn reversible (qubits : [qubit; 5]) -> [qubit; 5] { ... }
 ```
 
 - `general` is used to classify functions which in addition to quantum gates contain `measr`, `reset` or `discard` operations or are invoking `general` functions:

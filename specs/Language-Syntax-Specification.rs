@@ -28,7 +28,7 @@
 // (3) Reserved Keywords: 
 //////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, let, linear, loop, mod, measr, match, mut, minus, one, plus, pminus, pub, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, smatch, struct, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, let, linear, loop, mod, measr, match, mut, minus, one, plus, pminus, pub, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, smatch, struct, supports, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
 
 //////////////////////////////////////////////////////////////
 // (4) Reserved delimiters, punctuation, and operator tokens:
@@ -652,6 +652,9 @@ a..=b
 // full range
 ..      
 
+// reverse range
+(0..n).rev()
+
 /////////////////////////
 // (30) For loop syntax:
 /////////////////////////
@@ -1037,4 +1040,18 @@ unitary fn phase_kickback(
     let ancilla = prepare_minus(ancilla);
     let (qs, ancilla) = oracle(qs, ancilla);
     qs
+}
+
+//////////////////////////////////////////////////////////
+// (59) Declaring adjoint/controll support for functions:
+//////////////////////////////////////////////////////////
+
+// Leaf has a special syntax for those functions where the compiler is able to infer that the function is invertible or controllable using the "supports" keyword:
+
+unitary fn f(q: qubit) supports adjoint {
+    H(&q);
+}
+
+unitary fn f(q: qubit) supports ctrl {
+    H(&q);
 }

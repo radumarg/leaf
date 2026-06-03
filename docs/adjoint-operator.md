@@ -66,9 +66,13 @@ CTDG(&q1, &q2);
 H(&q1);
 ```
 
+### Adjoint Operator vs Block Expression
+
+The adjoint block expression has the effect to apply the adjoint all unitary gates within the block expression and sub-expressions after reversing the order of quantum gates application. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary` effects. On the other hand, the adjoint function operator `adjoint(f)` can be applied only to functions that declare adjoint support in function signature (see below).
+
 ### Declaring Adjoint Support
 
-A function that contains only unitary quantum gates always supports the adjoint operation. However, when the function has classical output, mutates classical data, generates side effects, measures, resets or discards qubits thing are no longer so simple. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are in a provable clean, all zero, separable state. Leaf has a special syntax for those functions where the compiler is able to infer that the function supports the adjoint operation using the `suppports` keyword:
+Leaf has a special syntax for those functions where the compiler is able to infer that the function is invertible using the `suppports` keyword:
 
 ```leaf
 unitary fn f(q: qubit) supports adjoint {
@@ -76,3 +80,4 @@ unitary fn f(q: qubit) supports adjoint {
 }
 ```
 
+A function that returns classical data or generates side effects cannot in general support adjoint operation since classical functions are not always invertible. A function that contains only unitary quantum gates always supports the adjoint operation and usually does not when it measures, resets or discards qubit. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are provably driven to the all zero, separable state.
