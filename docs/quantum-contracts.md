@@ -13,30 +13,15 @@ fn oracle(x: qubit, ancilla: [qubit; 3])
 
 The following contracts are supported:
 
-- clean(qs) - these qubits/registers are all in $|0\rangle$ state and separated from the rest of qubits in the program.
-- basis(qs, "X"/"Y"/"Z") - each of these qubits/registers are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits in the program.
+- clean(qs) - the qubit(s) are all in $|0\rangle$ state and separated from the rest of qubits in the program.
+- basis(qs, "X"/"Y"/"Z") - the qubit(s) are in an eigenstate of X, Y or Z Pauli operators and separated from the rest of qubits in the program.
 - separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
 - isolated(qs) - these qubits are separated from the rest of qubits in the program even if possibly entangled among them. Their evaluation is unaffected by measurement outcomes for other qubits.
-- product(qs, qs') - these qubits sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled to other unspecified qubits in the program.
+- product(qs, qs') - these qubit sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled to other unspecified qubits in the program.
+- measured(qs) - the qubit(s) have been measured and have not been reinitialized so, they are no longer part of the program and .
+- stabilized(qs) - these qubits are in a state which is [stabilized](https://quantumcomputing.stackexchange.com/questions/18235/what-is-a-stabilizer-state) by the supplied operators and at the same time they are separated from the rest of qubits in the program.
 
-
-Contracts form a lattice where `dirty` is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
-
-```leaf
-            dirty(qs)                              entangled(qs, qs')
-               |                                          |
-          isolated(qs)                              product(qs, qs')
-               |
-          separable(qs)
-            /      \
-  basis(qs, "Z")   basis(qs, "X"/"Y")
-         |
-      clean(qs)
-```
-
-Being the most general state of qubit(s), `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`. 
-
-Stabilizer contracts are not yet supported. These are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
+Stabilizer contracts are useful because Clifford gates transform Pauli stabilizers into Pauli stabilizers. For example H(q) maps:
 
 ```leaf
  Z(q) -> X(q)
@@ -49,3 +34,41 @@ requires stabilized(q, [ +Z(q) ])
 H(q)
 ensures  stabilized(q, [ +X(q) ])
 ```
+
+A more elaborated stabilizer contract example:
+
+```leaf
+fn make_ghz(q0: qubit, q1: qubit, q2: qubit)
+  requires clean(q0, q1, q2)
+  ensures stabilized((q0, q1, q2), [
+      +X(q0) * X(q1) * X(q2),
+      +Z(q0) * Z(q1),
+      +Z(q1) * Z(q2)
+  ])
+{
+    H(&q0);
+    CNOT(&q0, &q1);
+    CNOT(&q0, &q2);
+}
+```
+
+Contracts form a lattice where `dirty` is the most general qubit condition denoting qubit(s) that may be entangled in an arbitrary manner with others qubit(s) in the program:
+
+```leaf
+                     dirty(qs)                              
+                        |                                          
+                    isolated(qs)                       
+                    /          \                      entangled(qs, qs')
+                   /            \                             |                 measured(qs)
+                  /              \                     product(qs, qs')                                   
+             separable(qs)   stabilized(qs, [other])        
+            /             \
+           /               \
+  basis(qs, "Z")         basis(qs, "X"/"Y")
+        |                       |
+ stabilized(qs, [Z..])  stabilized(qs, [X/Y..])
+        |
+      clean(qs)
+```
+
+Being the most general state of qubit(s), `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`.

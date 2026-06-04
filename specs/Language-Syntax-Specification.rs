@@ -122,7 +122,6 @@ let r: &i32 = &x;
 let mut x = 10;
 let r: &mut i32 = &mut x;
 
-
 // const variables
 const PI: f64 = 3.141592653589793;
 const X: i32 = 5;
@@ -822,6 +821,21 @@ fn function_name() {
   // code to be executed
 }
 
+// a const fn is a function that may be evaluated at compile time:
+const fn square(x: i32) -> usize {
+    x * x
+}
+
+// const generic parameter funtion argument
+fn repeat<const N: usize>(x: i32) -> [i32; N] {
+    [x; N]
+}
+
+// usage of const generic parameter function:
+fn main() {
+    let arr = repeat::<4>(7);
+}
+
 ///////////////////////////////////////
 // (45) Function with typed arguments:
 ///////////////////////////////////////
@@ -1033,6 +1047,24 @@ fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
   ensures product(q1, q2, qs){
     // some code here
 }
+
+// stabilizer simple examples
+requires stabilized(q, [ +Z(q) ])
+
+// more complex stabilizer example with multiple qubits and multi-term stabilizers:
+fn make_ghz(q0: qubit, q1: qubit, q2: qubit)
+  requires clean(q0, q1, q2)
+  ensures stabilized((q0, q1, q2), [
+      +X(q0) * X(q1) * X(q2),
+      +Z(q0) * Z(q1),
+      +Z(q1) * Z(q2)
+  ])
+{
+    H(&q0);
+    CNOT(&q0, &q1);
+    CNOT(&q0, &q2);
+}
+
 
 ///////////////////////////////////////////////////////////////
 // (58) Using function as arguments to higher-order functions:
