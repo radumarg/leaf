@@ -24,9 +24,15 @@ weaken(qs);
 
 - Reseting qubits:
 ```leaf
-reset(q);
-reset(q1, q2, q3);
-reset(qs);
+let q = reset(q);
+let (q1, q2, q3) = reset(q1, q2, q3);
+let qs = reset(qs);
+
+//or:
+
+reset(&q);
+reset(&q1, &q2, &q3);
+reset(&qs);
 ```
 
 - Discarding it is one way to use a qubit at the programmatic level, without actually performing any physical operation on the corresponding physical qubit. At the level of physical qubits this mean allowing the qubits to dissipate. Programmatically this means: I will never use this qubit again, and I do not care what its state is. Semantically, discarding a qubit means taking a partial trace over that qubit. The remaining qubits are described by their reduced density matrix:
@@ -41,9 +47,15 @@ discard(qs);
 
 - Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean), works only over circuits generated with `uncompsafe` functions:
 ```leaf
-uncompute(q);
-uncompute(q1, q2, q3);
-uncompute(qs);
+let q = uncompute(q);
+let (q1, q2, q3) = uncompute(q1, q2, q3);
+let qs = uncompute(qs);
+
+//or:
+
+uncompute(&q);
+uncompute(&q1, &q2, &q3);
+uncompute(&qs);
 ```
 
 - Tensor product for state expressions - $|1\rangle \otimes |1\rangle$:
