@@ -90,7 +90,7 @@ unitary fn transform_data(x: Data) -> Data {
 }
 ```
 
-For a programmer, the `qenum` + `qmatch` syntax permits quantum branching without classical branching. The example above demonstrates an operator $H \oplus \mathrm{CNOT}$ acting coherently on: $\mathbb{C}^2 \oplus \mathbb{C}^4$.
+For a programmer, the `qenum` + `qmatch` syntax permits quantum branching. The example above demonstrates an operator $H \oplus \mathrm{CNOT}$ acting coherently on: $\mathbb{C}^2 \oplus \mathbb{C}^4$.
 
 More generally if we have two functions:
 
@@ -112,8 +112,8 @@ like this:
 
 ```leaf
 qmatch x {
-    Left(a)       => Left(f(a)),
-    Right(b,c)  => Right(g(b,c)),
+    Left(a) => Left(f(a)),
+    Right(b,c) => Right(g(b,c)),
 }
 ```
 
