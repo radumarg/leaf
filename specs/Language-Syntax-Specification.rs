@@ -684,6 +684,7 @@ let x = t.0;
 let y = t.1;
 let z = t.2;
 
+// signature of CNOT is: fn CNOT(q0: qubit, q1: qubit) -> (qubit, qubit)
 let qubits = CNOT(q0, q1);
 let q0 = qubits.0;
 let q1 = qubits.1;
@@ -981,19 +982,57 @@ let bs = b"hello";
 let bs = b"ABC\x41";
 
 
-/////////////////////////
-// (55) Rust style enums
-/////////////////////////
+////////////////////////////////////////////////////
+// (55) Rust style enums containing classical data:
+////////////////////////////////////////////////////
 
+// Unit-like enums:
 enum ResultBit {
   Zero,
   One,
 }
 
+// usage of unit-like enums:
 let r = ResultBit::Zero;
 
+// Tuple-like enums:
+enum Data {
+    Left(i32),
+    Right(i32, i32),
+}
+
+// usage of tuple-like enums:
+let x = Data::Left(q0);
+let y = Data::Right(q1, q2);
+
+//  Struct-like enums:
+enum Message {
+    Move { x: i32, y: i32 },
+    Write { text: String },
+}
+
+// usage of struct-like enums:
+let msg = Message::Move { x: 10, y: 20 };
+
+// important note: like Rust enums can mix unit-like, tuple-like and struct-like variants in the same enum declaration, but for brevity we only show one variant of each kind in the examples above.
+
+//////////////////////////////////////////////////
+// (56) Rust style enums containing quantum data:
+//////////////////////////////////////////////////
+
+// Leaf qenum, only tuple-like qenums are supported for quantum data:
+qenum Data {
+
+    Left(qubit),
+    Right(qubit, qubit),
+}
+
+// usage of qenums:
+let x = Data::Left(q0);
+let y = Data::Right(q1, q2);
+
 ///////////////////////////
-// (56) Rust style structs
+// (57) Rust style structs
 ///////////////////////////
 
 struct Point {
@@ -1013,7 +1052,7 @@ let mypair = Pair { q0, q1 };
 let Pair { q0: q3, q1: q4 } = mypair;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (57) Quantum Contracts Function Clauses: requires, ensures + clean, basis, pure, isolated, stabilized, product
+// (58) Quantum Contracts Function Clauses: requires, ensures + clean, basis, pure, isolated, stabilized, product
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // These are optional code annotations for functions that specify pre- & post-conditions that the quantum data should satisfy:
@@ -1067,7 +1106,7 @@ fn make_ghz(q0: qubit, q1: qubit, q2: qubit)
 
 
 ///////////////////////////////////////////////////////////////
-// (58) Using function as arguments to higher-order functions:
+// (59) Using function as arguments to higher-order functions:
 ///////////////////////////////////////////////////////////////
 unitary fn phase_kickback(
     qs: [qubit; 4],
@@ -1080,7 +1119,7 @@ unitary fn phase_kickback(
 }
 
 //////////////////////////////////////////////////////////
-// (59) Declaring adjoint/controll support for functions:
+// (60) Declaring adjoint/controll support for functions:
 //////////////////////////////////////////////////////////
 
 // Leaf has a special syntax for those functions where the compiler is able to infer that the function is invertible or controllable using the "supports" keyword combined with "adjoint" or "ctrl" keywords respectively.
@@ -1098,7 +1137,7 @@ unitary fn f(q: qubit) supports adjoint, ctrl {
 }
 
 //////////////////////////////////////////////////////////////////////
-// (60) Combining function qualifiers, contracts and support clauses:
+// (61) Combining function qualifiers, contracts and support clauses:
 //////////////////////////////////////////////////////////////////////
 
 unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
@@ -1108,4 +1147,24 @@ unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
     requires isolated(qs)
     ensures product(q1, q2, qs) {
     H(&q);
+}
+
+///////////////////////////////////////////////
+// (62) Combining qenums with quantum qmatch:
+///////////////////////////////////////////////
+
+qenum Data {
+    Left(qubit),
+    Right(qubit, qubit),
+}
+
+unitary fn transform(x: Data) -> Data {
+    qmatch x {
+        Data::Left(a) => Data::Left(H(a)),
+
+        Data::Right(b, c) => {
+            let (b, c) = CNOT(b, c);
+            Data::Right(b, c)
+        }
+    }
 }
