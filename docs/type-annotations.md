@@ -6,7 +6,7 @@ let linear q: qubit = qalloc();
 let linear qs: [qubit; 2] = qalloc(2);
 ```
 
-Affine qubits must be used at most once, no copying allowed but implicit discarding is allowed.
+Affine qubits must be used at most once, no copying allowed but implicit discarding is allowed. While using affine qubits may be useful in certain situations this should the exception rather than the rule.
 ```leaf
 let affine q: qubit = qalloc();
 let affine qs: [qubit; 2] = qalloc(2);

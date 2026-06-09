@@ -28,7 +28,7 @@
 // (3) Reserved Keywords: 
 //////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, let, linear, loop, mod, measr, match, mut, minus, one, plus, pminus, pub, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, smatch, struct, supports, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, smatch, struct, supports, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
 
 //////////////////////////////////////////////////////////////
 // (4) Reserved delimiters, punctuation, and operator tokens:
@@ -176,13 +176,14 @@ let q = qalloc();
 let qs = qalloc(3);
 let b = measr(q);
 
-////////////////////////////////////////////////////////////////////
-// (10) Declaring product-state literals (arrays of 0 and 1, +, -):
-////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+// (10) Declaring basis strings literals (arrays of 0 and 1, +, -, I, i):
+//////////////////////////////////////////////////////////////////////////
 
-let state = s"10110010";
-let state = s"++----++;";
-let state = s"10+-+-001";
+let state = bs"10110010";
+let state = bs"++----++;";
+let state = bs"10+-+-001";
+let state = bs"iiiiIIIII";
 
 //////////////////////////////////////////////
 // (11) Syntax for type qualifiers for qubits
@@ -527,17 +528,17 @@ match x {
 ////////////////////////////////////////////////
 
 let (qs, q1, q2, q3) = qmatch qs {
-  s"00" => f00(q1, q2, q3),
-  s"01" => f01(q1, q2, q3),
-  s"10" => f10(q1, q2, q3),
-  s"11" => f11(q1, q2, q3),
+  bs"00" => f00(q1, q2, q3),
+  bs"01" => f01(q1, q2, q3),
+  bs"10" => f10(q1, q2, q3),
+  bs"11" => f11(q1, q2, q3),
 }
 
 qmatch &qs {
-  s"0+" => f00(&q1, &q2, &q3),
-  s"0-" => f01(&q1, &q2, &q3),
-  s"1+" => f10(&q1, &q2, &q3),
-  s"1-" => f11(&q1, &q2, &q3),
+  bs"0+" => f00(&q1, &q2, &q3),
+  bs"0-" => f01(&q1, &q2, &q3),
+  bs"1+" => f10(&q1, &q2, &q3),
+  bs"1-" => f11(&q1, &q2, &q3),
 }
 
 // following syntax integer based branch condition syntax is also supported:
@@ -552,10 +553,10 @@ qmatch &qs {
 // where the above is the same as:
 
 qmatch &qs {
-  s"00" => f00(&q1, &q2, &q3),
-  s"01" => f01(&q1, &q2, &q3),
-  s"10" => f10(&q1, &q2, &q3),
-  s"11" => f11(&q1, &q2, &q3),
+  bs"00" => f00(&q1, &q2, &q3),
+  bs"01" => f01(&q1, &q2, &q3),
+  bs"10" => f10(&q1, &q2, &q3),
+  bs"11" => f11(&q1, &q2, &q3),
 }
 
 // Like in Rust, wildcard patterns are supported for qmatch: 
@@ -823,18 +824,8 @@ fn function_name() {
 }
 
 // a const fn is a function that may be evaluated at compile time:
-const fn square(x: i32) -> usize {
+const fn square(x: i32) -> i32 {
     x * x
-}
-
-// const generic parameter funtion argument
-fn repeat<const N: usize>(x: i32) -> [i32; N] {
-    [x; N]
-}
-
-// usage of const generic parameter function:
-fn main() {
-    let arr = repeat::<4>(7);
 }
 
 ///////////////////////////////////////
@@ -923,6 +914,25 @@ unitary fn f(q: qubit) -> qubit {
   let q = X(q);
   let q = H(q);
   q
+}
+
+// only unitary quantum operations allowed, no  output qubits > input qubits
+isometry fn f(qs: [qubit; 2]) -> [qubit; 4] {
+  let q1 = X(qs[0]);
+  let q2 = H(qs[1]);
+  let q3 = qalloc();
+  let q4 = qalloc();
+  let q3 = X(q3);
+  let (q3, q4) = CX(q3, q4);
+  [q1, q2, q3, q4]
+}
+
+// only unitary quantum operations allowed, no  output qubits < input qubits
+coisometry fn f(qs: [qubit; 3]) -> [qubit; 2] {
+  let q0 = X(qs[0]);
+  let q1 = H(qs[1]);
+  discard(qs[2]);
+  [q0, q1]
 }
 
 // may include measurements, reset, discard quantum operations
@@ -1051,9 +1061,9 @@ struct Pair {
 let mypair = Pair { q0, q1 };
 let Pair { q0: q3, q1: q4 } = mypair;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (58) Quantum Contracts Function Clauses: requires, ensures + clean, basis, pure, isolated, stabilized, product
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// (58) Quantum Contracts Function Clauses: requires, ensures + clean, stabilized, basis, separable, isolated, product, measured
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // These are optional code annotations for functions that specify pre- & post-conditions that the quantum data should satisfy:
 // they may be used as: requires, ensures or both requires and ensures clauses, and they may be used in any combination with the function effect qualifiers
@@ -1064,7 +1074,7 @@ let Pair { q0: q3, q1: q4 } = mypair;
 // clean, basis, pure, isolated take one argument:
 clean(q1)
 basis(q1, "X"), basis(q1, "Y"), basis(q1, "Z")
-pure(q1)
+separable(qs)
 isolated(q1)
 
 // stabilized, take multiple arguments an array of strings:
@@ -1072,6 +1082,8 @@ stabilized(qs, [ "Z(q0)", "X(q1)", "Z(q0) * Z(q1)" ])
 
 // product takes multiple arguments which are either qubits or arrays of qubits:
 product(q1, q2, qs)
+
+measured(q1, q2)
 
 fn oracle(x: qubit, ancillas: [qubit; 3])
   requires clean(ancillas)

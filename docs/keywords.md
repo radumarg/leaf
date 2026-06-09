@@ -7,6 +7,7 @@ as
 barrier
 break
 classical
+coisometry
 ctrl
 continue
 discard
@@ -19,6 +20,7 @@ general
 if
 import
 in
+isometry
 let
 linear
 loop
@@ -32,6 +34,7 @@ plusi
 qalloc
 qif
 qelse
+qenum
 qmatch
 requires
 reset

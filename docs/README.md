@@ -16,6 +16,7 @@
 - [Quantum Conditionals](quantum-conditionals.md)
 - [Quantum Contracts](quantum-contracts.md)
 - [Sum and Product Data Types](sum-and-product-data-types.md)
+- [Recursion](recursion.md)
 - Code Patterns:
     - [Deutsch-Jozsa Algorithm (1)](deutsch-jozsa.md)
     - [Deutsch-Jozsa Algorithm (2)](compact-deutsch-jozsa.md)
