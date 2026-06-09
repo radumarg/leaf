@@ -1,13 +1,15 @@
 ### Recursion
 
-(1) Purely classical recursion:
+Recursion does introduce a layer of complexity in a programming language and has consequences on what a programming language can and cannot do. For example the [principle of deferred measurement](defining-terms.md#what-is-principle-of-deferred-measurement) no longer applies automatically in the presence of recursion. A useful method classify the effect of recursion is using function effects:
+
+(1) Purely classical recursion.
 ```leaf
 classical fn fact(n: i32) -> i32 {
     if n == 0 { 1 } else { n * fact(n - 1) }
 }
 ```
 
-(2) Circuit-generating unitary recursion over a classical parameter, safe if total and structurally decreasing:
+(2) Circuit-generating unitary recursion over a classical parameter, safe if total and structurally decreasing.
 ```leaf
 unitary fn apply_hadamard_layer(n: i32, qs: [qubit]) {
     if n == 0 {
@@ -19,7 +21,7 @@ unitary fn apply_hadamard_layer(n: i32, qs: [qubit]) {
 }
 ```
 
-(3) Classically controlled recursion. This can be mapped to OpenQasm3 recursive calls. Allowed, but not adjointable or controllable by default:
+(3) Classically controlled recursion. This can be mapped to OpenQasm3 recursive calls with mid-circuit measurements.
 ```leaf
 general fn repeat_until_zero(q1: qubit) {
     let b = measure(q);
@@ -41,10 +43,10 @@ general fn repeat_until_zero(q1: qubit) {
 }
 ```
 
-(4) Quantum controlled recursion:
+(4) Quantum controlled recursion.
 
 Not yet supported.
 
-(5) Recursive quantum types:
+(5) Recursive quantum types.
 
 Not yet supported.
