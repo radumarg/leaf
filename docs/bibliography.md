@@ -60,23 +60,26 @@
 <a id="singhal-2020-quantum-hoare-type-theory"></a>
 - **Singhal, K.** (2020). *Quantum Hoare Type Theory*. [arXiv:2012.02154](https://arxiv.org/abs/2012.02154).
 
+<a id="boto-2021-compiling-quantum-conditionals-functional-language"></a>
+- **Botö, N., & Forslund, F.** (2021). *Compiling Quantum Conditionals in a Functional Language* (Signe). Project Report TRA105, Chalmers University of Technology. [PDF](https://odr.chalmers.se/server/api/core/bitstreams/8aa2bb64-896a-4425-a254-9cfdba34bd75/content). Repository entry: [hdl.handle.net/20.500.12380/304420](https://hdl.handle.net/20.500.12380/304420).
+
 <a id="hietala-2021-proving-quantum-programs-correct"></a>
 - **Hietala, K., Rand, R., Hung, S.-H., Li, L., & Hicks, M.** (2021). Proving Quantum Programs Correct. In *12th International Conference on Interactive Theorem Proving (ITP 2021)*. *LIPIcs* 193, 21:1–21:19. DOI: [10.4230/LIPIcs.ITP.2021.21](https://doi.org/10.4230/LIPIcs.ITP.2021.21). [arXiv:2010.01240](https://arxiv.org/abs/2010.01240) (originally submitted Oct. 2020).
 
 <a id="hietala-2021-verified-optimizer-quantum-circuits"></a>
 - **Hietala, K., Rand, R., Hung, S.-H., Wu, X., & Hicks, M.** (2021). A Verified Optimizer for Quantum Circuits. *Proceedings of the ACM on Programming Languages* 5(POPL), Article 37, pp. 1–29. DOI: [10.1145/3434318](https://dl.acm.org/doi/10.1145/3434318). [arXiv:1912.02250](https://arxiv.org/abs/1912.02250). Implementation: [SQIR/VOQC on GitHub](https://github.com/inQWIRE/SQIR).
 
-<a id="boto-2021-compiling-quantum-conditionals-functional-language"></a>
-- **Botö, N., & Forslund, F.** (2021). *Compiling Quantum Conditionals in a Functional Language* (Signe). Project Report TRA105, Chalmers University of Technology. [PDF](https://odr.chalmers.se/server/api/core/bitstreams/8aa2bb64-896a-4425-a254-9cfdba34bd75/content). Repository entry: [hdl.handle.net/20.500.12380/304420](https://hdl.handle.net/20.500.12380/304420).
+<a id="xu-2021-reasoning-about-recursive-quantum-programs"></a>
+- **Xu, Z., Ying, M., & Valiron, B.** (2021). *Reasoning about Recursive Quantum Programs*. DOI: [10.48550/arXiv.2107.11679](https://doi.org/10.48550/arXiv.2107.11679). [arXiv:2107.11679](https://arxiv.org/abs/2107.11679).
 
 <a id="fu-2022-proto-quipper-dynamic-lifting"></a>
 - **Fu, P., Kishida, K., Ross, N. J., & Selinger, P.** (2022). *Proto-Quipper with Dynamic Lifting*. [arXiv:2204.13041](https://arxiv.org/abs/2204.13041). (Published version: *Proceedings of the ACM on Programming Languages* 7(POPL), Article 38, 2023.)
 
-<a id="voichick-2023-qunity-unified-language"></a>
-- **Voichick, F., Li, L., Rand, R., & Hicks, M.** (2023). Qunity: A Unified Language for Quantum and Classical Computing. *Proceedings of the ACM on Programming Languages* 7(POPL), Article 32, pp. 921–951. [arXiv:2204.12384](https://arxiv.org/abs/2204.12384).
-
 <a id="yuan-2022-twist-purity-entanglement"></a>
 - **Yuan, C., McNally, C., & Carbin, M.** (2022). Twist: Sound Reasoning for Purity and Entanglement in Quantum Programs. *Proceedings of the ACM on Programming Languages* 6(POPL), Article 30, pp. 1–32. [arXiv:2205.02287](https://arxiv.org/abs/2205.02287).
+
+<a id="voichick-2023-qunity-unified-language"></a>
+- **Voichick, F., Li, L., Rand, R., & Hicks, M.** (2023). Qunity: A Unified Language for Quantum and Classical Computing. *Proceedings of the ACM on Programming Languages* 7(POPL), Article 32, pp. 921–951. [arXiv:2204.12384](https://arxiv.org/abs/2204.12384).
 
 <a id="lubinski-2022-hybrid-quantum-classical-real-time-execution"></a>
 - **Lubinski, T., Granade, C., Anderson, A., Geller, A., Roetteler, M., Petrenko, A., & Heim, B.** (2022). *Advancing Hybrid Quantum–Classical Computation with Real-Time Execution*. [arXiv:2206.12950](https://arxiv.org/abs/2206.12950).

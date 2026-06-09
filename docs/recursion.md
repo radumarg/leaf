@@ -1,19 +1,27 @@
 ### Recursion
 
-(1) Classical Leaf recursion in the compiler is easily handled:
-
+(1) Purely classical recursion:
 ```leaf
-unitary fn apply_qft(circuit, qs) {
-    ...
-    apply_qft(circuit, tail);
-    ...
+classical fn fact(n: i32) -> i32 {
+    if n == 0 { 1 } else { n * fact(n - 1) }
 }
 ```
 
-(2) Classically controlled recursion:
-
+(2) Circuit-generating unitary recursion over a classical parameter, safe if total and structurally decreasing:
 ```leaf
-fn repeat_until_zero(q1: &qubit) general {
+unitary fn apply_hadamard_layer(n: i32, qs: [qubit]) {
+    if n == 0 {
+        return;
+    } else {
+        H(&qs[n - 1]);
+        apply_hadamard_layer(n - 1, qs);
+    }
+}
+```
+
+(3) Classically controlled recursion. This can be mapped to OpenQasm3 recursive calls. Allowed, but not adjointable or controllable by default:
+```leaf
+general fn repeat_until_zero(q1: qubit) {
     let b = measure(q);
 
     if b == 0 {
@@ -25,7 +33,7 @@ fn repeat_until_zero(q1: &qubit) general {
 
         repeat_until_zero(&q2);
 
-        CX(&q2, q1);
+        CX(&q2, &q1);
 
         discard(q2);
         return;
@@ -33,10 +41,10 @@ fn repeat_until_zero(q1: &qubit) general {
 }
 ```
 
-(3) Runtime loops and repeat-until-success
+(4) Quantum controlled recursion:
 
-TODO
+Not yet supported.
 
-(4) Quantum recursion
+(5) Recursive quantum types:
 
-TODO
+Not yet supported.
