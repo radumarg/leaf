@@ -1289,7 +1289,7 @@ let i = 1;
 let p = Person { height: 10, age: 20 };
 
 /////////////////////////////////////////////////////////////////////////////
-// (65) Function annotations (only qasm_gate/qasm_def is supported for now):
+// (66) Function annotations (only qasm_gate/qasm_def is supported for now):
 /////////////////////////////////////////////////////////////////////////////
 
 // this function is compiled to a OpenQASM3 subroutine representing an unitary operation
