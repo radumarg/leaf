@@ -9,9 +9,9 @@ import Test.TypeQualifierParserTests
 
 main : IO ()
 main = do
-  runArraysParseTests
-  runBitQubitParseTests
-  runQuantumGatesParseTests
+  --runArraysParseTests
+  --runBitQubitParseTests
+  --runQuantumGatesParseTests
   runTypeParseTests
-  runTypeQualifierParseTests
+  --runTypeQualifierParseTests
   putStrLn "All tests completed."

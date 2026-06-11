@@ -99,8 +99,12 @@ let unit : () = ();
 // inferred type for unit literal
 let unit = ();
 
-// syntax for declaring Parameters, here "Param" is a builtin
-let theta : param = Param("theta");
+// syntax for declaring parameters, here "param" is a builtin function:
+let theta : param = param("theta");
+
+// Leaf does not yet support strings but this syntax is accepted for declaring parameters with dynamic names using string interpolation:
+let i: int = 1;
+let theta: param = param(format!("theta_{i}"));
 
 // var assignment syntax for basic types:
 let mut x : i32 = 0;
@@ -141,7 +145,7 @@ let linear qubits: [qubit; 2] = qalloc(2);
 let affine qubits: [qubit; 2] = qalloc(2);
 let angles: [angle64; 2] = [3.14, 1.57];
 let units: [(); 5] = [(), (), (), (), ()];
-let params: [param; 2] = [Param("theta"), Param("phi")];
+let params: [param; 2] = [param("theta"), param("phi")];
 
 // array declarations with inferred type
 let bools = [true, false, true, false];
@@ -255,7 +259,7 @@ let q: qubit = SX(q);
 let q: qubit = SXDG(q);
 
 // Parametric Single-Qubit Gates
-// the angle parameters can be of type angle32, angle64 or floating point numbers
+// the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
 let q: qubit = RX(1, q);
 let q: qubit = RY(1.0, q);
 let q: qubit = RZ(1.0, q);
@@ -264,7 +268,7 @@ let q: qubit = U2(1.0, 2.0, q);
 let q: qubit = U3(1.0, 2.0, 3.0, q);
 
 // Controlled Gates
-// the angle parameters can be of type angle32, angle64 or floating point numbers
+// the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
 let (q0, q1): (qubit, qubit) = CNOT(q0, q1);
 let (q0, q1) = CX(q0, q1);
 let (q0, q1) = CY(q0, q1);
@@ -277,7 +281,7 @@ let (q0, q1) = CSX(q0, q1);
 let (q0, q1) = CSXDG(q0, q1);
 
 // Controlled Gates with parameters
-// the angle parameters can be of type angle32, angle64 or floating point numbers
+// the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
 let (q0, q1) = CRX(1.0, q0, q1);
 let (q0, q1) = CRY(1.0, q0, q1);
 let (q0, q1) = CRZ(1.0, q0, q1);
@@ -286,7 +290,7 @@ let (q0, q1) = CU2(1.0, 2.0, q0, q1);
 let (q0, q1) = CU3(1.0, 2.0, 3.0, q0, q1);
 
 // Two-Qubit Interaction Gates
-// the angle parameters when present can be of type angle32, angle64 or floating point numbers
+// the angle input arguments when present can be of type angle32, angle64 or floating point numbers
 let (q0, q1) = SWAP(q0, q1);
 let (q0, q1) = RXX(1.0, q0, q1);
 let (q0, q1) = RYY(1.0, q0, q1);
@@ -297,7 +301,7 @@ let (q0, q1, q2) = CCX(q0, q1, q2);
 let (q0, q1, q2) = CSWAP(q0, q1, q2);
 
 // Ion-Native Gates
-// the angle parameters can be of type angle32, angle64 or floating point numbers
+// the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
 let q: qubit = GPI(1.0, q);
 let q: qubit = GPI2(1.0, q);
 let (q0, q1) = MS(1.0, 2.0, q0, q1);

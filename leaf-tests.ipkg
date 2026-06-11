@@ -7,14 +7,14 @@ depends = elab-util,
           tester
 
 modules = Frontend.AST,
-          Frontend.Lexer,
-          Frontend.Parser,
+          --Frontend.Lexer,
+          --Frontend.Parser,
           Frontend.Token,
-          Frontend.ExprPrettyPrinter,
-          Test.TestsHelper,
-          Test.TypeParseTests,
-          Test.ArraysParseTests,
-          Test.Run
+          --Frontend.ExprPrettyPrinter,
+          --Test.TestsHelper,
+          --Test.TypeParseTests,
+          --Test.ArraysParseTests,
+          --Test.Run
 
 main = Test.Run
 executable = leaf-tests

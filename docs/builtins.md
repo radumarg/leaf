@@ -33,6 +33,11 @@ Complex-valued helper function needed for quantum states specification:
 phase()
 ```
 
+Declaring angle parameters:
+```leaf
+param()
+```
+
 Trigonometric functions:
 ```leaf
 cos(), acos(), sin(), asin(), tan(), atan()

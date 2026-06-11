@@ -1,35 +1,101 @@
+-----------------------------------------------------------------------
+--- Token is the output of lexing.
+-----------------------------------------------------------------------
+
 module Frontend.Token
 
 import Derive.Prelude
 import Language.Reflection
 
-import Frontend.AST
-
 %default total
 %language ElabReflection
 
-----------------------------------------------------------------------
--- Token is the output of lexing.
--- The lexer converts raw source text into a list of (Bounded Token).
--- "Bounded" comes from idris2-parser and attaches source span info.
-----------------------------------------------------------------------
+------------------------------------------------------
+-- Primitive built-in types
+------------------------------------------------------
+public export
+data TypPrimName
+  = TypPrimUnit
+  | TypPrimAngle32
+  | TypPrimAngle64
+  | TypPrimBit
+  | TypPrimBool
+  | TypPrimF32
+  | TypPrimF64
+  | TypPrimI8
+  | TypPrimI16
+  | TypPrimI32
+  | TypPrimI64
+  | TypPrimI128
+  | TypPrimParam
+  | TypPrimU8
+  | TypPrimU16
+  | TypPrimU32
+  | TypPrimU64
+  | TypPrimU128
+  | TypPrimQubit
+
+------------------------------------------------------
+-- GateName: enumerates the built-in quantum gates.
+------------------------------------------------------
+public export
+data GateName
+  = GateId | GateX | GateY | GateZ | GateH
+  | GateS | GateSDG | GateT | GateTDG
+  | GateSX | GateSXDG
+  | GateRX | GateRY | GateRZ
+  | GateU1 | GateU2 | GateU3
+  | GateCNOT | GateCX
+  | GateCY | GateCZ | GateCS | GateCSDG | GateCT | GateCTDG
+  | GateCSX | GateCSXDG
+  | GateCRX | GateCRY | GateCRZ
+  | GateCU1 | GateCU2 | GateCU3
+  | GateSWAP
+  | GateRXX | GateRYY | GateRZZ
+  | GateCCX | GateCSWAP
+  | GateGPI | GateGPI2 | GateMS | GateZZ
+
+----------------------------------------------------------
+-- StateBasisName: enumerates quantum state basis values.
+----------------------------------------------------------
+public export
+data StateBasisName
+  = StateZero
+  | StateOne
+  | StatePlus
+  | StateMinus
+  | StatePlusI
+  | StateMinusI
+
+----------------------------------------------------------------
+-- ContractName: enumerates built-in quantum contract literals.
+----------------------------------------------------------------
+public export
+data ContractName
+  = ContractClean
+  | ContractStabilized
+  | ContractBasis
+  | ContractSeparable
+  | ContractIsolated
+  | ContractProduct
+  | ContractMeasured
 
 ----------------------------------------------------------------------
 -- Keywords: reserved words that affect syntax.
 ----------------------------------------------------------------------
 public export
 data Keyword
-  = KwAbs | KwAdjoint | KwAffine | KwAs | KwAcos | KwAsin | KwAtan
-  | KwBasis | KwBarrier | KwBreak
-  | KwCeil | KwClassical | KwClean | KwCos | KwCtrl | KwContinue | KwDiscard
-  | KwElse | KwEnsures | KwEnum | KwExp | KwFalse | KwFloor | KwFn | KwFor | KwGeneral
-  | KwIf | KwImpl | KwImport | KwIn | KwIsolated
-  | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
-  | KwMatch | KwMax | KwMeasr | KwMin | KwMinus| KwMinusI | KwMod | KwNegCtrl | KwOne
-  | KwParam | KwPlus | KwProduct | KwPlusI | KwPub
-  | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
-  | KwSelse | KwSeparable | KwSif | KwSmatch | KwScratch | KwSelf | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
-  | KwTan | KwTrue | KwUncompute | KwUnitary | KwUse | KwWeaken | KwWhile | KwZero
+  = KwAdjoint | KwAffine | KwAs
+  | KwBarrier | KwBreak
+  | KwClassical | KwCtrl | KwContinue | KwDiscard
+  | KwElse | KwEnsures | KwEnum | KwFn | KwFor | KwGeneral
+  | KwIf | KwImpl | KwIn
+  | KwLet | KwLinear | KwLoop
+  | KwMatch | KwMod | KwNegCtrl
+  | KwParam | KwPub
+  | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
+  | KwSelse | KwSif | KwSmatch | KwScratch | KwSelf | KwStruct | KwSupports
+  | KwUncompute | KwUnitary | KwUse | KwWeaken | KwWhile
 
 ----------------------------------------------------------------------
 -- Symbols: punctuation and operators.
@@ -58,12 +124,74 @@ data Symbol
   | SymShl | SymShlEq | SymShr | SymShrEq -- <<, <<=, >>, >>=
   | SymAndEq | SymOrEq  |SymCaretEq       -- "&=", "|=", "^="
  
+------------------------------------------------------------------------------------------------------------
+-- A symbol table ordered from longest to shortest, the lexer must use longest match first to disambiguate.
+-------------------------------------------------------------------------------------------------------------
+public export
+symbolTable : List (String, Symbol)
+symbolTable =
+  [ -- 3-character symbols
+    (">>=", SymShrEq)
+  , ("<<=", SymShlEq)
+  , ("..=", SymDotDotEq)
+
+    -- 2-character symbols
+  , ("=>",  SymFatArrow)
+  , ("->",  SymArrow)
+  , ("==",  SymEqEq)
+  , ("!=",  SymNotEq)
+  , (">=",  SymGe)
+  , ("<=",  SymLe)
+  , ("&&",  SymAndAnd)
+  , ("||",  SymOrOr)
+  , ("+=",  SymPlusEq)
+  , ("-=",  SymMinusEq)
+  , ("*=",  SymStarEq)
+  , ("/=",  SymSlashEq)
+  , ("%=",  SymPercentEq)
+  , ("&=",  SymAndEq)
+  , ("|=",  SymOrEq)
+  , ("^=",  SymCaretEq)
+  , (":=",  SymWalrusEq)
+  , ("::",  SymDoubleColon)
+  , ("..",  SymDotDot)
+  , (">>",  SymShr)
+  , ("<<",  SymShl)
+
+    -- 1-character symbols
+  , ("&",   SymAmp)
+  , ("(",   SymLParen)
+  , (")",   SymRParen)
+  , ("[",   SymLBracket)
+  , ("]",   SymRBracket)
+  , ("{",   SymLBrace)
+  , ("}",   SymRBrace)
+  , (",",   SymComma)
+  , (";",   SymSemi)
+  , (":",   SymColon)
+  , (".",   SymDot)
+  , ("!",   SymBang)
+  , ("=",   SymEq)
+  , ("+",   SymPlus)
+  , ("-",   SymMinus)
+  , ("*",   SymStar)
+  , ("/",   SymSlash)
+  , ("%",   SymPercent)
+  , (">",   SymGt)
+  , ("<",   SymLt)
+  , ("|",   SymPipe)
+  , ("^",   SymCaret)
+  ]
+
 ----------------------------------------------------------------------
 -- Token:
 --   TokIdent "x"
 --   TokIntLitRaw "123"
 --   TokFloatLitRaw "3.14"
 --   TokStringLit "Hello"
+--   TokBoolLit True
+--   TokStateLit StateZero
+--   TokContractLit ContractClean
 --   TokKw KwLet
 --   TokTypPrim TypPrimI32
 --   TokGate GateH
@@ -77,12 +205,15 @@ data Token
   | TokFloatLitRaw  String
   | TokBitStringLit String
   | TokStringLit    String
+  | TokBoolLit      Bool
+  | TokStateLit     StateBasisName
+  | TokContractLit  ContractName
   | TokKw           Keyword
   | TokTypPrim      TypPrimName
   | TokGate         GateName
   | TokSym          Symbol
   | TokUnderscore
-
+  | TokEOF
 ----------------------------------------------------------------------
 -- Mappings used by lexer: identifier text -> token category
 ----------------------------------------------------------------------
@@ -91,80 +222,50 @@ keywordFromString : String -> Maybe Keyword
 keywordFromString s =
   case s of
     "affine"    => Just KwAffine
-    "abs"       => Just KwAbs
     "adjoint"   => Just KwAdjoint
-    "acos"      => Just KwAcos
-    "asin"      => Just KwAsin
     "as"        => Just KwAs
-    "atan"      => Just KwAtan
     "barrier"   => Just KwBarrier
-    "basis"     => Just KwBasis
     "break"     => Just KwBreak
-    "ceil"      => Just KwCeil
     "classical" => Just KwClassical
-    "clean"     => Just KwClean
-    "cos"       => Just KwCos
     "ctrl"      => Just KwCtrl
     "continue"  => Just KwContinue
     "discard"   => Just KwDiscard
     "else"      => Just KwElse
     "ensures"   => Just KwEnsures
     "enum"      => Just KwEnum
-    "exp"       => Just KwExp
-    "false"     => Just KwFalse
-    "floor"     => Just KwFloor
     "fn"        => Just KwFn
     "for"       => Just KwFor
     "general"   => Just KwGeneral
     "if"        => Just KwIf
     "impl"      => Just KwImpl
     "in"        => Just KwIn
-    "isolated"  => Just KwIsolated
     "let"       => Just KwLet
     "linear"    => Just KwLinear
-    "ln"        => Just KwLn
-    "log10"     => Just KwLog10
-    "log2"      => Just KwLog2
     "loop"      => Just KwLoop
     "match"     => Just KwMatch
-    "max"       => Just KwMax
-    "measr"     => Just KwMeasr
-    "min"       => Just KwMin
-    "minus"     => Just KwMinus
-    "minusi"    => Just KwMinusI
     "mod"       => Just KwMod
     "negctrl"   => Just KwNegCtrl
-    "one"       => Just KwOne
-    "Param"     => Just KwParam
-    "plus"      => Just KwPlus
-    "plusi"     => Just KwPlusI
-    "product"   => Just KwProduct
+    "param"     => Just KwParam
     "pub"       => Just KwPub
     "qalloc"    => Just KwQAlloc
     "qelse"     => Just KwQelse
     "qif"       => Just KwQif
     "qmatch"    => Just KwQmatch
     "requires"  => Just KwRequires
-    "round"     => Just KwRound
     "reset"     => Just KwReset
     "return"    => Just KwReturn
     "selse"     => Just KwSelse
-    "separable" => Just KwSeparable
     "sif"       => Just KwSif
-    "sin"       => Just KwSin
     "smatch"    => Just KwSmatch
-    "sqrt"      => Just KwSqrt
     "scratch"   => Just KwScratch
     "self"      => Just KwSelf
     "struct"    => Just KwStruct
     "supports"  => Just KwSupports
-    "tan"       => Just KwTan
-    "true"      => Just KwTrue
     "uncompute" => Just KwUncompute
     "unitary"   => Just KwUnitary
+    "use"       => Just KwUse
     "weaken"    => Just KwWeaken
     "while"     => Just KwWhile
-    "zero"      => Just KwZero
     _           => Nothing
 
 public export
@@ -217,6 +318,32 @@ gateFromString s =
     _       => Nothing
 
 public export
+stateBasisFromString : String -> Maybe StateBasisName
+stateBasisFromString s =
+  case s of
+    "zero"   => Just StateZero
+    "one"    => Just StateOne
+    "plus"   => Just StatePlus
+    "minus"  => Just StateMinus
+    "plusi"  => Just StatePlusI
+    "minusi" => Just StateMinusI
+    _        => Nothing
+
+public export
+contractFromString : String -> Maybe ContractName
+contractFromString s =
+  case s of
+    "clean"      => Just ContractClean
+    "stabilized" => Just ContractStabilized
+    "basis"      => Just ContractBasis
+    "separable"  => Just ContractSeparable
+    "isolated"   => Just ContractIsolated
+    "product"    => Just ContractProduct
+    "measured"   => Just ContractMeasured
+    "measr"      => Just ContractMeasured
+    _            => Nothing
+
+public export
 typeFromString : String -> Maybe TypPrimName
 typeFromString s =
   case s of
@@ -238,7 +365,6 @@ typeFromString s =
     "u64"     => Just TypPrimU64
     "u128"    => Just TypPrimU128
     "qubit"   => Just TypPrimQubit
-    "squbit"  => Just TypPrimSqubit
     _         => Nothing
 
 ----------------------------------------------------------------------
@@ -249,57 +375,32 @@ public export
 showKeywordLeaf : Keyword -> String
 showKeywordLeaf kw =
   case kw of
-    KwAbs       => "abs"
     KwAdjoint   => "adjoint"
     KwAffine    => "affine"
     KwAs        => "as"
-    KwAcos      => "acos"
-    KwAsin      => "asin"
-    KwAtan      => "atan"
     KwBarrier   => "barrier"
-    KwBasis     => "basis"
     KwBreak     => "break"
-    KwCeil      => "ceil"
     KwClassical => "classical"
-    KwClean     => "clean"
-    KwCos       => "cos"
     KwCtrl      => "ctrl"
     KwContinue  => "continue"
     KwDiscard   => "discard"
     KwElse      => "else"
     KwEnsures   => "ensures"
     KwEnum      => "enum"
-    KwExp       => "exp"
-    KwFalse     => "false"
-    KwFloor     => "floor"
     KwFn        => "fn"
     KwFor       => "for"
     KwGeneral   => "general"
     KwIf        => "if"
     KwImpl      => "impl"
     KwIn        => "in"
-    KwIsolated  => "isolated"
     KwLet       => "let"
-    KwLn        => "ln"
     KwLinear    => "linear"
-    KwLog10     => "log10"
-    KwLog2      => "log2"
     KwLoop      => "loop"
     KwMatch     => "match"
-    KwMax       => "max"
-    KwMeasr     => "measr"
-    KwMinus     => "minus"
-    KwMinusI    => "minusi"
-    KwMin       => "min"
     KwMod       => "mod"
     KwNegCtrl   => "negctrl"
-    KwOne       => "one"
-    KwParam     => "Param"
-    KwPlus      => "plus"
-    KwPlusI     => "plusi"
-    KwProduct   => "product"
+    KwParam     => "param"
     KwPub       => "pub"
-    KwRound     => "round"
     KwQAlloc    => "qalloc"
     KwQelse     => "qelse"
     KwQif       => "qif"
@@ -310,22 +411,27 @@ showKeywordLeaf kw =
     KwScratch   => "scratch"
     KwSelf      => "self"
     KwSelse     => "selse"
-    KwSeparable => "separable"
     KwSif       => "sif"
-    KwSin       => "sin"
     KwSmatch    => "smatch"
-    KwSynth     => "synth"
-    KwSqrt      => "sqrt"
     KwStruct    => "struct"
     KwSupports  => "supports"
-    KwTan       => "tan"
-    KwTrue      => "true"
     KwUncompute => "uncompute"
     KwUnitary   => "unitary"
     KwUse       => "use"
     KwWeaken    => "weaken"
     KwWhile     => "while"
-    KwZero      => "zero"
+
+public export
+showStateBasisLeaf : StateBasisName -> String
+showStateBasisLeaf sb =
+  case sb of
+    StateZero   => "zero"
+    StateOne    => "one"
+    StatePlus   => "plus"
+    StateMinus  => "minus"
+    StatePlusI  => "plusi"
+    StateMinusI => "minusi"
+
 public export
 showSymbolLeaf : Symbol -> String
 showSymbolLeaf sym =
@@ -385,6 +491,10 @@ public export
 implementation Show Symbol where
   show = showSymbolLeaf
 
-%runElab derive "Keyword" [Eq]
-%runElab derive "Symbol" [Eq]
+%runElab derive "GateName" [Show, Eq]
+%runElab derive "TypPrimName" [Show, Eq]
+%runElab derive "StateBasisName" [Show, Eq]
+%runElab derive "ContractName" [Show, Eq]
+%runElab derive "Keyword" [Show, Eq]
+%runElab derive "Symbol" [Show, Eq]
 %runElab derive "Token" [Show, Eq]
