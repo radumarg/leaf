@@ -1264,7 +1264,8 @@ fn main() {
 }
 
 struct Person {
-    name: String,
+    height: i32,
+    age: i32,
 }
 
 enum Color {
@@ -1283,5 +1284,42 @@ impl Person {
 
 use my_library::helper;
 
-// Top-level code must be made of items, not normal executable statement. This is not allowed at the top level:
+// Top-level code must be made of items, not normal executable statement. These are not allowed at the top level:
 let i = 1;
+let p = Person { height: 10, age: 20 };
+
+/////////////////////////////////////////////////////////////////////////////
+// (65) Function annotations (only qasm_gate/qasm_def is supported for now):
+/////////////////////////////////////////////////////////////////////////////
+
+// this function is compiled to a OpenQASM3 subroutine representing an unitary operation
+#[qasm_gate]
+unitary fn myfun(q: qubit) -> qubit {
+  let q = X(q);
+  let q = H(q);
+  q
+}
+
+// annotating the function with a string argument
+#[qasm_gate("qasm_subroutine_name")]
+unitary fn myfun(q: qubit) -> qubit {
+  let q = X(q);
+  let q = H(q);
+  q
+}
+
+// this function is compiled to a named QASM subroutine with same signature
+#[qasm_def]
+unitary fn myfun(q: qubit) -> bit {
+  let q = X(q);
+  let q = H(q);
+  measure(q)
+}
+
+// annotating the function with a string argument
+#[qasm_def("qasm_subroutine_name")]
+unitary fn myfun(q: qubit) -> bit {
+  let q = X(q);
+  let q = H(q);
+  measure(q)
+}
