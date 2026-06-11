@@ -18,6 +18,7 @@ fn
 for
 general
 if
+impl
 import
 in
 isometry
@@ -40,8 +41,9 @@ requires
 reset
 return
 scratch
-sif
+self
 selse
+sif
 smatch
 supports
 true

@@ -23,12 +23,12 @@ data Keyword
   | KwBasis | KwBarrier | KwBreak
   | KwCeil | KwClassical | KwClean | KwCos | KwCtrl | KwContinue | KwDiscard
   | KwElse | KwEnsures | KwEnum | KwExp | KwFalse | KwFloor | KwFn | KwFor | KwGeneral
-  | KwIf | KwImport | KwIn | KwIsolated
+  | KwIf | KwImpl | KwImport | KwIn | KwIsolated
   | KwLet | KwLn | KwLinear | KwLog10 | KwLog2 | KwLoop
   | KwMatch | KwMax | KwMeasr | KwMin | KwMinus| KwMinusI | KwMod | KwNegCtrl | KwOne
   | KwParam | KwPlus | KwProduct | KwPlusI | KwPub
   | KwRound | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
-  | KwSelse | KwSeparable | KwSif | KwSmatch | KwScratch | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
+  | KwSelse | KwSeparable | KwSif | KwSmatch | KwScratch | KwSelf | KwSin | KwSqrt | KwStruct | KwSynth | KwSupports
   | KwTan | KwTrue | KwUncompute | KwUnitary | KwUse | KwWeaken | KwWhile | KwZero
 
 ----------------------------------------------------------------------
@@ -117,6 +117,7 @@ keywordFromString s =
     "for"       => Just KwFor
     "general"   => Just KwGeneral
     "if"        => Just KwIf
+    "impl"      => Just KwImpl
     "in"        => Just KwIn
     "isolated"  => Just KwIsolated
     "let"       => Just KwLet
@@ -154,6 +155,7 @@ keywordFromString s =
     "smatch"    => Just KwSmatch
     "sqrt"      => Just KwSqrt
     "scratch"   => Just KwScratch
+    "self"      => Just KwSelf
     "struct"    => Just KwStruct
     "supports"  => Just KwSupports
     "tan"       => Just KwTan
@@ -274,6 +276,7 @@ showKeywordLeaf kw =
     KwFor       => "for"
     KwGeneral   => "general"
     KwIf        => "if"
+    KwImpl      => "impl"
     KwIn        => "in"
     KwIsolated  => "isolated"
     KwLet       => "let"
@@ -305,6 +308,7 @@ showKeywordLeaf kw =
     KwRequires  => "requires"
     KwReturn    => "return"
     KwScratch   => "scratch"
+    KwSelf      => "self"
     KwSelse     => "selse"
     KwSeparable => "separable"
     KwSif       => "sif"

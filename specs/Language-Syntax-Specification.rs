@@ -28,7 +28,7 @@
 // (3) Reserved Keywords: 
 //////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, smatch, struct, supports, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, isolated, let, linear, loop, match, minusi, measr, mod, mut, measured, minus, one, plus, plusi, pub, product, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, separable, smatch, stabilized, struct, supports, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
 
 //////////////////////////////////////////////////////////////
 // (4) Reserved delimiters, punctuation, and operator tokens:
@@ -255,6 +255,7 @@ let q: qubit = SX(q);
 let q: qubit = SXDG(q);
 
 // Parametric Single-Qubit Gates
+// the angle parameters can be of type angle32, angle64 or floating point numbers
 let q: qubit = RX(1, q);
 let q: qubit = RY(1.0, q);
 let q: qubit = RZ(1.0, q);
@@ -263,6 +264,7 @@ let q: qubit = U2(1.0, 2.0, q);
 let q: qubit = U3(1.0, 2.0, 3.0, q);
 
 // Controlled Gates
+// the angle parameters can be of type angle32, angle64 or floating point numbers
 let (q0, q1): (qubit, qubit) = CNOT(q0, q1);
 let (q0, q1) = CX(q0, q1);
 let (q0, q1) = CY(q0, q1);
@@ -273,6 +275,9 @@ let (q0, q1) = CT(q0, q1);
 let (q0, q1) = CTDG(q0, q1);
 let (q0, q1) = CSX(q0, q1);
 let (q0, q1) = CSXDG(q0, q1);
+
+// Controlled Gates with parameters
+// the angle parameters can be of type angle32, angle64 or floating point numbers
 let (q0, q1) = CRX(1.0, q0, q1);
 let (q0, q1) = CRY(1.0, q0, q1);
 let (q0, q1) = CRZ(1.0, q0, q1);
@@ -281,6 +286,7 @@ let (q0, q1) = CU2(1.0, 2.0, q0, q1);
 let (q0, q1) = CU3(1.0, 2.0, 3.0, q0, q1);
 
 // Two-Qubit Interaction Gates
+// the angle parameters when present can be of type angle32, angle64 or floating point numbers
 let (q0, q1) = SWAP(q0, q1);
 let (q0, q1) = RXX(1.0, q0, q1);
 let (q0, q1) = RYY(1.0, q0, q1);
@@ -291,6 +297,7 @@ let (q0, q1, q2) = CCX(q0, q1, q2);
 let (q0, q1, q2) = CSWAP(q0, q1, q2);
 
 // Ion-Native Gates
+// the angle parameters can be of type angle32, angle64 or floating point numbers
 let q: qubit = GPI(1.0, q);
 let q: qubit = GPI2(1.0, q);
 let (q0, q1) = MS(1.0, 2.0, q0, q1);
@@ -482,6 +489,12 @@ if x < 0 {
 
   let (q1, q2, q3) = sif q1 expression1(q2, q3) selse expression2(q2, q3);
 
+   // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits:
+  sif q then
+    (zero + one).tensor(zero - phase(pi/2) * one)
+  selse
+    (plus - minus).tensor(plus + phase(pi/2) * minus);
+
 ///////////////////////////////////////////
 // (22) Classical Rust style match syntax:
 ///////////////////////////////////////////
@@ -569,22 +582,30 @@ _ => f()
 // Unlike in Rust, wildcard patterns are NOT supported for smatch. 
 
 smatch &q {
-  0 => branch_expression0(data),
-  1 => branch_expression1(data),
+  0 => state_expression0(data),
+  1 => state_expression1(data),
 }
 
 smatch &qs {
-  bs"00" => branch_expression_00(data),
-  bs"01" => branch_expression_01(data),
-  bs"10" => branch_expression_10(data),
-  bs"11" => branch_expression_11(data),
+  bs"00" => state_expression_00(data),
+  bs"01" => state_expression_01(data),
+  bs"10" => state_expression_10(data),
+  bs"11" => state_expression_11(data),
 }
 
 smatch &qs {
-  0 => branch_expression_0(data),
-  1 => branch_expression_1(data),
-  2 => branch_expression_2(data),
-  3 => branch_expression_3(data),
+  0 => state_expression_0(data),
+  1 => state_expression_1(data),
+  2 => state_expression_2(data),
+  3 => state_expression_3(data),
+}
+
+// state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits.
+smatch &qs {
+  bs"00" => (zero + one).tensor(zero - phase(pi/2) * one),
+  bs"01" => (plus - minus).tensor(plus + phase(pi/2) * minus),
+  bs"10" => (zero - one).tensor(zero + phase(pi/2) * one),
+  bs"11" => (plus - minus).tensor(plus - phase(pi/2) * minus),
 }
 
 ////////////////////////////////
@@ -1061,6 +1082,27 @@ struct Pair {
 let mypair = Pair { q0, q1 };
 let Pair { q0: q3, q1: q4 } = mypair;
 
+// like in Rust structs can have methods:
+struct Person {
+    age: u32,
+}
+
+impl Person {
+    fn new(age: u32) -> Person {
+        Person {
+            age,
+        }
+    }
+
+    fn is_adult(&self) -> bool {
+        self.age >= 18
+    }
+}
+
+// creating a new instance of the struct and calling a method on it:
+let person = Person::new(30);
+let is_adult = person.is_adult();
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // (58) Quantum Contracts Function Clauses: requires, ensures + clean, stabilized, basis, separable, isolated, product, measured
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1180,3 +1222,62 @@ unitary fn transform(x: Data) -> Data {
         }
     }
 }
+
+////////////////////////////////////////////////////////
+// (63) Phase function for representing complex phases:
+////////////////////////////////////////////////////////
+
+// the phase function can take as arguments a floating
+phase(1.5)
+
+// the phase function can take as arguments an angle
+let angle: angle64 = 1.88;
+phase(angle)
+
+///////////////////////////////////////////////////////////
+// (64) Like in Rust function arguments can be references:
+///////////////////////////////////////////////////////////
+
+fn apply_gate(q: &qubit)
+{
+  H(q);
+}
+
+fn main() -> bit {
+  let q = qalloc();
+  apply_gate(&q);
+  let b = measure(q);
+  b
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// (65) Top level expressions must be items: functions, structs, enums, impl blocks, use statements, consts:
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Like in Rust at the top level Leaf expects items:
+
+fn main() {
+}
+
+struct Person {
+    name: String,
+}
+
+enum Color {
+    Red,
+    Green,
+    Blue,
+}
+
+const I: i32 = 1;
+
+impl Person {
+    fn new(height: i32, age: i32) -> Person {
+        Person { height, age }
+    }
+}
+
+use my_library::helper;
+
+// Top-level code must be made of items, not normal executable statement. This is not allowed at the top level:
+let i = 1;
