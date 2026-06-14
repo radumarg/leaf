@@ -24,7 +24,7 @@ unitary fn apply_hadamard_layer(n: i32, qs: [qubit]) {
 (3) Classically controlled recursion. This can be mapped to OpenQasm3 recursive calls with mid-circuit measurements.
 ```leaf
 general fn repeat_until_zero(q1: qubit) {
-    let b = measure(q);
+    let b = measr(q);
 
     if b == 0 {
         return;

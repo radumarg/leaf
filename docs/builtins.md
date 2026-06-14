@@ -35,7 +35,7 @@ phase()
 
 Declaring angle parameters:
 ```leaf
-param()
+Param()
 ```
 
 Trigonometric functions:

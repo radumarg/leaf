@@ -6,16 +6,32 @@ import Language.Reflection
 %default total
 %language ElabReflection
 
---------------------------------------------------------------------------------
--- LexerErr: lexical errors that can happen before parsing.
---------------------------------------------------------------------------------
+----------------------------------------------------
+-- Lexical errors that can happen before parsing. --
+----------------------------------------------------
+
+-----------------------------------------
+-- Leaf language specific lexical errors
+-----------------------------------------
 public export
-data LexerErr
-  = LexUnexpectedChar Char
-  | LexUnterminatedString
+data LeafLexerError
+  = LexUnexpectedCharacter Char
+  | LexUnterminatedStringLiteral
+  | LexInvalidStringEscape String
   | LexUnterminatedBlockComment
-  | LexInvalidBitStringLiteral String
+  | LexUnterminatedBitStringLiteral
+  | LexInvalidBitStringCharacter Char
   | LexInvalidNumberLiteral String
-  | LexFuelExhausted
+  | LexInvalidByteLiteral String
+  | LexInvalidByteStringLiteral String
+  | LexEmptyBitStringLiteral
+
+-------------------------------
+-- Public lexer error type
+-------------------------------
+public export
+LexerErr : Type
+LexerErr = InnerError LeafLexerError
 
 %runElab derive "LexerErr" [Show, Eq]
+%runElab derive "LeafLexerError" [Show, Eq]

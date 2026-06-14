@@ -3,6 +3,9 @@ module Frontend.Lexer.Lexer
 import Derive.Prelude
 import Language.Reflection
 
+import Text.Lex
+import Text.Lex.Manual
+
 import Frontend.Token
 import Frontend.Source
 import Frontend.Lexer.Error
@@ -14,20 +17,17 @@ import Text.Parse.Manual
 %default total
 %language ElabReflection
 
-public export
-LocatedToken : Type
-LocatedToken = Located Token
-
-public export
-LocatedLexerErr : Type
-LocatedLexerErr = Located LexerErr
-
 --------------------------------------------------------------------------------
 -- Main entry point: lexProgram
 --------------------------------------------------------------------------------
 public export
-lexProgram : String -> Either LocatedLexerErr (List LocatedToken)
+lexProgram : String -> Either (Bounded LexerErr) (List (Bounded Token))
+lexProgram inputString = TODO
 
+- I want manual lexer based primarily on Stefan Höck's idris2-parser Text.Lex.Manual with this signature:
+ lexProgram : String -> Either (Bounded LexerErr) (List (Bounded Token))
+
+- I plan to use use idris2-parser Bounded for tokens and my own Located for AST nodes. So for the current lexer, I will return Bounded Token.
 
 - Every successful token consumes at least one character, and every error-recovery step also consumes at least one character. That keeps totality and avoids accidental infinite loops.
 
@@ -52,6 +52,14 @@ lexProgram : String -> Either LocatedLexerErr (List LocatedToken)
 
 - Keep parser concerns out of the lexer. The lexer should not decide that this is a function call: H(&q)
 
+- Validate bitstring literals in the lexer. bs"++" is special enough to deserve a dedicated scanner.
+
+- Make lexical errors structured. Do not return plain strings
+
+- Keep comments and whitespace out of the token stream. But always update source positions.
+
+- Avoid context-sensitive lexing. Let the parser and later frontend phases handle meaning.
+
 - Source code is orgnized like this:
 
   Frontend/
@@ -60,5 +68,4 @@ lexProgram : String -> Either LocatedLexerErr (List LocatedToken)
     Lexer/
       Error.idr
       Helpers.idr
-      Rules.idr
       Lexer.idr

@@ -3,11 +3,13 @@ module Frontend.Lexer.Helpers
 import Derive.Prelude
 import Language.Reflection
 
+import Text.Lex
+import Text.Lex.Manual
+
+import Frontend.Token
+import Frontend.Lexer.Error
+
 %default total
 %language ElabReflection
 
--- this file shoould contain helpers for the lexer like:
--- isIdentStart : Char -> Bool
--- isIdentRest  : Char -> Bool
--- isDigit      : Char -> Bool
--- isWhitespace : Char -> Bool
+-- Helpers.idr will contain the actual lexical machinery, grouped into clearly named sections.

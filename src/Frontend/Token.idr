@@ -15,8 +15,7 @@ import Language.Reflection
 ------------------------------------------------------
 public export
 data TypPrimName
-  = TypPrimUnit
-  | TypPrimAngle32
+  = TypPrimAngle32
   | TypPrimAngle64
   | TypPrimBit
   | TypPrimBool
@@ -78,7 +77,7 @@ data ContractName
   | ContractSeparable
   | ContractIsolated
   | ContractProduct
-  | ContractMeasured
+  | ContractCollapsed
 
 ----------------------------------------------------------------------
 -- Keywords: reserved words that affect syntax.
@@ -87,22 +86,22 @@ public export
 data Keyword
   = KwAdjoint | KwAffine | KwAs
   | KwBarrier | KwBreak
-  | KwClassical | KwCtrl | KwContinue | KwDiscard
+  | KwCoisometry | KwClassical | KwCtrl | KwContinue | KwConst | KwDiscard
   | KwElse | KwEnsures | KwEnum | KwFn | KwFor | KwGeneral
-  | KwIf | KwImpl | KwIn
+  | KwIf | KwImpl | KwIn | KwIsometry
   | KwLet | KwLinear | KwLoop
-  | KwMatch | KwMod | KwNegCtrl
-  | KwParam | KwPub
-  | KwQAlloc | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
-  | KwSelse | KwSif | KwSmatch | KwScratch | KwSelf | KwStruct | KwSupports
-  | KwUncompute | KwUnitary | KwUse | KwWeaken | KwWhile
+  | KwMatch | KwMeasr | KwMod | KwMut | KwPub
+  | KwQAlloc | KwQenum | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
+  | KwSelse | KwSif | KwSmatch | KwScratch | KwSelf | KwStruct | KwSupports | KwThen
+  | KwUncompute | KwUncompsafe | KwUnitary | KwUse | KwWeaken | KwWhile
 
 ----------------------------------------------------------------------
 -- Symbols: punctuation and operators.
 ----------------------------------------------------------------------
 public export
 data Symbol
-  = SymAmp                                -- &   (reserved; && exists too)
+  = SymHash                               -- #   (starts an annotation: #[...])
+  | SymAmp                                -- &   (reserved; && exists too)
   | SymLParen | SymRParen                 -- ( )
   | SymLBracket | SymRBracket             -- [ ]
   | SymLBrace | SymRBrace                 -- { }
@@ -159,6 +158,7 @@ symbolTable =
   , ("<<",  SymShl)
 
     -- 1-character symbols
+  , ("#", SymHash)
   , ("&",   SymAmp)
   , ("(",   SymLParen)
   , (")",   SymRParen)
@@ -188,7 +188,7 @@ symbolTable =
 --   TokIdent "x"
 --   TokIntLitRaw "123"
 --   TokFloatLitRaw "3.14"
---   TokStringLit "Hello"
+--   TokStringLitRaw "Hello"
 --   TokBoolLit True
 --   TokStateLit StateZero
 --   TokContractLit ContractClean
@@ -200,18 +200,20 @@ symbolTable =
 ----------------------------------------------------------------------
 public export
 data Token
-  = TokIdent        String
-  | TokIntLitRaw    String
-  | TokFloatLitRaw  String
-  | TokBitStringLit String
-  | TokStringLit    String
-  | TokBoolLit      Bool
-  | TokStateLit     StateBasisName
-  | TokContractLit  ContractName
-  | TokKw           Keyword
-  | TokTypPrim      TypPrimName
-  | TokGate         GateName
-  | TokSym          Symbol
+  = TokIdent            String
+  | TokIntLitRaw        String
+  | TokFloatLitRaw      String
+  | TokByteLitRaw       String
+  | TokByteStringLitRaw String
+  | TokBitStringLit     String
+  | TokStringLitRaw     String
+  | TokBoolLit          Bool
+  | TokStateLit         StateBasisName
+  | TokContractLit      ContractName
+  | TokKw               Keyword
+  | TokTypPrim          TypPrimName
+  | TokGate             GateName
+  | TokSym              Symbol
   | TokUnderscore
   | TokEOF
 ----------------------------------------------------------------------
@@ -221,52 +223,58 @@ public export
 keywordFromString : String -> Maybe Keyword
 keywordFromString s =
   case s of
-    "affine"    => Just KwAffine
-    "adjoint"   => Just KwAdjoint
-    "as"        => Just KwAs
-    "barrier"   => Just KwBarrier
-    "break"     => Just KwBreak
-    "classical" => Just KwClassical
-    "ctrl"      => Just KwCtrl
-    "continue"  => Just KwContinue
-    "discard"   => Just KwDiscard
-    "else"      => Just KwElse
-    "ensures"   => Just KwEnsures
-    "enum"      => Just KwEnum
-    "fn"        => Just KwFn
-    "for"       => Just KwFor
-    "general"   => Just KwGeneral
-    "if"        => Just KwIf
-    "impl"      => Just KwImpl
-    "in"        => Just KwIn
-    "let"       => Just KwLet
-    "linear"    => Just KwLinear
-    "loop"      => Just KwLoop
-    "match"     => Just KwMatch
-    "mod"       => Just KwMod
-    "negctrl"   => Just KwNegCtrl
-    "param"     => Just KwParam
-    "pub"       => Just KwPub
-    "qalloc"    => Just KwQAlloc
-    "qelse"     => Just KwQelse
-    "qif"       => Just KwQif
-    "qmatch"    => Just KwQmatch
-    "requires"  => Just KwRequires
-    "reset"     => Just KwReset
-    "return"    => Just KwReturn
-    "selse"     => Just KwSelse
-    "sif"       => Just KwSif
-    "smatch"    => Just KwSmatch
-    "scratch"   => Just KwScratch
-    "self"      => Just KwSelf
-    "struct"    => Just KwStruct
-    "supports"  => Just KwSupports
-    "uncompute" => Just KwUncompute
-    "unitary"   => Just KwUnitary
-    "use"       => Just KwUse
-    "weaken"    => Just KwWeaken
-    "while"     => Just KwWhile
-    _           => Nothing
+    "affine"      => Just KwAffine
+    "adjoint"     => Just KwAdjoint
+    "as"          => Just KwAs
+    "barrier"     => Just KwBarrier
+    "break"       => Just KwBreak
+    "coisometry"  => Just KwCoisometry
+    "classical"   => Just KwClassical
+    "const"       => Just KwConst
+    "ctrl"        => Just KwCtrl
+    "continue"    => Just KwContinue
+    "discard"     => Just KwDiscard
+    "else"        => Just KwElse
+    "ensures"     => Just KwEnsures
+    "enum"        => Just KwEnum
+    "fn"          => Just KwFn
+    "for"         => Just KwFor
+    "general"     => Just KwGeneral
+    "if"          => Just KwIf
+    "impl"        => Just KwImpl
+    "in"          => Just KwIn
+    "isometry"    => Just KwIsometry
+    "let"         => Just KwLet
+    "linear"      => Just KwLinear
+    "loop"        => Just KwLoop
+    "match"       => Just KwMatch
+    "measr"       => Just KwMeasr
+    "mod"         => Just KwMod
+    "mut"         => Just KwMut
+    "pub"         => Just KwPub
+    "qalloc"      => Just KwQAlloc
+    "qenum"       => Just KwQenum
+    "qelse"       => Just KwQelse
+    "qif"         => Just KwQif
+    "qmatch"      => Just KwQmatch
+    "requires"    => Just KwRequires
+    "reset"       => Just KwReset
+    "return"      => Just KwReturn
+    "selse"       => Just KwSelse
+    "sif"         => Just KwSif
+    "smatch"      => Just KwSmatch
+    "scratch"     => Just KwScratch
+    "self"        => Just KwSelf
+    "struct"      => Just KwStruct
+    "supports"    => Just KwSupports
+    "then"        => Just KwThen
+    "uncompute"   => Just KwUncompute
+    "uncompsafe"  => Just KwUncompsafe
+    "unitary"     => Just KwUnitary
+    "use"         => Just KwUse
+    "weaken"      => Just KwWeaken
+    "while"       => Just KwWhile
+    _             => Nothing
 
 public export
 gateFromString : String -> Maybe GateName
@@ -333,15 +341,14 @@ public export
 contractFromString : String -> Maybe ContractName
 contractFromString s =
   case s of
-    "clean"      => Just ContractClean
-    "stabilized" => Just ContractStabilized
-    "basis"      => Just ContractBasis
-    "separable"  => Just ContractSeparable
-    "isolated"   => Just ContractIsolated
-    "product"    => Just ContractProduct
-    "measured"   => Just ContractMeasured
-    "measr"      => Just ContractMeasured
-    _            => Nothing
+    "clean"       => Just ContractClean
+    "stabilized"  => Just ContractStabilized
+    "basis"       => Just ContractBasis
+    "separable"   => Just ContractSeparable
+    "isolated"    => Just ContractIsolated
+    "product"     => Just ContractProduct
+    "collapsed"   => Just ContractCollapsed
+    _             => Nothing
 
 public export
 typeFromString : String -> Maybe TypPrimName
@@ -380,7 +387,9 @@ showKeywordLeaf kw =
     KwAs        => "as"
     KwBarrier   => "barrier"
     KwBreak     => "break"
+    KwCoisometry => "coisometry"
     KwClassical => "classical"
+    KwConst     => "const"
     KwCtrl      => "ctrl"
     KwContinue  => "continue"
     KwDiscard   => "discard"
@@ -393,15 +402,17 @@ showKeywordLeaf kw =
     KwIf        => "if"
     KwImpl      => "impl"
     KwIn        => "in"
+    KwIsometry  => "isometry"
     KwLet       => "let"
     KwLinear    => "linear"
     KwLoop      => "loop"
     KwMatch     => "match"
+    KwMeasr     => "measr"
     KwMod       => "mod"
-    KwNegCtrl   => "negctrl"
-    KwParam     => "param"
+    KwMut       => "mut"
     KwPub       => "pub"
     KwQAlloc    => "qalloc"
+    KwQenum     => "qenum"
     KwQelse     => "qelse"
     KwQif       => "qif"
     KwQmatch    => "qmatch"
@@ -415,7 +426,9 @@ showKeywordLeaf kw =
     KwSmatch    => "smatch"
     KwStruct    => "struct"
     KwSupports  => "supports"
+    KwThen      => "then"
     KwUncompute => "uncompute"
+    KwUncompsafe => "uncompsafe"
     KwUnitary   => "unitary"
     KwUse       => "use"
     KwWeaken    => "weaken"
@@ -437,6 +450,7 @@ showSymbolLeaf : Symbol -> String
 showSymbolLeaf sym =
   case sym of
     SymAmp         => "&"
+    SymHash        => "#"
     SymLParen      => "("
     SymRParen      => ")"
     SymLBracket    => "["
@@ -495,6 +509,6 @@ implementation Show Symbol where
 %runElab derive "TypPrimName" [Show, Eq]
 %runElab derive "StateBasisName" [Show, Eq]
 %runElab derive "ContractName" [Show, Eq]
-%runElab derive "Keyword" [Show, Eq]
-%runElab derive "Symbol" [Show, Eq]
+%runElab derive "Keyword" [Eq]
+%runElab derive "Symbol" [Eq]
 %runElab derive "Token" [Show, Eq]

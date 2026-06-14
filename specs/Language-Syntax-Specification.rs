@@ -28,13 +28,13 @@
 // (3) Reserved Keywords: 
 //////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, continue, discard, else, enum, ensures, false, fn, for, general, if, in, isolated, let, linear, loop, match, minusi, measr, mod, mut, measured, minus, one, plus, plusi, pub, product, pure, qalloc, qif, qelse, qmatch, requires, reset, return, scratch, sif, selse, separable, smatch, stabilized, struct, supports, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, collapsed, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, struct, supports, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
 
 //////////////////////////////////////////////////////////////
 // (4) Reserved delimiters, punctuation, and operator tokens:
 //////////////////////////////////////////////////////////////
 
-'(', ')', '[', ']', '{', '}', ',', ';', ':', '::', '.', '->', '=', ':=', '+=', '-=', '*=', '/=', '%=', '+', '-', '*', '/', '%', '==', '!=', '>', '>=', '<', '<=', '=>', '>>', '>>=',  '<<', '<<=', '!', '&&', '||', '&', '|', '^', '..', '..=', '&=', '|=', '^='
+'(', ')', '[', ']', '{', '}', ',', ';', ':', '::', '.', '->', '=', ':=', '+=', '-=', '*=', '/=', '%=', '+', '-', '*', '/', '%', '==', '!=', '>', '>=', '<', '<=', '=>', '>>', '>>=',  '<<', '<<=', '!', '&&', '||', '&', '|', '^', '..', '..=', '&=', '|=', '^=', '#'
 
 ///////////////////////////////////////
 // (5) Built-in primitive type syntax:
@@ -100,11 +100,12 @@ let unit : () = ();
 let unit = ();
 
 // syntax for declaring parameters, here "param" is a builtin function:
-let theta : param = param("theta");
+let theta : param = Param("theta");
 
-// Leaf does not yet support strings but this syntax is accepted for declaring parameters with dynamic names using string interpolation:
-let i: int = 1;
-let theta: param = param(format!("theta_{i}"));
+// Leaf does not yet support strings but strings are required lexically (see below string usages: "qasm_subroutine_name", "X", "Z(q0) * Z(q1)")
+// also see this syntax is accepted for declaring parameters with dynamic names using string interpolation:
+let i: i32 = 1;
+let theta: param = Param(format!("theta_{i}"));
 
 // var assignment syntax for basic types:
 let mut x : i32 = 0;
@@ -128,7 +129,7 @@ let r: &mut i32 = &mut x;
 
 // const variables
 const PI: f64 = 3.141592653589793;
-const X: i32 = 5;
+const FIVE: i32 = 5;
 
 ///////////////////////////////////
 // (7) Syntax for declaring arrays
@@ -145,7 +146,7 @@ let linear qubits: [qubit; 2] = qalloc(2);
 let affine qubits: [qubit; 2] = qalloc(2);
 let angles: [angle64; 2] = [3.14, 1.57];
 let units: [(); 5] = [(), (), (), (), ()];
-let params: [param; 2] = [param("theta"), param("phi")];
+let params: [param; 2] = [Param("theta"), Param("phi")];
 
 // array declarations with inferred type
 let bools = [true, false, true, false];
@@ -185,7 +186,7 @@ let b = measr(q);
 //////////////////////////////////////////////////////////////////////////
 
 let state = bs"10110010";
-let state = bs"++----++;";
+let state = bs"++----++";
 let state = bs"10+-+-001";
 let state = bs"iiiiIIIII";
 
@@ -491,7 +492,7 @@ if x < 0 {
     // some other quantum state expression
   }
 
-  let (q1, q2, q3) = sif q1 expression1(q2, q3) selse expression2(q2, q3);
+  let (q1, q2, q3) = sif q1 then expression1(q2, q3) selse expression2(q2, q3);
 
    // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits:
   sif q then
@@ -1108,7 +1109,7 @@ let person = Person::new(30);
 let is_adult = person.is_adult();
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (58) Quantum Contracts Function Clauses: requires, ensures + clean, stabilized, basis, separable, isolated, product, measured
+// (58) Quantum Contracts Function Clauses: requires, ensures + clean, stabilized, basis, separable, isolated, product, collapsed
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // These are optional code annotations for functions that specify pre- & post-conditions that the quantum data should satisfy:
@@ -1117,7 +1118,7 @@ let is_adult = person.is_adult();
 // either requires or ensures clauses may be used, both of them or neither as these are optional annotations.
 // There can be multiple requires or ensures clauses for a function, and they can be used in any combination with each other.
 
-// clean, basis, pure, isolated take one argument:
+// clean, basis, isolated take one argument:
 clean(q1)
 basis(q1, "X"), basis(q1, "Y"), basis(q1, "Z")
 separable(qs)
@@ -1129,7 +1130,7 @@ stabilized(qs, [ "Z(q0)", "X(q1)", "Z(q0) * Z(q1)" ])
 // product takes multiple arguments which are either qubits or arrays of qubits:
 product(q1, q2, qs)
 
-measured(q1, q2)
+collapsed(q1, q2)
 
 fn oracle(x: qubit, ancillas: [qubit; 3])
   requires clean(ancillas)
@@ -1139,8 +1140,8 @@ fn oracle(x: qubit, ancillas: [qubit; 3])
 
 fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
   requires clean(q1)
-  requires pure(q2)
-  requires isolated(qs) 
+  requires isolated(qs)
+  ensures collapsed(q2)
   ensures product(q1, q2, qs){
     // some code here
 }
@@ -1162,6 +1163,7 @@ fn make_ghz(q0: qubit, q1: qubit, q2: qubit)
     CNOT(&q0, &q2);
 }
 
+The "requires" clauses specify the pre-conditions that must hold on the quantum data before the function is called, while the "ensures" clauses specify the post-conditions that must hold on the quantum data after the function returns ao "requires" clauses should precede "ensures" clauses in function signature.
 
 ///////////////////////////////////////////////////////////////
 // (59) Using function as arguments to higher-order functions:
@@ -1201,7 +1203,7 @@ unitary fn f(q: qubit) supports adjoint, ctrl {
 unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
     supports adjoint, ctrl
     requires clean(q1)
-    requires pure(q2)
+    ensures collapsed(q2)
     requires isolated(qs)
     ensures product(q1, q2, qs) {
     H(&q);
@@ -1250,7 +1252,7 @@ fn apply_gate(q: &qubit)
 fn main() -> bit {
   let q = qalloc();
   apply_gate(&q);
-  let b = measure(q);
+  let b = measr(q);
   b
 }
 
@@ -1313,7 +1315,7 @@ unitary fn myfun(q: qubit) -> qubit {
 unitary fn myfun(q: qubit) -> bit {
   let q = X(q);
   let q = H(q);
-  measure(q)
+  measr(q)
 }
 
 // annotating the function with a string argument
@@ -1321,5 +1323,5 @@ unitary fn myfun(q: qubit) -> bit {
 unitary fn myfun(q: qubit) -> bit {
   let q = X(q);
   let q = H(q);
-  measure(q)
+  measr(q)
 }
