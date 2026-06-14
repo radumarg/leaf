@@ -347,7 +347,6 @@ contractFromString s =
     "separable"   => Just ContractSeparable
     "isolated"    => Just ContractIsolated
     "product"     => Just ContractProduct
-    "collapsed"   => Just ContractCollapsed
     _             => Nothing
 
 public export

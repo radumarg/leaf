@@ -28,7 +28,7 @@
 // (3) Reserved Keywords: 
 //////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, collapsed, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, struct, supports, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, struct, supports, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
 
 //////////////////////////////////////////////////////////////
 // (4) Reserved delimiters, punctuation, and operator tokens:
@@ -1109,7 +1109,7 @@ let person = Person::new(30);
 let is_adult = person.is_adult();
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (58) Quantum Contracts Function Clauses: requires, ensures + clean, stabilized, basis, separable, isolated, product, collapsed
+// (58) Quantum Contracts Function Clauses: requires, ensures + clean, stabilized, basis, separable, isolated, product
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // These are optional code annotations for functions that specify pre- & post-conditions that the quantum data should satisfy:
@@ -1130,8 +1130,6 @@ stabilized(qs, [ "Z(q0)", "X(q1)", "Z(q0) * Z(q1)" ])
 // product takes multiple arguments which are either qubits or arrays of qubits:
 product(q1, q2, qs)
 
-collapsed(q1, q2)
-
 fn oracle(x: qubit, ancillas: [qubit; 3])
   requires clean(ancillas)
   ensures clean(ancillas) {
@@ -1141,7 +1139,6 @@ fn oracle(x: qubit, ancillas: [qubit; 3])
 fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
   requires clean(q1)
   requires isolated(qs)
-  ensures collapsed(q2)
   ensures product(q1, q2, qs){
     // some code here
 }
@@ -1203,7 +1200,7 @@ unitary fn f(q: qubit) supports adjoint, ctrl {
 unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
     supports adjoint, ctrl
     requires clean(q1)
-    ensures collapsed(q2)
+    ensures basis(q2)
     requires isolated(qs)
     ensures product(q1, q2, qs) {
     H(&q);
