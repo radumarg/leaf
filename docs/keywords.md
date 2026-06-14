@@ -5,8 +5,10 @@ adjoint
 affine
 as
 barrier
+basis
 break
 classical
+clean
 coisometry
 ctrl
 const
@@ -23,6 +25,7 @@ if
 impl
 import
 in
+isolated
 isometry
 let
 linear
@@ -37,6 +40,7 @@ negctrl
 one
 plus
 plusi
+product
 qalloc
 qif
 qelse
@@ -48,8 +52,10 @@ return
 scratch
 self
 selse
+separable
 sif
 smatch
+stabilized
 struct
 supports
 then
