@@ -831,7 +831,7 @@ let bs : [bit; 3] = measr(qs);
 let bs : [bit; 3] = measr(&qs);
 
 // casting bits array measurement results to a tuple of bits:
-let (q0, q1, q2) = measr(qs);
+let (b0, b1, b2) = measr(qs);
 
 ////////////////////////
 // (42) Barrier syntax:
@@ -1362,3 +1362,45 @@ unitary fn myfun(q: qubit) -> bit {
   let q = H(q);
   measr(q)
 }
+
+///////////////////
+// (67) Recursion:
+//////////////////
+
+// Purely classical recursion.
+classical fn fact(n: u32) -> u32 {
+    if n == 0 { 1 } else { n * fact(n - 1) }
+}
+
+// Circuit-generating unitary recursion over a classical parameter, safe if total and structurally decreasing:
+unitary fn apply_hadamard_layer(n: u32, qs: &[qubit]) {
+    if n == 0 {
+        return;
+    }
+
+    H(&qs[n - 1]);
+    apply_hadamard_layer(n - 1, qs);
+}
+
+// Classically controlled recursion:
+```leaf
+general fn repeat_until_zero(q1: qubit) -> qubit {
+    let b = measr(&q1);
+
+    if b == 0 {
+        return q1;
+    } else {
+        let q2 = qalloc();
+
+        H(&q2);
+
+        let q2 = repeat_until_zero(q2);
+
+        CX(&q2, &q1);
+
+        discard(q2);
+        return q1;
+    }
+}
+
+// Quantum controlled recursion and recursive quantum types are not supported at this moment
