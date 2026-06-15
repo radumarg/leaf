@@ -82,11 +82,11 @@ fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
 Contracts form two partially ordered sets with `dirty` for unary predicated and respectively `entangled` for binary predicates on top:
 
 ```leaf
-                      dirty(qs)                                         entangled(qs, qs')
-                         |                                                     |
-                     isolated(qs)                                        product(qs, qs')
+                      dirty(qs)                                             entangled(qs, qs')
+                         |                                                          |
+                     isolated(qs)                                            product(qs, qs')
                     /            \
-             separable(qs)  stabilized(qs, [+pauli_str1, -pauli_str2])
+             separable(qs)  stabilized(qs, [+pauli_str1, -pauli_str2, ..])
                   |
            basis(qs, pauli_str)
                   |
