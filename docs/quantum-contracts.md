@@ -33,7 +33,7 @@ When we need multiple qubits as arguments we can specify them as an array of qub
 
 ```leaf
 clean([q1, q2])
-basis([q1, q2], X)
+basis([q1, q2], XY)
 separable([q1, q2])
 isolated([q1, q2])
 ```
@@ -64,7 +64,7 @@ Stabilized takes as its second argument a list of signed Pauli strings. A more e
 ```leaf
 fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
   requires clean([q0, q1, q2])
-  ensures stabilized([q0, q1, q2], [+X*X*X, +Z*Z*Id, +Id*Z*Z])
+  ensures stabilized([q0, q1, q2], [+XXX, +ZZI, +IZZ])
 {
     H(q0);
     CNOT(q0, q1);
@@ -93,4 +93,4 @@ Contracts form two partially ordered sets with `dirty` for unary predicates and 
               clean(qs)
 ```
 
-The order specifies a refinement relation on predicates, so `ensured clean(qs)` which is more refined should also satisfy `ensures basis(qs, Z*Z)` etc. Being the most general state of qubit(s) the `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`.
+The order specifies a refinement relation on predicates, so `ensured clean(qs)` which is more refined should also satisfy `ensures basis(qs, ZZ)` etc. Being the most general state of qubit(s) the `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`.

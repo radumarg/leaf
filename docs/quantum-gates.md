@@ -1,4 +1,4 @@
-## Quantum Gates
+### Quantum Gates
 
 
 Example gate applications:
@@ -53,7 +53,7 @@ TDG(&q);
 ### Parametric Single-Qubit Gates
 
 ```leaf
-RX(1,0, &q);
+RX(1.0, &q);
 RY(1.0, &q);
 RZ(1.0, &q);
 U1(1.0, &q);
@@ -73,12 +73,12 @@ CSX(&q1, &q2);
 CSXDG(&q1, &q2);
 CT(&q1, &q2);
 CTDG(&q1, &q2);
-CRX(&q1, &q2);
-CRY(&q1, &q2);
-CRZ(&q1, &q2);
-CU1(&q1, &q2);
-CU2(&q1, &q2);
-CU3(&q1, &q2);
+CRX(1.0, &q1, &q2);
+CRY(1.0, &q1, &q2);
+CRZ(1.0, &q1, &q2);
+CU1(1.0, &q1, &q2);
+CU2(1.0, 2.0, &q1, &q2);
+CU3(1.0, 2.0, 3.0, &q1, &q2);
 ```
 
 ### Two-Qubit Interaction Gates

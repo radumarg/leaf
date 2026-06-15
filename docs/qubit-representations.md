@@ -1,6 +1,6 @@
 ### Modeling Qubits
 
-#### (1) Resource-oriented qubit model
+#### Resource-oriented qubit model
 
 Qubits are treated as mutable computational resources whose quantum state evolves when quantum gates are applied.
 
@@ -9,7 +9,7 @@ let q: qubit = qalloc();
 let q = H(q);
 ```
 
-#### (2) State-oriented qubit model
+#### State-oriented qubit model
 
 Qubits are represented using a language of expressions denoting vectors or states in a Hilbert space built using the `squbit` typed language constants: `zero`, `one`, `plus` and `minus`. These constants are used inside state expressions and do not denote allocated runtime qubits.
 

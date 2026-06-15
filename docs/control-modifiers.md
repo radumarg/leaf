@@ -53,35 +53,20 @@ ctrl(&q0, &q1).on(bs"+-") {
 
 The control block expression has the effect to apply the control operation to all unitary gates within the block expression and sub-expressions. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary`, `isometry` or `coisometry` effects. On the other hand, the control function operator `ctrl().on().apply(f)` can be applied only to functions that declare control support in function signature (see below).
 
-### Declaring Controlling Support
+### Declaring Control Support
 
-Leaf has a special syntax for those functions where the compiler is able to infer that the function can be quantum controlled using the `suppports` keyword:
+Leaf has a special syntax for those functions where the compiler is able to infer that the function is controllable using the `supports` keyword combined with `ctrl`:
 
 ```leaf
 unitary fn f(q: qubit) supports ctrl {
     H(&q);
 }
-```
 
 Control and adjoint supports clauses can be combined:
 
-```leaf
 unitary fn f(q: qubit) supports adjoint, ctrl {
     H(&q);
 }
 ```
 
 A function that contains only unitary quantum gates can always be controlled and usually cannot when it measures, resets or discards qubits. Sometimes quantum code containing measure/reset/discard operations can be controlled as long as those operations are applied to qubits that are in driven to a provable clean, all zero, separable state. However, a function that returns classical data in general is usually not controllable since there is no general method to adjust classical output data for positive/negative control.
-
-Leaf has a special syntax for those functions where the compiler is able to infer that the function is controllable using the `supports` keyword combined with `ctrl` and possibly the `adjoint` keywords:
-
-```leaf
-unitary fn f(q: qubit) supports ctrl {
-    H(&q);
-}
-
-unitary fn f(q: qubit) supports adjoint, ctrl {
-    H(&q);
-}
-```
-

@@ -11,15 +11,15 @@ let qs: [qubit; 2] = qalloc(2);
 - Measuring qubits (result type can be inferred):
 ```leaf
 let b : bit = measr(q);
-let (b1 : bit, b2 : bit, b3 : bit) = measr(q1, q2, q3);
+let bs: [bit; 3] = measr(q1, q2, q3);
 let bs = measr(qs);
 ```
 
 - Unlike a linear qubit which must be used `exactly once`, an affine qubit must be used `at most once`. Downgrading qubit type from `linear` to `affine`:
 ```leaf
-weaken(q);
-weaken(q1, q2, q3);
-weaken(qs);
+let q = weaken(q);
+let (q1, q2, q3) = weaken(q1, q2, q3);
+let qs = weaken(qs);
 ```
 
 - Reseting qubits:

@@ -1,7 +1,7 @@
 ### Built-in Functions
 
 
-[Qubit operations](defining-terms.md#operations-on-qubits):
+[Qubit operations](quantum-data-operations.md#operations-on-qubits):
 
 
 ```leaf

@@ -190,7 +190,7 @@ let n = a.len();
 // A slice is a borrowed view into a contiguous part of an array.
 // Its type is &[T] (shared) or &mut [T] (mutable), exactly as in Rust.
 //
-// QUBIT EXCEPTION (see section 11): qubit references are mutable by default,
+// QUBIT EXCEPTION: qubit references are mutable by default,
 // so a qubit slice is written &[qubit] and is already mutable. 'mut' is never
 // written on a qubit reference: there is no &mut [qubit] and no &mut qubit.
 // For every other element type slices behave exactly like Rust: &[T] is
@@ -1232,7 +1232,7 @@ let is_adult = person.is_adult();
 // There can be multiple requires or ensures clauses for a function, and they can be used in any combination with each other.
 //
 // - clean(qs) - the qubit(s) are all in $|0\rangle$ state and separated from the rest of qubits in the program.
-// - basis([q1, q2, q3], X*Y*Z) - the qubit(s) are in an eigenstate of Pauli string operator like X*Y*Z and separated from the rest of qubits in the program.
+// - basis([q1, q2, q3], XYZ) - the qubit(s) are in an eigenstate of Pauli string operator like XYZ and separated from the rest of qubits in the program.
 // - separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
 // - isolated(qs) - these qubits are not entangled with the rest of qubits in the program even if possibly entangled among them.
 // - stabilized(qs) - these qubits are in a state which is stabilized by the supplied operators and at the same time they are separated from the rest of qubits in the program.
@@ -1250,13 +1250,13 @@ isolated(q1)
 clean([q1, q2])
 
 // second argument is a Pauli string:
-basis([q1, q2], X*X)
+basis([q1, q2], XX)
 
 separable([q1, q2])
 isolated([q1, q2])
 
 // stabilized, takes as second argument as a list signed Pauli strings:
-stabilized(qs, [ +Z*Id, -Z*Z ])
+stabilized(qs, [ +ZI, -ZZ ])
 
 // product takes multiple arguments which are either qubits or arrays of qubits:
 product(q1, q2, qs)
@@ -1283,7 +1283,7 @@ requires stabilized(q, [ -Z ])
 // more complex stabilizer example with multiple qubits and multi-term stabilizers:
 fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
   requires clean([q0, q1, q2])
-  ensures stabilized([q0, q1, q2], [+X*X*X, +Z*Z*Id, +Id*Z*Z]])
+  ensures stabilized([q0, q1, q2], [+XXX, +ZZI, +IZZ])
 {
     H(q0);
     CNOT(q0, q1);
