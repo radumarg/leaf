@@ -85,9 +85,9 @@ CU3(1.0, 2.0, 3.0, &q1, &q2);
 
 ```leaf
 SWAP(&q1, &q2);
-RXX(1,0, &q1, &q2);
-RYY(1,0, &q1, &q2);
-RZZ(1,0, &q1, &q2);
+RXX(1.0, &q1, &q2);
+RYY(1.0, &q1, &q2);
+RZZ(1.0, &q1, &q2);
 ```
 
 ### Three-Qubit Gates

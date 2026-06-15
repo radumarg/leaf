@@ -16,7 +16,7 @@ let qubits = CNOT(q0, q1);
 let q0 = qubits.0;
 let q1 = qubits.1;
 
-// accesing tuple qubits after qubits have been moved out is illegal:
+// accessing tuple qubits after qubits have been moved out is illegal:
 
 let qubitsCopy = qubits;
 ```
@@ -29,7 +29,7 @@ struct Pair {
     q1: qubit,
 }
 
-// forgeting to access pair.q1 means implicit qubit discard which is illegal:
+// forgetting to access pair.q1 means implicit qubit discard which is illegal:
 {
     let q0 : qubit = qalloc();
     let q1 : qubit = qalloc();
@@ -145,4 +145,4 @@ then the result is:
 α · Left(f(a)) + β · Right(g(b))
 ```
 
-Like in most circuit languages, everything is ultimately encoded into a register of qubits. So the six dimensional space `qubit + (qubit × qubit)` will be embedded into a register of 3 qubits corresponding to an eight dimensional Hilbert space with some unused states. This construction allows the programmer to describe algorithms over subspaces, not just registers and think on a level which is higher than the raw qubit representation of languages like OpenQasm3. For most near-term algorithms this in not very useful, however this construct becomes relevant for algorithms based on: quantum walks, automata, graph states, symbolic states, subspace algorithms.
+Like in most circuit languages, everything is ultimately encoded into a register of qubits. So the six dimensional space `qubit + (qubit × qubit)` will be embedded into a register of 3 qubits corresponding to an eight dimensional Hilbert space with some unused states. This construction allows the programmer to describe algorithms over subspaces, not just registers and think on a level which is higher than the raw qubit representation of languages like OpenQasm3. For most near-term algorithms this is not very useful, however this construct becomes relevant for algorithms based on: quantum walks, automata, graph states, symbolic states, subspace algorithms.
