@@ -11,11 +11,11 @@ classical fn fact(n: i32) -> i32 {
 
 (2) Circuit-generating unitary recursion over a classical parameter, safe if total and structurally decreasing.
 ```leaf
-unitary fn apply_hadamard_layer(n: i32, qs: [qubit]) {
+unitary fn apply_hadamard_layer(n: i32, qs: &[qubit]) {
     if n == 0 {
         return;
     } else {
-        H(&qs[n - 1]);
+        H(qs[n - 1]);
         apply_hadamard_layer(n - 1, qs);
     }
 }
@@ -23,7 +23,7 @@ unitary fn apply_hadamard_layer(n: i32, qs: [qubit]) {
 
 (3) Classically controlled recursion. This can be mapped to OpenQasm3 recursive calls with mid-circuit measurements.
 ```leaf
-general fn repeat_until_zero(q1: qubit) {
+general fn repeat_until_zero(q1: qubit) -> qubit {
     let b = measr(q);
 
     if b == 0 {
@@ -38,7 +38,7 @@ general fn repeat_until_zero(q1: qubit) {
         CX(&q2, &q1);
 
         discard(q2);
-        return;
+        return q1;
     }
 }
 ```

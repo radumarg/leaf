@@ -1117,18 +1117,39 @@ let is_adult = person.is_adult();
 // from as well as with each other. They must be placed after the function signature and before the function body.
 // either requires or ensures clauses may be used, both of them or neither as these are optional annotations.
 // There can be multiple requires or ensures clauses for a function, and they can be used in any combination with each other.
+//
+// - clean(qs) - the qubit(s) are all in $|0\rangle$ state and separated from the rest of qubits in the program.
+// - basis([q1, q2, q3], X*Y*Z) - the qubit(s) are in an eigenstate of Pauli string operator like X*Y*Z and separated from the rest of qubits in the program.
+// - separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
+// - isolated(qs) - these qubits are separated from the rest of qubits in the program even if possibly entangled among them. Their evaluation is unaffected by measurement outcomes for other qubits.
+// - stabilized(qs) - these qubits are in a state which is stabilized by the supplied operators and at the same time they are separated from the rest of qubits in the program.
+// - product(qs, qs') - these qubit sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled to other unspecified qubits in the program.
 
-// clean, basis, isolated take one argument:
+// Clean, stabilized, basis, separable, isolated are all unary predicates:
 clean(q1)
-basis(q1, "X"), basis(q1, "Y"), basis(q1, "Z")
+basis(q1, X)
+basis(q1, Y)
+basis(q1, Z)
 separable(qs)
 isolated(q1)
 
-// stabilized, take multiple arguments an array of strings:
-stabilized(qs, [ "Z(q0)", "X(q1)", "Z(q0) * Z(q1)" ])
+// For unary predicated, when we need multiple qubits as arguments we can specify them as an array of qubits:
+clean([q1, q2])
+
+// second argument is a Pauli string:
+basis([q1, q2], X*X)
+
+separable([q1, q2])
+isolated([q1, q2])
+
+// stabilized, takes as second argument as a list signed Pauli strings:
+stabilized(qs, [ +Z*Id, -Z*Z ])
 
 // product takes multiple arguments which are either qubits or arrays of qubits:
 product(q1, q2, qs)
+
+// products can take multiple arrays of qubits as arguments:
+product([q1, q2], [q3, q4], qs)
 
 fn oracle(x: qubit, ancillas: [qubit; 3])
   requires clean(ancillas)
@@ -1139,26 +1160,24 @@ fn oracle(x: qubit, ancillas: [qubit; 3])
 fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
   requires clean(q1)
   requires isolated(qs)
-  ensures product(q1, q2, qs){
+  ensures product([q1, q2, qs]){
     // some code here
 }
 
 // stabilizer simple examples
-requires stabilized(q, [ +Z(q) ])
+requires stabilized(q, [ -Z ])
 
 // more complex stabilizer example with multiple qubits and multi-term stabilizers:
-fn make_ghz(q0: qubit, q1: qubit, q2: qubit)
-  requires clean(q0, q1, q2)
-  ensures stabilized((q0, q1, q2), [
-      +X(q0) * X(q1) * X(q2),
-      +Z(q0) * Z(q1),
-      +Z(q1) * Z(q2)
-  ])
+fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
+  requires clean([q0, q1, q2])
+  ensures stabilized([q0, q1, q2], [+X*X*X, -Z*Z*Id])
 {
-    H(&q0);
-    CNOT(&q0, &q1);
-    CNOT(&q0, &q2);
+    H(q0);
+    CNOT(q0, q1);
+    CNOT(q0, q2);
 }
+
+The following gates can appear in statbilizer expressions: Id, X, Y, Z, H, S, SDG, SX, SXDG, T, TDG
 
 The "requires" clauses specify the pre-conditions that must hold on the quantum data before the function is called, while the "ensures" clauses specify the post-conditions that must hold on the quantum data after the function returns ao "requires" clauses should precede "ensures" clauses in function signature.
 
