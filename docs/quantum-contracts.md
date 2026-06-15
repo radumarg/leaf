@@ -59,7 +59,7 @@ H(q)
 ensures  stabilized(q, [ +X ])
 ```
 
-The following two are equivalent:
+The following two are functionally equivalent:
 
 ```leaf
 clean(q)
