@@ -14,7 +14,7 @@ fn oracle(x: qubit, ancilla: [qubit; 3])
 The following contracts are supported:
 
 - clean(qs) - the qubit(s) are all in $|0\rangle$ state and separated from the rest of qubits in the program.
-- basis([q1, q2, q3], pauli-string) - the qubit(s) are in an eigenstate of Pauli string operator like X*Y*Z and separated from the rest of qubits in the program.
+- basis([q1, q2, q3], pauli-string) - the qubit(s) are in an eigenstate of Pauli string operator like X\*Y\*Z and separated from the rest of qubits in the program.
 - separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
 - isolated(qs) - these qubits are separated from the rest of qubits in the program even if possibly entangled among them. Their evaluation is unaffected by measurement outcomes for other qubits.
 - stabilized(qs) - these qubits are in a state which is [stabilized](https://quantumcomputing.stackexchange.com/questions/18235/what-is-a-stabilizer-state) by the supplied operators and at the same time they are separated from the rest of qubits in the program.
@@ -71,7 +71,7 @@ Stabilized, takes as second argument as a list signed Pauli strings:. A more ela
 ```leaf
 fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
   requires clean([q0, q1, q2])
-  ensures stabilized([q0, q1, q2], [+X\*X\*Id, +Z\*Z\*Id])
+  ensures stabilized([q0, q1, q2], [+X*X*Id, +Z*Z*Id])
 {
     H(q0);
     CNOT(q0, q1);
