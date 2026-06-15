@@ -15,12 +15,12 @@ SXDG(q);
 
 // Parametric Single-Qubit Gates
 
-RX(1, q);
-RY(1, q);
-RZ(1, q);
-U1(1, q);
-U2(1, 2, q);
-U3(1, 2, 3, q);
+RX(1.0, q);
+RY(1.0, q);
+RZ(1.0, q);
+U1(1.0, q);
+U2(1.0, 2.0, q);
+U3(1.0, 2.0, 3.0, q);
 
 // Controlled Gates
 

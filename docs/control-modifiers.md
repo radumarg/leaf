@@ -72,3 +72,16 @@ unitary fn f(q: qubit) supports adjoint, ctrl {
 ```
 
 A function that contains only unitary quantum gates can always be controlled and usually cannot when it measures, resets or discards qubits. Sometimes quantum code containing measure/reset/discard operations can be controlled as long as those operations are applied to qubits that are in driven to a provable clean, all zero, separable state. However, a function that returns classical data in general is usually not controllable since there is no general method to adjust classical output data for positive/negative control.
+
+Leaf has a special syntax for those functions where the compiler is able to infer that the function is controllable using the `supports` keyword combined with `ctrl` and possibly the `adjoint` keywords:
+
+```leaf
+unitary fn f(q: qubit) supports ctrl {
+    H(&q);
+}
+
+unitary fn f(q: qubit) supports adjoint, ctrl {
+    H(&q);
+}
+```
+

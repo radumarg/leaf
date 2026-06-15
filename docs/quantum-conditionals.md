@@ -78,14 +78,14 @@ Similar conditions that apply to quantum conditionals branches apply here as wel
 For a [state oriented](qubit-representations.md#state-oriented-qubit-model) qubits model the elementary quantum conditional example is the CNOT gate represented as a coherent operation via:
 
 ```leaf
-fn qnot(q: qubit) -> qubit {
+fun qnot(q: qubit) -> qubit {
     sif q then zero selse one
 }
 ```
 
 ```leaf
 (zero + one)
- .tensor(zero - phase(pi/2) * one)
+ .tensor(zero - phase(PI/2) * one)
  .tensor(zero - one)
 ```
 

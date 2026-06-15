@@ -24,11 +24,30 @@
 
 // Parentheses, square brackets and curly braces follow the same rules from Rust.
 
-//////////////////////////
-// (3) Reserved Keywords: 
-//////////////////////////
+/////////////////////////////////////////////////
+// (3) Reserved Keywords + Built-in Identifiers: 
+/////////////////////////////////////////////////
 
 adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, struct, supports, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+
+// (I) The following are built-in identifiers that can be used in Leaf programs which ARE part of language syntax and should be parsed as keywords or built-in functions:
+
+// Quantum contracts
+clean(), basis(), isolated(), product(), separable(), stabilized()
+// Circuit operations
+barrier()
+// Adjoint operations
+adjoint()
+// Control operations
+ctrl() + on() + apply()
+// Complex-valued helper function needed for quantum states specification:
+phase()
+// Declaring angle parameters:
+Param()
+
+// (II) The following are built-in mathematical functions that can be used in Leaf programs. These are NOT part of language syntax, they should be parsed as regular functions:
+cos(), acos(), sin(), asin(), tan(), atan()
+abs(), exp(), ceil(), floor(), ln(), log2(), log10(), max(), min(), round(), sqrt()
 
 //////////////////////////////////////////////////////////////
 // (4) Reserved delimiters, punctuation, and operator tokens:
@@ -261,7 +280,7 @@ let q: qubit = SXDG(q);
 
 // Parametric Single-Qubit Gates
 // the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
-let q: qubit = RX(1, q);
+let q: qubit = RX(1.0, q);
 let q: qubit = RY(1.0, q);
 let q: qubit = RZ(1.0, q);
 let q: qubit = U1(1.0, q);
@@ -482,23 +501,24 @@ if x < 0 {
 // (21) sif/selse quantum conditionals syntax:
 ///////////////////////////////////////////////
 
-  // Like in Rust, selse associates with the nearest preceding unmatched sif.
   // Unlike in Rust, selse is NOT optional
   // Unlike in Rust, sif/selse branches are always expressions, no statement branches allowed.
+  // Unlike in Rust syntax includes the "then" keyword for better readability and to emphasise 'then' should be necessarily followed by an 'selse'
 
-  let qs = sif &q {
-    // some quantum state expression
-  } selse {
-    // some other quantum state expression
-  }
+  let qs = sif &q
+    then
+      // some quantum state expression
+    selse
+      // some other quantum state expression
+  ;
 
   let (q1, q2, q3) = sif q1 then expression1(q2, q3) selse expression2(q2, q3);
 
    // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits:
   sif q then
-    (zero + one).tensor(zero - phase(pi/2) * one)
+    (zero + one).tensor(zero - phase(PI/2) * one)
   selse
-    (plus - minus).tensor(plus + phase(pi/2) * minus);
+    (plus - minus).tensor(plus + phase(PI/2) * minus);
 
 ///////////////////////////////////////////
 // (22) Classical Rust style match syntax:
@@ -607,10 +627,10 @@ smatch &qs {
 
 // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits.
 smatch &qs {
-  bs"00" => (zero + one).tensor(zero - phase(pi/2) * one),
-  bs"01" => (plus - minus).tensor(plus + phase(pi/2) * minus),
-  bs"10" => (zero - one).tensor(zero + phase(pi/2) * one),
-  bs"11" => (plus - minus).tensor(plus - phase(pi/2) * minus),
+  bs"00" => (zero + one).tensor(zero - phase(PI/2) * one),
+  bs"01" => (plus - minus).tensor(plus + phase(PI/2) * minus),
+  bs"10" => (zero - one).tensor(zero + phase(PI/2) * one),
+  bs"11" => (plus - minus).tensor(plus - phase(PI/2) * minus),
 }
 
 ////////////////////////////////
@@ -825,6 +845,7 @@ barrier(&q0, &q1);
 // (43) declaring and using modules and imports follows Rust syntax:
 ////////////////////////////////////////////////////////////////////
 
+// like in Rust, the pub keyword is an access modifier that makes items accessible outside of the module where are defined
 mod my_module {
     pub fn helper() -> qubit {
         let q = qalloc(); // some code
@@ -917,9 +938,9 @@ fn f(mut x: i32) -> i32 {
   x
 }
 
-//////////////////////////////////////////////////////////////////////////////
-// (51) Function Effect Qualifiers: classical, uncompsafe, unitary, general
-//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// (51) Function Effect Qualifiers: classical, uncompsafe, unitary, isometry, coisometry, general
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
 // function effects are optional Rust style function qualifiers used by the Leaf type checker to verify Leaf code.
 // Function qualifiers appear before fn keyword and cannot be combined with each other

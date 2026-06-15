@@ -9,14 +9,14 @@ uncompsafe fn balanced_oracle(
     ancilla: qubit
 ) -> ([qubit; 3], qubit) {
     qmatch &qs {
-        s"000" => Id(&ancilla),   // 0 ones  → f = 0
-        s"001" => Id(&ancilla),   // 1 one   → f = 0
-        s"010" => Id(&ancilla),   // 1 one   → f = 0
-        s"011" => X(&ancilla),    // 2 ones  → f = 1
-        s"100" => Id(&ancilla),   // 1 one   → f = 0
-        s"101" => X(&ancilla),    // 2 ones  → f = 1
-        s"110" => X(&ancilla),    // 2 ones  → f = 1
-        s"111" => X(&ancilla),    // 3 ones  → f = 1
+        bs"000" => Id(&ancilla),   // 0 ones  → f = 0
+        bs"001" => Id(&ancilla),   // 1 one   → f = 0
+        bs"010" => Id(&ancilla),   // 1 one   → f = 0
+        bs"011" => X(&ancilla),    // 2 ones  → f = 1
+        bs"100" => Id(&ancilla),   // 1 one   → f = 0
+        bs"101" => X(&ancilla),    // 2 ones  → f = 1
+        bs"110" => X(&ancilla),    // 2 ones  → f = 1
+        bs"111" => X(&ancilla),    // 3 ones  → f = 1
     }
     (qs, ancilla)
 }

@@ -1,6 +1,6 @@
 ### Function Effects
 
-These are Rust style function qualifiers used by the Lean type checker to verify Leaf code. The function effects form a lattice:
+These are Rust style function qualifiers used by the Leaf type checker to verify the code. The function effects form a lattice:
 
 ```leaf
          general
@@ -14,7 +14,7 @@ These are Rust style function qualifiers used by the Lean type checker to verify
         classical
 ```
 
-- `classical` is the default effect used to classify strictly classical functions i.e. function that do not have qubit arguments, do not return qubits and do not perform any quantum operations like qubit allocation or operations on quantum data. Being the default effect, the `classical` keyword is optional and is mainly used for generating explicit API specification:
+- `classical` is used to classify strictly classical functions i.e. function that do not have qubit arguments, do not return qubits and do not perform any quantum operations like qubit allocation or operations on quantum data:
 
 ```leaf
 classical fn parity (x : u32) -> bool { ... }
@@ -34,13 +34,13 @@ unitary fn grover (qubits : [qubit; 7]) -> [qubit; 7] { ... }
 
 A function qualified as `unitary` containing only unitary quantum operations. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded.
 
-- a `isometry` function is the same as a `unitary` function except that the number of output qubits is strictly larger than the number of input qubits:
+- a `isometry` function is the same as a `unitary` function except that the number of output qubits is larger than the number of input qubits:
 
 ```leaf
 isometry fn fanOut (qubits : [qubit; 3]) -> [qubit; 7] { ... }
 ```
 
-- a `coisometry` function is the same as a `unitary` function except that the number of output qubits is strictly smaller than the number of input qubits and the qubits which are thrown away must be driven into a clean state before discarding:
+- a `coisometry` function is the same as a `unitary` function except that the number of output qubits is smaller than the number of input qubits and the qubits which are thrown away must be driven into a clean state before discarding:
 
 ```leaf
 coisometry fn fanIn (qubits : [qubit; 7]) -> [qubit; 3] { ... }
@@ -51,3 +51,5 @@ coisometry fn fanIn (qubits : [qubit; 7]) -> [qubit; 3] { ... }
 ```leaf
 general fn sample (qs: [qubit; 7]) -> [bit; 7] { ... }
 ```
+
+Being the default effect, the `general` keyword is optional and is mainly used for generating explicit API specification.

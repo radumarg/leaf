@@ -48,6 +48,22 @@ struct Pair {
 }
 ```
 
+The syntax for working with structs is the same with Rust:
+
+```leaf
+struct Person {
+    height: i32,
+    age: i32,
+}
+
+
+impl Person {
+    fn new(height: i32, age: i32) -> Person {
+        Person { height, age }
+    }
+}
+```
+
 #### Sum Data Types
 
 Sum types should be understood as a method to specify a number of distinct alternatives for some data. While supported in Leaf, Rust style Enums cannot contain quantum data:
