@@ -183,8 +183,100 @@ let a = [1, 2, 3];
 let first = a[0];
 let n = a.len();
 
+//////////////////////////////////////////////
+// (9) Array slices and slice references:
+//////////////////////////////////////////////
+
+// A slice is a borrowed view into a contiguous part of an array.
+// Its type is &[T] (shared) or &mut [T] (mutable), exactly as in Rust.
+//
+// QUBIT EXCEPTION (see section 11): qubit references are mutable by default,
+// so a qubit slice is written &[qubit] and is already mutable. 'mut' is never
+// written on a qubit reference: there is no &mut [qubit] and no &mut qubit.
+// For every other element type slices behave exactly like Rust: &[T] is
+// read-only and &mut [T] is required to mutate.
+
+// --- Creating a slice from an array (range syntax, identical to Rust) ---
+
+let a: [i32; 5] = [10, 20, 30, 40, 50];
+
+let s: &[i32] = &a[..];      // whole array as a slice
+let s: &[i32] = &a[1..4];    // exclusive range: indices 1, 2, 3
+let s: &[i32] = &a[1..=3];   // inclusive range: indices 1, 2, 3
+let s: &[i32] = &a[2..];     // from index 2 to the end
+let s: &[i32] = &a[..3];     // from the start, up to (excluding) index 3
+let s: &[i32] = &a[..=3];    // from the start, up to and including index 3
+
+// the slice type can be inferred:
+let s = &a[1..4];
+
+// --- Length, indexing, and re-slicing a slice ---
+
+let n = s.len();             // number of elements in the slice
+let x = s[0];                // element access
+let mid: &[i32] = &s[1..n - 1];   // a slice can itself be re-sliced
+
+// out-of-range indices and ranges are an error, as in Rust.
+
+// --- Mutable slices for non-qubit types (needs 'mut', like Rust) ---
+
+let mut m: [i32; 5] = [10, 20, 30, 40, 50];
+let w: &mut [i32] = &mut m[1..4];
+w[0] = 99;                   // writes m[1]
+
+let r: &[i32] = &m[..];
+// r[0] = 0;                 // ERROR: cannot assign through a shared &[i32]
+
+// --- Qubit slices: mutable by default, never write 'mut' ---
+
+let qs: [qubit; 4] = qalloc(4);
+
+let qv: &[qubit] = &qs[..];  // borrowed view; the range forms above apply unchanged
+
+H(&qv[0]);                   // gates apply in place through the slice
+CX(&qv[1], &qv[2]);          // borrowed (in-place) two-qubit form
+
+// let bad: &mut [qubit] = &mut qs[..];   // ERROR: 'mut' not allowed on qubit refs
+//
+// Because qubit references are mutable by default, qubit slices follow the
+// EXCLUSIVE borrow rule (like &mut): two overlapping qubit slices cannot be
+// live at the same time, which is what preserves linearity / no-cloning.
+// Shared &[T] slices of non-qubit types may overlap freely, exactly as in Rust.
+
+// --- Slices as function parameters ---
+
+// non-qubit, read-only:
+classical fn sum(xs: &[i32]) -> i32 {
+    let mut total = 0;
+    for i in 0..xs.len() {
+        total += xs[i];
+    }
+    total
+}
+
+// non-qubit, mutable: requires &mut, exactly like Rust:
+classical fn zero_out(xs: &mut [i32]) {
+    for i in 0..xs.len() {
+        xs[i] = 0;
+    }
+}
+
+// qubit slice: plain &[qubit] (mutable by default), recursing over the tail:
+unitary fn apply_hadamard_layer(qs: &[qubit]) {
+    if qs.len() == 0 {
+        return;
+    }
+    H(&qs[0]);
+    apply_hadamard_layer(&qs[1..]);
+}
+
+// --- Array-to-slice coercion at call sites (like Rust) ---
+
+sum(&a);                     // &[i32; 5] coerces to &[i32]
+apply_hadamard_layer(&qs);   // &[qubit; 4] coerces to &[qubit]
+
 /////////////////////////////////////////////////////////////////
-// (9) Syntax for allocating qubits and working with bits/qubits
+// (10) Syntax for allocating qubits and working with bits/qubits
 /////////////////////////////////////////////////////////////////
 
 // explicit type annotations for qubits and bits
@@ -201,7 +293,7 @@ let qs = qalloc(3);
 let b = measr(q);
 
 //////////////////////////////////////////////////////////////////////////
-// (10) Declaring basis strings literals (arrays of 0 and 1, +, -, I, i):
+// (11) Declaring basis strings literals (arrays of 0 and 1, +, -, I, i):
 //////////////////////////////////////////////////////////////////////////
 
 let state = bs"10110010";
@@ -210,7 +302,7 @@ let state = bs"10+-+-001";
 let state = bs"iiiiIIIII";
 
 //////////////////////////////////////////////
-// (11) Syntax for type qualifiers for qubits
+// (12) Syntax for type qualifiers for qubits
 //////////////////////////////////////////////
 
 // linear qubits: must be consumed exactly once, no copying or implicit discarding allowed (discarding must be explicit via the discard keyword)
@@ -238,7 +330,7 @@ let affine scratch q: qubit = qalloc();
 let affine scratch qs: [qubit; 2] = qalloc(2);
 
 /////////////////////////////////////////
-// (12) Syntax for working with Quantum Gates
+// (13) Syntax for working with Quantum Gates
 /////////////////////////////////////////
 
 // canonical gate application syntax:
@@ -260,7 +352,7 @@ let (q0, q1) = CX(q0, q1);
 CX(&q0, &q1);
 
 ///////////////////////////////////////////
-// (13) Built-in quantum gate identifiers:
+// (14) Built-in quantum gate identifiers:
 ///////////////////////////////////////////
 
 Id, X, Y, Z, H, S, SDG, T, TDG, SX, SXDG, RX, RY, RZ, U1, U2, U3, CNOT, CX, CY, CZ, CS, CSDG, CT, CTDG, CSX, CSXDG, CRX, CRY, CRZ, CU1, CU2, CU3, SWAP, RXX, RYY, RZZ, CCX, CSWAP, GPI, GPI2, MS, ZZ
@@ -328,7 +420,7 @@ let (q0, q1) = MS(1.0, 2.0, q0, q1);
 let (q0, q1) = ZZ(1.0, q0, q1);
 
 ////////////////////////////////////////////////////////
-// (14) Apply higher-order control gate modifiers: ctrl
+// (15) Apply higher-order control gate modifiers: ctrl
 ////////////////////////////////////////////////////////
 
 // canonical controlled gate
@@ -370,7 +462,7 @@ ctrl(&q0, &q1).on(bs"++") {
 }
 
 //////////////////////////
-// (15) Adjoint Operator:
+// (16) Adjoint Operator:
 //////////////////////////
 
 // adjoint as higher order function:
@@ -396,7 +488,7 @@ adjoint(CT)(&q1, &q2);
 adjoint(H)(&q1);
 
 //////////////////////////////
-// (16) Arithmetic Operators:
+// (17) Arithmetic Operators:
 //////////////////////////////
 
 let add = 5 + 3;
@@ -412,7 +504,7 @@ x /= 3;
 x %= 4;
 
 //////////////////////////////
-// (17) Boolean Operators:
+// (18) Boolean Operators:
 //////////////////////////////
 
 let c = !a;
@@ -421,7 +513,7 @@ let e = a || b;
 
 
 ////////////////////////////
-// (18) Bitwise operations:
+// (19) Bitwise operations:
 ////////////////////////////
 
 let and_bit : bit = a & b;
@@ -439,7 +531,7 @@ x <<= 1;
 x >>= 1;
 
 //////////////////////////////////
-// (19) Classical If/Else syntax:
+// (20) Classical If/Else syntax:
 //////////////////////////////////
 
   // Like in Rust,else associates with the nearest preceding unmatched if.
@@ -479,7 +571,7 @@ if x < 0 {
 // Like in Rust, else associates with the nearest preceding unmatched if. 
 
 ///////////////////////////////////////////////
-// (20) qif/qelse quantum conditionals syntax:
+// (21) qif/qelse quantum conditionals syntax:
 ///////////////////////////////////////////////
 
   // Like in Rust, qelse associates with the nearest preceding unmatched qif.
@@ -498,7 +590,7 @@ if x < 0 {
   let (q1, q2, q3) = qif q1 expression1(q2, q3) qelse expression2(q2, q3);
 
 ///////////////////////////////////////////////
-// (21) sif/selse quantum conditionals syntax:
+// (22) sif/selse quantum conditionals syntax:
 ///////////////////////////////////////////////
 
   // Unlike in Rust, selse is NOT optional
@@ -521,7 +613,7 @@ if x < 0 {
     (plus - minus).tensor(plus + phase(PI/2) * minus);
 
 ///////////////////////////////////////////
-// (22) Classical Rust style match syntax:
+// (23) Classical Rust style match syntax:
 ///////////////////////////////////////////
 
 match x {
@@ -562,7 +654,7 @@ match x {
 }
 
 ////////////////////////////////////////////////
-// (23) Quantum match style expressions qmatch:
+// (24) Quantum match style expressions qmatch:
 ////////////////////////////////////////////////
 
 let (qs, q1, q2, q3) = qmatch qs {
@@ -601,7 +693,7 @@ qmatch &qs {
 _ => f()
 
 ////////////////////////////////////////////////
-// (24) Quantum match style expressions smatch:
+// (25) Quantum match style expressions smatch:
 ////////////////////////////////////////////////
 
 // Unlike in Rust, wildcard patterns are NOT supported for smatch. 
@@ -634,7 +726,7 @@ smatch &qs {
 }
 
 ////////////////////////////////
-// (25) Rust block expressions:
+// (26) Rust block expressions:
 ////////////////////////////////
 
 let x = {
@@ -648,7 +740,7 @@ let unit = {
 };
 
 ///////////////////////////////////
-// (26) Syntax for declaring loops:
+// (27) Syntax for declaring loops:
 ///////////////////////////////////
 
 let mut count = 0;
@@ -660,7 +752,7 @@ loop {
 }
 
 ///////////////////////////////////////////////////////
-// (27) Syntax for declaring loops that return a value:
+// (28) Syntax for declaring loops that return a value:
 ///////////////////////////////////////////////////////
 
 let mut count = 0;
@@ -674,7 +766,7 @@ let result = loop {
 };
 
 ///////////////////////////
-// (28) While loop syntax:
+// (29) While loop syntax:
 ///////////////////////////
 
 while count <= 5 {
@@ -682,7 +774,7 @@ while count <= 5 {
 }
 
 ////////////////
-// (29) Ranges:
+// (30) Ranges:
 ///////////////
 
 // exclusive range:
@@ -707,7 +799,7 @@ a..=b
 (0..n).rev()
 
 /////////////////////////
-// (30) For loop syntax:
+// (31) For loop syntax:
 /////////////////////////
 
 // using a range in a for loop:
@@ -717,14 +809,14 @@ for i in 1..6 {
 }
 
 /////////////////////////
-// (31) Declaring tuples:
+// (32) Declaring tuples:
 /////////////////////////
 
 let t: (i32, f64, bool) = (1, 3.14, true);
 let t = (1, 3.14, true);
   
 ////////////////////////////////////
-// (32) Tuples positional indexing:
+// (33) Tuples positional indexing:
 ////////////////////////////////////
 
 let x = t.0;
@@ -737,7 +829,7 @@ let q0 = qubits.0;
 let q1 = qubits.1;
 
 //////////////////////////////////////////
-// (33) Extracting variables from tuples:
+// (34) Extracting variables from tuples:
 //////////////////////////////////////////
 
 let (a, b, c) = (1, 2, 3);
@@ -745,21 +837,21 @@ let (x, _, z) = (1, 2, 3);
 let (q0, q1, q2) = (H(q0), H(q1), H(q2));
 
 ///////////////////////
-// (34) If expressions
+// (35) If expressions
 ////////////////////////
 
 let boolflag = true;
 let x : i32 = if boolflag { 1 } else { 2 };
 
 ///////////////////////
-// (35) Type casting:
+// (36) Type casting:
 ///////////////////////
 
 let b : bit = 1;
 let x = b as i32;
 
 //////////////////////
-// (36) Reset qubits:
+// (37) Reset qubits:
 //////////////////////
 
 let q: qubit = qalloc();
@@ -773,7 +865,7 @@ let qs = reset(qs);
 reset(&qs);
 
 //////////////////////
-// (37) Discard qubits:
+// (38) Discard qubits:
 //////////////////////
 
 let q: qubit = qalloc();
@@ -783,7 +875,7 @@ let qs: [qubit; 3] = qalloc(3);
 discard(qs);
 
 /////////////////////////////////////////////////////////////////////////////////
-// (38) uncompute qubits: reverse the reversible computation that produced these
+// (39) uncompute qubits: reverse the reversible computation that produced these
 // qubits, returning them to |0⟩ when the compiler can verify that this is valid.
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -798,7 +890,7 @@ let qs = uncompute(qs);
 uncompute(&qs);
 
 //////////////////////////////////////////////////////////
-// (39) Weakening qubits: demote linear qubits to affine:
+// (40) Weakening qubits: demote linear qubits to affine:
 //////////////////////////////////////////////////////////
 
 let linear q: qubit = qalloc();
@@ -808,14 +900,14 @@ let linear qs: [qubit; 3] = qalloc(3);
 let affine qs = weaken(qs);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (40) ':=' marks the resulting qubit binding as automatically uncomputed when the enclosing function returns:
+// (41) ':=' marks the resulting qubit binding as automatically uncomputed when the enclosing function returns:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 let q: qubit := fun(q);
 let qs: [qubit; 3] := fun(qs);
 
 //////////////////////////
-// (41) Measuring qubits:
+// (42) Measuring qubits:
 //////////////////////////
 
 let q: qubit = qalloc();
@@ -834,7 +926,7 @@ let bs : [bit; 3] = measr(&qs);
 let (b0, b1, b2) = measr(qs);
 
 ////////////////////////
-// (42) Barrier syntax:
+// (43) Barrier syntax:
 ////////////////////////
 
 barrier();
@@ -842,7 +934,7 @@ let (q0, q1, q2) = barrier(q0, q1, q2);
 barrier(&q0, &q1);
 
 ////////////////////////////////////////////////////////////////////
-// (43) declaring and using modules and imports follows Rust syntax:
+// (44) declaring and using modules and imports follows Rust syntax:
 ////////////////////////////////////////////////////////////////////
 
 // like in Rust, the pub keyword is an access modifier that makes items accessible outside of the module where are defined
@@ -863,7 +955,7 @@ fn main() {
 }
 
 //////////////////////////
-// (44) Functions syntax:
+// (45) Functions syntax:
 //////////////////////////
 
 fn function_name() {
@@ -876,7 +968,7 @@ const fn square(x: i32) -> i32 {
 }
 
 ///////////////////////////////////////
-// (45) Function with typed arguments:
+// (46) Function with typed arguments:
 ///////////////////////////////////////
 
 fn add(x: i32, y: i32) -> i32 {
@@ -884,7 +976,7 @@ fn add(x: i32, y: i32) -> i32 {
 }
 
 //////////////////////////////////////////
-// (46) Function returning some variable:
+// (47) Function returning some variable:
 //////////////////////////////////////////
 
 fn f(x: f32) -> f32 {
@@ -893,7 +985,7 @@ fn f(x: f32) -> f32 {
 }
 
 ///////////////////////////////////////////////////////////
-// (47) Alternative syntax for function returning a value:
+// (48) Alternative syntax for function returning a value:
 ///////////////////////////////////////////////////////////
 fn f() -> f64 {
     let x = 2.0;
@@ -901,14 +993,14 @@ fn f() -> f64 {
 }
 
 //////////////////////////////////////////////////////
-// (48) Variable declared in the scope of a function:
+// (49) Variable declared in the scope of a function:
 //////////////////////////////////////////////////////
 fn my_function() {
   let i = 10;
 }
 
 ///////////////////////////////////////////////////////////
-// (49) Functions using references and mutable references:
+// (50) Functions using references and mutable references:
 ///////////////////////////////////////////////////////////
 
 struct Person {
@@ -925,7 +1017,7 @@ fn my_function(person: &mut Person) {
 }
 
 //////////////////////////////////////////////////////////
-// (50) mutable variable declared in a local block scope:
+// (51) mutable variable declared in a local block scope:
 //////////////////////////////////////////////////////////
 
 {
@@ -939,7 +1031,7 @@ fn f(mut x: i32) -> i32 {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// (51) Function Effect Qualifiers: classical, uncompsafe, unitary, isometry, coisometry, general
+// (52) Function Effect Qualifiers: classical, uncompsafe, unitary, isometry, coisometry, general
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 // function effects are optional Rust style function qualifiers used by the Leaf type checker to verify Leaf code.
@@ -988,7 +1080,7 @@ general fn sample(q: qubit) -> bit {
 }
 
 /////////////////////////
-// (52) Integer literals
+// (53) Integer literals
 /////////////////////////
 
 let x = 1000;
@@ -1012,7 +1104,7 @@ let z = 123i32;
 let z = 123_i32;
 
 ////////////////////////////////
-// (53) Floating point literals
+// (54) Floating point literals
 ////////////////////////////////
 
 let x = 1.0;
@@ -1028,7 +1120,7 @@ let f = 0.1f32;
 let f = 5f32; 
 
 ///////////////////////////////////////
-// (54) Byte and bytes string literals
+// (55) Byte and bytes string literals
 ///////////////////////////////////////
 
 let b = b'a';
@@ -1040,7 +1132,7 @@ let bs = b"ABC\x41";
 
 
 ////////////////////////////////////////////////////
-// (55) Rust style enums containing classical data:
+// (56) Rust style enums containing classical data:
 ////////////////////////////////////////////////////
 
 // Unit-like enums:
@@ -1074,7 +1166,7 @@ let msg = Message::Move { x: 10, y: 20 };
 // important note: like Rust enums can mix unit-like, tuple-like and struct-like variants in the same enum declaration, but for brevity we only show one variant of each kind in the examples above.
 
 //////////////////////////////////////////////////
-// (56) Rust style enums containing quantum data:
+// (57) Rust style enums containing quantum data:
 //////////////////////////////////////////////////
 
 // Leaf qenum, only tuple-like qenums are supported for quantum data:
@@ -1089,7 +1181,7 @@ let x = Data::Left(q0);
 let y = Data::Right(q1, q2);
 
 ///////////////////////////
-// (57) Rust style structs
+// (58) Rust style structs
 ///////////////////////////
 
 struct Point {
@@ -1130,7 +1222,7 @@ let person = Person::new(30);
 let is_adult = person.is_adult();
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (58) Quantum Contracts Function Clauses: requires, ensures + clean, stabilized, basis, separable, isolated, product
+// (59) Quantum Contracts Function Clauses: requires, ensures + clean, stabilized, basis, separable, isolated, product
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // These are optional code annotations for functions that specify pre- & post-conditions that the quantum data should satisfy:
@@ -1203,7 +1295,7 @@ The following gates can appear in statbilizer expressions: Id, X, Y, Z, H, S, SD
 The "requires" clauses specify the pre-conditions that must hold on the quantum data before the function is called, while the "ensures" clauses specify the post-conditions that must hold on the quantum data after the function returns ao "requires" clauses should precede "ensures" clauses in function signature.
 
 ///////////////////////////////////////////////////////////////
-// (59) Using function as arguments to higher-order functions:
+// (60) Using function as arguments to higher-order functions:
 ///////////////////////////////////////////////////////////////
 unitary fn phase_kickback(
     qs: [qubit; 4],
@@ -1216,7 +1308,7 @@ unitary fn phase_kickback(
 }
 
 //////////////////////////////////////////////////////////
-// (60) Declaring adjoint/controll support for functions:
+// (61) Declaring adjoint/controll support for functions:
 //////////////////////////////////////////////////////////
 
 // Leaf has a special syntax for those functions where the compiler is able to infer that the function is invertible or controllable using the "supports" keyword combined with "adjoint" or "ctrl" keywords respectively.
@@ -1234,7 +1326,7 @@ unitary fn f(q: qubit) supports adjoint, ctrl {
 }
 
 //////////////////////////////////////////////////////////////////////
-// (61) Combining function qualifiers, contracts and support clauses:
+// (62) Combining function qualifiers, contracts and support clauses:
 //////////////////////////////////////////////////////////////////////
 
 unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
@@ -1247,7 +1339,7 @@ unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
 }
 
 ///////////////////////////////////////////////
-// (62) Combining qenums with quantum qmatch:
+// (63) Combining qenums with quantum qmatch:
 ///////////////////////////////////////////////
 
 qenum Data {
@@ -1267,7 +1359,7 @@ unitary fn transform(x: Data) -> Data {
 }
 
 ////////////////////////////////////////////////////////
-// (63) Phase function for representing complex phases:
+// (64) Phase function for representing complex phases:
 ////////////////////////////////////////////////////////
 
 // the phase function can take as arguments a floating
@@ -1278,7 +1370,7 @@ let angle: angle64 = 1.88;
 phase(angle)
 
 ///////////////////////////////////////////////////////////
-// (64) Like in Rust function arguments can be references:
+// (65) Like in Rust function arguments can be references:
 ///////////////////////////////////////////////////////////
 
 fn apply_gate(q: &qubit)
@@ -1294,7 +1386,7 @@ fn main() -> bit {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (65) Top level expressions must be items: functions, structs, enums, impl blocks, use statements, consts:
+// (66) Top level expressions must be items: functions, structs, enums, impl blocks, use statements, consts:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Like in Rust at the top level Leaf expects items:
@@ -1328,7 +1420,7 @@ let i = 1;
 let p = Person { height: 10, age: 20 };
 
 /////////////////////////////////////////////////////////////////////////////
-// (66) Function annotations (only qasm_gate/qasm_def is supported for now):
+// (67) Function annotations (only qasm_gate/qasm_def is supported for now):
 /////////////////////////////////////////////////////////////////////////////
 
 // this function is compiled to a OpenQASM3 subroutine representing an unitary operation
@@ -1364,7 +1456,7 @@ unitary fn myfun(q: qubit) -> bit {
 }
 
 ///////////////////
-// (67) Recursion:
+// (68) Recursion:
 //////////////////
 
 // Purely classical recursion.
@@ -1373,33 +1465,26 @@ classical fn fact(n: u32) -> u32 {
 }
 
 // Circuit-generating unitary recursion over a classical parameter, safe if total and structurally decreasing:
-unitary fn apply_hadamard_layer(n: u32, qs: &[qubit]) {
-    if n == 0 {
+unitary fn apply_hadamard_layer(qs: &[qubit]) {
+    if qs.len() == 0 {
         return;
     }
 
-    H(&qs[n - 1]);
-    apply_hadamard_layer(n - 1, qs);
+    H(&qs[0]);
+
+    apply_hadamard_layer(&qs[1..]);
 }
 
 // Classically controlled recursion:
-```leaf
-general fn repeat_until_zero(q1: qubit) -> qubit {
-    let b = measr(&q1);
-
+general fn sample_until_zero() -> qubit {
+    let q = qalloc();
+    H(&q);
+    let b = measr(&q);
     if b == 0 {
-        return q1;
+        return q;
     } else {
-        let q2 = qalloc();
-
-        H(&q2);
-
-        let q2 = repeat_until_zero(q2);
-
-        CX(&q2, &q1);
-
-        discard(q2);
-        return q1;
+        discard(q);
+        sample_until_zero()
     }
 }
 
