@@ -1121,7 +1121,7 @@ let is_adult = person.is_adult();
 // - clean(qs) - the qubit(s) are all in $|0\rangle$ state and separated from the rest of qubits in the program.
 // - basis([q1, q2, q3], X*Y*Z) - the qubit(s) are in an eigenstate of Pauli string operator like X*Y*Z and separated from the rest of qubits in the program.
 // - separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
-// - isolated(qs) - these qubits are separated from the rest of qubits in the program even if possibly entangled among them. Their evaluation is unaffected by measurement outcomes for other qubits.
+// - isolated(qs) - these qubits are not entangled with the rest of qubits in the program even if possibly entangled among them.
 // - stabilized(qs) - these qubits are in a state which is stabilized by the supplied operators and at the same time they are separated from the rest of qubits in the program.
 // - product(qs, qs') - these qubit sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled to other unspecified qubits in the program.
 
@@ -1170,7 +1170,7 @@ requires stabilized(q, [ -Z ])
 // more complex stabilizer example with multiple qubits and multi-term stabilizers:
 fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
   requires clean([q0, q1, q2])
-  ensures stabilized([q0, q1, q2], [+X*X*X, -Z*Z*Id])
+  ensures stabilized([q0, q1, q2], [+X*X*X, +Z*Z*Id, +Id*Z*Z]])
 {
     H(q0);
     CNOT(q0, q1);
