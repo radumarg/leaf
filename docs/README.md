@@ -8,6 +8,7 @@
 - [Built-ins](builtins.md)
 - [Operators](operators.md)
 - [Two Representations for Qubits](qubit-representations.md)
+- [Borrow Syntax](borrow.md)
 - [Operations on Qubits](quantum-data-operations.md)
 - [Quantum Gates](quantum-gates.md)
 - [Qubit Type Annotations](type-annotations.md)

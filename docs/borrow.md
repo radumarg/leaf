@@ -1,0 +1,3 @@
+### Borrow Syntax
+
+Borrowing syntax in Leaf follows the borrow syntax used by the Rust programming language except for the `qubit` type. Since a qubit cannot be read-only due to [no-cloning theorem](defining-terms.md#what-is-the-no-cloning-theorem), any qubit used as function argument must be consumed either by applying a unitary operation on the qubit (which generates a new qubit), by applying a `measure` or `reset` operation or by explicit discarding using the `discard` built-in function. For this reason `&mut qubit` syntax is redundant and for borrowing qubits the simpler `&qubit` syntax will be used.
