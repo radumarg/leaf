@@ -47,7 +47,13 @@ f32, f64
 bool
 ```
 
-(8) Unit type:
+(8) String type:
+```leaf
+String
+&str
+```
+
+(9) Unit type:
 ```leaf
 ()
 ```

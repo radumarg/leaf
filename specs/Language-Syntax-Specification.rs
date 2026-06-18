@@ -28,7 +28,7 @@
 // (3) Reserved Keywords + Built-in Identifiers: 
 /////////////////////////////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, struct, supports, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, str, String, struct, supports, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
 
 // (I) The following are built-in identifiers that can be used in Leaf programs which ARE part of language syntax and should be parsed as keywords or built-in functions:
 
@@ -82,6 +82,9 @@ bool
 // unit type:
 ()
 
+// string type:
+str, String
+
 ////////////////////////////////
 // (6) Syntax for Basic Types
 ////////////////////////////////
@@ -120,11 +123,6 @@ let unit = ();
 
 // syntax for declaring parameters, here "param" is a builtin function:
 let theta : param = Param("theta");
-
-// Leaf does not yet support strings but strings are required lexically (see below string usages: "qasm_subroutine_name", "X", "Z(q0) * Z(q1)")
-// also see this syntax is accepted for declaring parameters with dynamic names using string interpolation:
-let i: i32 = 1;
-let theta: param = Param(format!("theta_{i}"));
 
 // var assignment syntax for basic types:
 let mut x : i32 = 0;
@@ -1489,3 +1487,63 @@ general fn sample_until_zero() -> qubit {
 }
 
 // Quantum controlled recursion and recursive quantum types are not supported at this moment
+
+/////////////////
+// (69) Strings:
+/////////////////
+
+// Like in Rust, Leaf supports string literals. Leaf does not have a print statement and since Leaf commpiles to OpenQasm3 and OpenQASM3 does not have a string type, strings in Leaf are used mainly to help write more expressive code:
+
+// String literal using the string-slice type:
+let message: &str = "Hello, world!";
+
+// Owned strings: String
+let message: String = String::from("Hello");
+
+// A String type owns its allocated text and can be modified:
+let mut text: String = String::from("Hello");
+text.push_str(", world");
+text.push('!');
+
+// String interpolation:
+let first = "Hello";
+let second = "world";
+let message = format!("{first}, {second}!");
+
+// Same code as above but with explicit type annotations and string concatenation:
+let first: &str = "Hello";
+let second: &str = "world";
+let message: &str = first + ", " + second + "!";
+
+// Strings may also be required lexically for Param types. Another example using string interpolation:
+let i: i32 = 1;
+let theta: param = Param(format!("theta_{i}"));
+
+// String ownership and borrowing:
+let owned: String = String::from("Hello");
+let borrowed: &str = &owned;
+
+// Comparing strings:
+let a = "hello";
+let b = "hello";
+
+if a == b {
+    // some code
+}
+
+if a != "world" {
+    // some code
+}
+
+let a = "apple";
+let b = "banana";
+
+if a < b {
+    // some code
+}
+
+// String slices can be indexed and sliced:
+let text = "Hello";
+let a = &text[..2];  // "He"
+let b = &text[2..];  // "llo"
+let c = &text[..];   // "Hello"

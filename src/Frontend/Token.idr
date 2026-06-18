@@ -33,6 +33,8 @@ data TypPrimName
   | TypPrimU64
   | TypPrimU128
   | TypPrimQubit
+  | TypPrimString
+  | TypPrimStrSlice
 
 ------------------------------------------------------
 -- GateName: enumerates the built-in quantum gates.
@@ -371,6 +373,8 @@ typeFromString s =
     "u64"     => Just TypPrimU64
     "u128"    => Just TypPrimU128
     "qubit"   => Just TypPrimQubit
+    "str"     => Just TypPrimStrSlice
+    "String"  => Just TypPrimString
     _         => Nothing
 
 ----------------------------------------------------------------------
@@ -423,7 +427,6 @@ showKeywordLeaf kw =
     KwSelse     => "selse"
     KwSif       => "sif"
     KwSmatch    => "smatch"
-    KwStruct    => "struct"
     KwSupports  => "supports"
     KwThen      => "then"
     KwUncompute => "uncompute"
