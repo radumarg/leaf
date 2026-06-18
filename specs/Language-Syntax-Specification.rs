@@ -1563,3 +1563,10 @@ let text = "Hello";
 let a = &text[..2];  // "He"
 let b = &text[2..];  // "llo"
 let c = &text[..];   // "Hello"
+
+////////////////////////////////////////////////////////////////////////////////////////
+// (71) Silq style automatic uncomputation syntax using := operator for qubit bindings:
+////////////////////////////////////////////////////////////////////////////////////////
+
+let q: qubit := f(q);
+let qs: [qubit; 3] := f(qs);
