@@ -1,4 +1,4 @@
-### Qubit type annotations
+### Qubit Type Annotations
 
 Linear qubits must be used exactly once, no copying or implicit discarding allowed. Linear annotation is the default for qubits, so the 'linear' keyword is optional. Instead of implicit discarding, one should use the `discard()` function to mark qubits programmatically as discarded. Discarding qubits is the programmer's decision and any qubit can be discarded, it is not necessary for it to be in a clean state or separated from the rest of the program qubits. However, one should be aware that discarding a qubit can have [physical consequences](quantum-data-operations.md#operations-on-qubits).
 ```leaf
