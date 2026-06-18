@@ -1069,7 +1069,7 @@ unitary fn f(q: qubit) -> qubit {
   q
 }
 
-// only unitary quantum operations allowed, no  output qubits > input qubits
+// only unitary quantum operations allowed, nr. output qubits > input qubits
 isometry fn f(qs: [qubit; 2]) -> [qubit; 4] {
   let q1 = X(qs[0]);
   let q2 = H(qs[1]);
@@ -1080,7 +1080,7 @@ isometry fn f(qs: [qubit; 2]) -> [qubit; 4] {
   [q1, q2, q3, q4]
 }
 
-// only unitary quantum operations allowed, no  output qubits < input qubits
+// only unitary quantum operations allowed, nr. output qubits < input qubits
 coisometry fn f(qs: [qubit; 3]) -> [qubit; 2] {
   let q0 = X(qs[0]);
   let q1 = H(qs[1]);
@@ -1455,7 +1455,7 @@ unitary fn myfun(q: qubit) -> qubit {
 
 // this function is compiled to a named QASM subroutine with same signature
 #[qasm_def]
-unitary fn myfun(q: qubit) -> bit {
+general fn myfun(q: qubit) -> bit {
   let q = X(q);
   let q = H(q);
   measr(q)
@@ -1463,7 +1463,7 @@ unitary fn myfun(q: qubit) -> bit {
 
 // annotating the function with a string argument
 #[qasm_def("qasm_subroutine_name")]
-unitary fn myfun(q: qubit) -> bit {
+general fn myfun(q: qubit) -> bit {
   let q = X(q);
   let q = H(q);
   measr(q)
