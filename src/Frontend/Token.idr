@@ -33,6 +33,7 @@ data TypPrimName
   | TypPrimU64
   | TypPrimU128
   | TypPrimQubit
+  | TypePrimSQubit
   | TypPrimString
   | TypPrimStrSlice
 
@@ -373,6 +374,7 @@ typeFromString s =
     "u64"     => Just TypPrimU64
     "u128"    => Just TypPrimU128
     "qubit"   => Just TypPrimQubit
+    "squbit"  => Just TypPrimSQubit
     "str"     => Just TypPrimStrSlice
     "String"  => Just TypPrimString
     _         => Nothing

@@ -5,7 +5,7 @@
 
 
 ```leaf
-qalloc(), measr(), discard(), reset(), uncompute(), weaken()
+qalloc(), measr(), discard(), reset(), uncompute(), weaken(), tensor()
 ```
 
 [Quantum contracts](quantum-contracts.md#quantum-contracts):
