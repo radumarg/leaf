@@ -66,7 +66,7 @@ impl Person {
 
 #### Sum Data Types
 
-Sum types should be understood as a method to specify a number of distinct alternatives for some data. While supported in Leaf, Rust style Enums cannot contain quantum data:
+Sum types should be understood as a method to specify a number of distinct alternatives for some data. While supported in Leaf, Rust-style Enums cannot contain quantum data:
 
 ```leaf
 enum Direction {

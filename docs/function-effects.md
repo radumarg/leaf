@@ -1,6 +1,6 @@
 ### Function Effects
 
-These are Rust style function qualifiers used by the Leaf type checker to verify the code. The function effects form a lattice:
+These are Rust-style function qualifiers used by the Leaf type checker to verify the code. The function effects form a lattice:
 
 ```leaf
          general
@@ -32,7 +32,7 @@ uncompsafe fn oracle (ancillas : [qubit; 3]) -> [qubit; 3] { ... }
 unitary fn grover (qubits : [qubit; 7]) -> [qubit; 7] { ... }
 ```
 
-A function qualified as `unitary` containing only unitary quantum operations. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded.
+A function qualified as `unitary` contains only unitary quantum operations. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded.
 
 - a `isometry` function is the same as a `unitary` function except that the number of output qubits is larger than the number of input qubits:
 

@@ -31,7 +31,7 @@ fn had(q: qubit) -> qubit {
 }
 ```
 
-Using `squbit` type, the Hadamard operation can be implemented as well as:
+Using `squbit` type, the Hadamard operation can be implemented as:
 
 ```leaf
 let plusAlias : squbit = zero + one;

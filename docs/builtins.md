@@ -25,7 +25,7 @@ adjoint()
 
 [Control operations](control-modifiers.md):
 ```leaf
-ctrl() + on() + apply()
+ctrl().on().apply()
 ```
 
 Complex-valued helper function needed for quantum states specification:

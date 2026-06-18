@@ -39,7 +39,7 @@ barrier()
 // Adjoint operations
 adjoint()
 // Control operations
-ctrl() + on() + apply()
+ctrl().on().apply()
 // Complex-valued helper function needed for quantum states specification:
 phase()
 // Declaring angle parameters:
@@ -627,7 +627,7 @@ let sq: [squbit; 4] = bs"iI01";
     (plus - minus).tensor(plus + phase(PI/2) * minus);
 
 ///////////////////////////////////////////
-// (24) Classical Rust style match syntax:
+// (24) Classical Rust-style match syntax:
 ///////////////////////////////////////////
 
 match x {
@@ -1048,7 +1048,7 @@ fn f(mut x: i32) -> i32 {
 // (53) Function Effect Qualifiers: classical, uncompsafe, unitary, isometry, coisometry, general
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-// function effects are optional Rust style function qualifiers used by the Leaf type checker to verify Leaf code.
+// function effects are optional Rust-style function qualifiers used by the Leaf type checker to verify Leaf code.
 // Function qualifiers appear before fn keyword and cannot be combined with each other
 
 // no quantum operations allowed
@@ -1146,7 +1146,7 @@ let bs = b"ABC\x41";
 
 
 ////////////////////////////////////////////////////
-// (57) Rust style enums containing classical data:
+// (57) Rust-style enums containing classical data:
 ////////////////////////////////////////////////////
 
 // Unit-like enums:
@@ -1180,7 +1180,7 @@ let msg = Message::Move { x: 10, y: 20 };
 // important note: like Rust enums can mix unit-like, tuple-like and struct-like variants in the same enum declaration, but for brevity we only show one variant of each kind in the examples above.
 
 //////////////////////////////////////////////////
-// (58) Rust style enums containing quantum data:
+// (58) Rust-style enums containing quantum data:
 //////////////////////////////////////////////////
 
 // Leaf qenum, only tuple-like qenums are supported for quantum data:
@@ -1195,7 +1195,7 @@ let x = Data::Left(q0);
 let y = Data::Right(q1, q2);
 
 ///////////////////////////
-// (59) Rust style structs
+// (59) Rust-style structs
 ///////////////////////////
 
 struct Point {
