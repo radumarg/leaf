@@ -86,7 +86,7 @@ fn not(q: qubit) -> qubit {
 ```
 
 ```leaf
-fn cnot(q: qubit) -> qubit {
+fn cnot(q: qubit) -> qubit {TODO
     sif q then
         zero + one
     selse

@@ -1304,7 +1304,7 @@ fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
     CNOT(q0, q2);
 }
 
-The following gates can appear in statbilizer expressions: Id, X, Y, Z, H, S, SDG, SX, SXDG
+The following gates can appear in stabilizer expressions: Id, X, Y, Z, H, S, SDG, SX, SXDG
 
 The "requires" clauses specify the pre-conditions that must hold on the quantum data before the function is called, while the "ensures" clauses specify the post-conditions that must hold on the quantum data after the function returns ao "requires" clauses should precede "ensures" clauses in function signature.
 
@@ -1322,7 +1322,7 @@ general fn phase_kickback(
 }
 
 //////////////////////////////////////////////////////////
-// (62) Declaring adjoint/controll support for functions:
+// (62) Declaring adjoint/control support for functions:
 //////////////////////////////////////////////////////////
 
 // Leaf has a special syntax for those functions where the compiler is able to infer that the function is invertible or controllable using the "supports" keyword combined with "adjoint" or "ctrl" keywords respectively.

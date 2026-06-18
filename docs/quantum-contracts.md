@@ -18,7 +18,7 @@ The following contracts are supported:
 - separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
 - isolated(qs) - these qubits are not entangled with the rest of qubits in the program even if possibly entangled among them.
 - stabilized(qs) - these qubits are in a state which is [stabilized](https://quantumcomputing.stackexchange.com/questions/18235/what-is-a-stabilizer-state) by the supplied operators and at the same time they are separated from the rest of qubits in the program. Within the Clifford gates fragment stabilizer contracts are statically decidable in polynomial time.
-- product(qs, qs') - these qubit sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled to other unspecified qubits in the program.
+- product(qs, qs') - these qubit sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled between each other and may be entangled with other unspecified qubits in the program.
 
 Clean, stabilized, basis, separable, isolated are all unary predicates:
 

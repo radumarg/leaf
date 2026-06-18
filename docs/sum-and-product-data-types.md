@@ -48,7 +48,7 @@ struct Pair {
 }
 ```
 
-The syntax for working with structs is the same with Rust:
+The syntax for working with structs is the same with Rust syntax:
 
 ```leaf
 struct Person {
