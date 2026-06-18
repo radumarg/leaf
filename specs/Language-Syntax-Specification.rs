@@ -1304,7 +1304,7 @@ fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
     CNOT(q0, q2);
 }
 
-The following gates can appear in statbilizer expressions: Id, X, Y, Z, H, S, SDG, SX, SXDG, T, TDG
+The following gates can appear in statbilizer expressions: Id, X, Y, Z, H, S, SDG, SX, SXDG
 
 The "requires" clauses specify the pre-conditions that must hold on the quantum data before the function is called, while the "ensures" clauses specify the post-conditions that must hold on the quantum data after the function returns ao "requires" clauses should precede "ensures" clauses in function signature.
 
@@ -1346,8 +1346,8 @@ unitary fn f(q: qubit) supports adjoint, ctrl {
 unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
     supports adjoint, ctrl
     requires clean(q1)
-    ensures basis(q2)
     requires isolated(qs)
+    ensures basis(q2)
     ensures product(q1, q2, qs) {
     H(&q);
 }

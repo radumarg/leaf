@@ -93,4 +93,4 @@ Contracts form two partially ordered sets with `dirty` for unary predicates and 
               clean(qs)
 ```
 
-The order specifies a refinement relation on predicates, so `ensured clean(qs)` which is more refined should also satisfy `ensures basis(qs, ZZ)` etc. Being the most general state of qubit(s) the `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`.
+The order specifies a refinement relation on predicates, so `ensures clean(qs)` which is more refined should also satisfy `ensures basis(qs, ZZ)` etc. Being the most general state of qubit(s) the `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`.
