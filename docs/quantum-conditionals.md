@@ -31,7 +31,7 @@ qif &q1 {
 }
 ```
 
-It is required of f1 and f2 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded.
+It is required of f1 and f2 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded. The `qelse` branch is optional and if missing it is equivalent to applying the identity operator to the correponding qubits.
 
 #### Generalizing `qif`/`qelse` to `qmatch`
 
@@ -94,7 +94,7 @@ fn cnot(q: qubit) -> qubit {
 }
 ```
 
-The whole function maps a qubit to a qubit and denotes a transformation on q. To grasp this more easily it is useful to realize that `zero` could have been named: `qfalse` and `one`: `qtrue`, following the notation from [Grattage (2008)](./bibliography.md#grattage-2008-overview-qml-haskell). The function returns a symbolic state expression which cannot contain quantum gates or non-unitary qubit operations like measure, reset or discard. In order for the operation to describe a unitary transformation the `sif`/`selse` branches must be provably orthogonal which in the example above is obvious.
+The whole function maps a qubit to a qubit and denotes a transformation on q. To grasp this more easily it is useful to realize that `zero` could have been named: `qfalse` and `one`: `qtrue`, following the notation from [Grattage (2008)](./bibliography.md#grattage-2008-overview-qml-haskell). The function returns a symbolic state expression which cannot contain quantum gates or non-unitary qubit operations like measure, reset or discard. In order for the operation to describe a unitary transformation the `sif`/`selse` branches must be provably orthogonal which in the example above is obvious. Unlike `qelse`, the `selse` branch is NOT optional.
 
 #### Generalizing `sif`/`selse` to `smatch`
 
@@ -108,3 +108,5 @@ smatch &qs {
   bs"11" => (plus - minus).tensor(plus - phase(PI/2) * minus),
 }
 ```
+
+All possible branches must be specified and be provably orthogonal with respect to each other.
