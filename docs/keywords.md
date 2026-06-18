@@ -61,3 +61,52 @@ use
 while
 zero
 ```
+
+### Leaf Reserved Builtin Methods
+
+Cannot be shadowed by a local declaration.
+
+```leaf
+adjoint
+barrier
+ctrl + on + apply
+basis
+clean
+discard
+isolated
+measr
+Param
+phase
+product
+qalloc
+reset
+tensor
+separable
+stabilized
+uncompute
+weaken
+```
+
+### Leaf Prelude Functions
+
+Can be shadowed by a local declaration.
+
+```leaf
+abs
+acos
+asin
+atan
+ceil
+cos
+exp
+floor
+ln
+log2
+log10
+max
+min
+round
+sin
+sqrt
+tan
+```

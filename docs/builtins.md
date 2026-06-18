@@ -38,11 +38,6 @@ Declaring angle parameters:
 Param()
 ```
 
-Declaring owned strings:
-```leaf
-String()
-```
-
 Trigonometric functions:
 ```leaf
 cos(), acos(), sin(), asin(), tan(), atan()
