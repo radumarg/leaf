@@ -1,4 +1,4 @@
-### Leaf basic types
+### Leaf Basic Types
 
 (1) Quantum computing specific types:
 ```leaf
