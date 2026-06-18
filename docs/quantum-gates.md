@@ -64,7 +64,8 @@ U3(1.0, 2.0, 3.0, &q);
 ### Controlled Gates
 
 ```leaf
-CX/CNOT(&q1, &q2);
+CX(&q1, &q2);
+CNOT(&q1, &q2);
 CY(&q1, &q2);
 CZ(&q1, &q2);
 CS(&q1, &q2);

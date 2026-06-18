@@ -32,7 +32,7 @@ general fn deutsch_jozsa() -> [bit; 3] {
     let ancilla = qalloc();
 
     for q in &qs {
-        H(&q);
+        H(q);
     }
 
     let ancilla = prepare_minus(ancilla);
@@ -40,7 +40,7 @@ general fn deutsch_jozsa() -> [bit; 3] {
     let (qs, ancilla) = balanced_oracle(qs, ancilla);
 
     for q in &qs {
-        H(&q);
+        H(q);
     }
 
     let bs = measr(qs);

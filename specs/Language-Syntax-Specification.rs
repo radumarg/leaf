@@ -1327,16 +1327,16 @@ general fn phase_kickback(
 
 // Leaf has a special syntax for those functions where the compiler is able to infer that the function is invertible or controllable using the "supports" keyword combined with "adjoint" or "ctrl" keywords respectively.
 
-unitary fn f(q: qubit) supports adjoint {
-    H(&q);
+unitary fn f(q: &qubit) supports adjoint {
+    H(q);
 }
 
-unitary fn f(q: qubit) supports ctrl {
-    H(&q);
+unitary fn f(q: &qubit) supports ctrl {
+    H(q);
 }
 
-unitary fn f(q: qubit) supports adjoint, ctrl {
-    H(&q);
+unitary fn f(q: &qubit) supports adjoint, ctrl {
+    H(q);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1349,7 +1349,7 @@ unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
     requires isolated(qs)
     ensures basis(q2)
     ensures product(q1, q2, qs) {
-    H(&q);
+    // some code here
 }
 
 ///////////////////////////////////////////////

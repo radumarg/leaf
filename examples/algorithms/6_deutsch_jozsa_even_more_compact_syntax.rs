@@ -8,7 +8,7 @@ unitary fn balanced_oracle(qs: [qubit; 4], ancilla: qubit) -> ([qubit; 4], qubit
     X(&qs[2]);
 
     for q in &qs {
-        ctrl(&q) {
+        ctrl(q) {
             X(&ancilla);
         }
     }
@@ -29,7 +29,7 @@ general fn deutsch_jozsa_balanced() -> [bit; 4] {
 
     // Apply H to input register and ancilla.
     for q in &qs {
-        H(&q);
+        H(q);
     }
     
     H(&ancilla);
@@ -38,7 +38,7 @@ general fn deutsch_jozsa_balanced() -> [bit; 4] {
 
     // Interference step on the input register only.
     for q in &qs {
-        H(&q);
+        H(q);
     }
 
     let bs = measr(qs);
