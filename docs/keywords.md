@@ -4,11 +4,8 @@
 adjoint
 affine
 as
-barrier
-basis
 break
 classical
-clean
 coisometry
 ctrl
 const
@@ -23,7 +20,6 @@ general
 if
 impl
 in
-isolated
 isometry
 let
 linear
@@ -36,7 +32,6 @@ mut
 one
 plus
 plusi
-product
 pub
 qif
 qelse
@@ -47,10 +42,8 @@ return
 scratch
 self
 selse
-separable
 sif
 smatch
-stabilized
 struct
 supports
 then
