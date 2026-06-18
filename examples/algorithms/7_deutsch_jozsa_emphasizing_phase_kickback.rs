@@ -22,7 +22,7 @@ uncompsafe fn balanced_reversible_oracle(
     (qs, target)
 }
 
-unitary fn phase_kickback(
+general fn phase_kickback(
     qs: [qubit; 4],
     oracle: uncompsafe fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
         requires basis(target, X)

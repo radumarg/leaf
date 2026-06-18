@@ -1311,7 +1311,7 @@ The "requires" clauses specify the pre-conditions that must hold on the quantum 
 ///////////////////////////////////////////////////////////////
 // (61) Using function as arguments to higher-order functions:
 ///////////////////////////////////////////////////////////////
-unitary fn phase_kickback(
+general fn phase_kickback(
     qs: [qubit; 4],
     oracle: unitary fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
 ) -> [qubit; 4] {
