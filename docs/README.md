@@ -14,7 +14,7 @@
 - [Quantum Gates](quantum-gates.md)
 - [Function Effects](function-effects.md)
 - [Control Gate Modifiers](control-modifiers.md)
-- [Adjoints and Inverting Operations](adjoint-operator.md)
+- [Adjoint and Inverting Operations](adjoint-operator.md)
 - [Quantum Conditionals](quantum-conditionals.md)
 - [Quantum Contracts](quantum-contracts.md)
 - [Sum and Product Data Types](sum-and-product-data-types.md)
