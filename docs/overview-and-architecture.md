@@ -5,7 +5,7 @@ Leaf builds on a broad body of [research](bibliography.md) in quantum programmin
 
 ### Starting point
 
-Leaf is deliberately designed to replicate Rust’s basic syntax, with conservative extensions for quantum programming which are meant to look and feel like Rust. It follows Rust’s philosophy of strong static type support and extends it to [quantum data](defining-terms.md#what-is-quantum-data) and both unitary and non-unitary [quantum operations](defining-terms.md#what-are-quantum-operations). While the classical fragment follows Rust-like operational semantics, quantum data and quantum operations represent a significant departure from ordinary Rust code. Following Rust philosphy, the compiler provides detailed error diagnostics and warnings, which makes language friendly to interactive AI-assisted code generation.
+Leaf is deliberately designed to replicate Rust’s basic syntax, with conservative extensions for quantum programming which are meant to look and feel like Rust. It follows Rust’s philosophy of strong static type support and extends it to [quantum data](defining-terms.md#what-is-quantum-data) and both unitary and non-unitary [quantum operations](defining-terms.md#what-are-quantum-operations). While the classical fragment follows Rust-like operational semantics, quantum data and quantum operations represent a significant departure from ordinary Rust code. Following the Rust philosophy, the compiler provides detailed error diagnostics and warnings, which makes the language friendly to interactive AI-assisted code generation.
 
 More precisely, Leaf is intended to be a statically typed and safe language. This means that types are checked by the compiler before execution. We aim to build a sound type system which ensures that well-typed programs come with formal guarantees that they behave according to the language’s semantics, without undefined behaviors, type-related execution errors, or attempts to perform non-physical quantum operations, enjoying ancilla qubits management and automatic uncomputation support. Safety ensures that bad runtime behaviors are ruled out by the type system.
 
@@ -14,7 +14,7 @@ More precisely, Leaf is intended to be a statically typed and safe language. Thi
 1. Frontend - Rust-like surface syntax.
 2. Type checker - provides strong type safety for quantum programming with optional automatic uncomputation support.
 3. First compiler pass - translation of the surface syntax to a typed, small core, high-level IR based on quantum lambda calculus.
-4. Second compiler pass - translates high level IR code to an intermediate IR implemented as an Idris2 DSL.
+4. Second compiler pass - translates high-level IR code to an intermediate IR implemented as an Idris2 DSL.
 5. Third compiler pass - serialization of Idris2 DSL to a low-level IR backend target:
    - OpenQASM3 for now.
    - QIR to be added later.
@@ -29,5 +29,5 @@ Leaf will support formal verification by combining static type checks across mul
 - The quantum gates & quantum circuit oriented Idris DSL intermediate IR representation provides additional support for Lean verification of unitary fragments of quantum code.
 - Correctness of language lowering: the translations to the Idris DSL and subsequently to OpenQASM3/QIR should preserve the semantics of the high-level IR (denotational semantics preservation).
 
-The Idris2 DSL does not enforce a full typing discipline, but it is equipped with correctness guarantees expressed using Idris2’s dependent type system and builtin-in proof support, ensuring that qubit indices used in gate applications are valid, control qubits are distinct from target qubits, and all control/target qubits are pairwise distinct when multiple qubits are involved. This is an extra check in the spirit of LLVM -verify pattern.
+The Idris2 DSL does not enforce a full typing discipline, but it is equipped with correctness guarantees expressed using Idris2’s dependent type system and built-in proof support, ensuring that qubit indices used in gate applications are valid, control qubits are distinct from target qubits, and all control/target qubits are pairwise distinct when multiple qubits are involved. This is an extra check in the spirit of LLVM -verify pattern.
   
