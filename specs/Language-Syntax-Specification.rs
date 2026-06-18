@@ -1269,7 +1269,7 @@ basis([q1, q2], XX)
 separable([q1, q2])
 isolated([q1, q2])
 
-// stabilized, takes as second argument as a list signed Pauli strings:
+// stabilized, takes as second argument as a list signed Pauli strings representing stabilizers, where each element in the list is a stabilizer and the contract expresses an exact stabilizer state for the qubits in the first argument:
 stabilized(qs, [ +ZI, -ZZ ])
 
 // product takes multiple arguments which are either qubits or arrays of qubits:

@@ -1,9 +1,9 @@
 
-### Quantum Conditionals and Generalization
+## Quantum Conditionals and Generalization
 
 Quantum conditionals are the first step in an attempt to go beyond the *quantum data + classical control* paradigm of quantum programming [[Selinger (2004)]](./bibliography.md#selinger-2004-towards-quantum-programming-language) which is based on the QRAM model of a quantum computation [[Knill (1996)]](./bibliography.md#knill-1996-conventions-quantum-pseudocode). The path from here toward more general quantum control over quantum data will probably be an interesting journey.
 
-#### Resource-oriented qubits model: `qif`/`qelse`/`qmatch`
+### (1) Resource-oriented qubits model: `qif`/`qelse`/`qmatch`
 
 For a [resource oriented](qubit-representations.md#resource-oriented-qubit-model) qubits model, a quantum conditional on qubit q means applying two quantum operations on some other set of qubits depending on the state of `q` coherently without measuring it. The precise semantics of this construction is discussed [here](defining-terms.md#what-are-quantum-conditionals).
 
@@ -32,6 +32,8 @@ qif &q1 {
 ```
 
 It is required of f1 and f2 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded.
+
+#### Generalizing `qif`/`qelse` to `qmatch`
 
 A generalization of quantum conditional for multiple branches implies coherent control over qubits `qs` without performing measurements:
 
@@ -73,7 +75,7 @@ A generalization of quantum conditional for multiple branches implies coherent c
 
 Similar conditions that apply to quantum conditionals branches apply here as well for functions in `qmatch` branches. Like in Rust, match must be exhaustive and `_ => ` is supported.
 
-#### (2) State-oriented qubits model: `sif`/`selse`/`smatch`
+### (2) State-oriented qubits model: `sif`/`selse`
 
 For a [state oriented](qubit-representations.md#state-oriented-qubit-model) qubits model the elementary quantum conditional example is the X gate represented as a coherent operation via:
 
@@ -93,3 +95,16 @@ fn cnot(q: qubit) -> qubit {
 ```
 
 The whole function maps a qubit to a qubit and denotes a transformation on q. To grasp this more easily it is useful to realize that `zero` could have been named: `qfalse` and `one`: `qtrue`, following the notation from [Grattage (2008)](./bibliography.md#grattage-2008-overview-qml-haskell). The function returns a symbolic state expression which cannot contain quantum gates or non-unitary qubit operations like measure, reset or discard. In order for the operation to describe a unitary transformation the `sif`/`selse` branches must be provably orthogonal which in the example above is obvious.
+
+#### Generalizing `sif`/`selse` to `smatch`
+
+A generalization of quantum conditional state expressions for multiple branches implies coherent control over qubits `qs` without performing measurements:
+
+```leaf
+smatch &qs {
+  bs"00" => (zero + one).tensor(zero - phase(PI/2) * one),
+  bs"01" => (plus - minus).tensor(plus + phase(PI/2) * minus),
+  bs"10" => (zero - one).tensor(zero + phase(PI/2) * one),
+  bs"11" => (plus - minus).tensor(plus - phase(PI/2) * minus),
+}
+```
