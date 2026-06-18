@@ -58,14 +58,14 @@ The control block expression has the effect to apply the control operation to al
 Leaf has a special syntax for those functions where the compiler is able to infer that the function is controllable using the `supports` keyword combined with `ctrl`:
 
 ```leaf
-unitary fn f(q: qubit) supports ctrl {
-    H(&q);
+unitary fn f(q: &qubit) supports ctrl {
+    H(q);
 }
 
 Control and adjoint supports clauses can be combined:
 
-unitary fn f(q: qubit) supports adjoint, ctrl {
-    H(&q);
+unitary fn f(q: &qubit) supports adjoint, ctrl {
+    H(q);
 }
 ```
 

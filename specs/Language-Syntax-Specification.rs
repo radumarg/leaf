@@ -1081,11 +1081,14 @@ isometry fn f(qs: [qubit; 2]) -> [qubit; 4] {
 }
 
 // only unitary quantum operations allowed, nr. output qubits < input qubits
-coisometry fn f(qs: [qubit; 3]) -> [qubit; 2] {
-  let q0 = X(qs[0]);
-  let q1 = H(qs[1]);
-  discard(qs[2]);
-  [q0, q1]
+coisometry fn remove_clean_ancilla(
+    qs: [qubit; 3]
+) -> [qubit; 2]
+requires clean(qs[2])
+requires separable(qs[2], [qs[0], qs[1]])
+{
+    discard(qs[2]);
+    [qs[0], qs[1]]
 }
 
 // may include measurements, reset, discard quantum operations
@@ -1287,7 +1290,7 @@ fn oracle(x: qubit, ancillas: [qubit; 3])
 fn oracle(q1: qubit, q2: qubit, qs: [qubit; 2])
   requires clean(q1)
   requires isolated(qs)
-  ensures product([q1, q2, qs]){
+  ensures product([q1, q2], qs){
     // some code here
 }
 
@@ -1567,6 +1570,8 @@ let c = &text[..];   // "Hello"
 ////////////////////////////////////////////////////////////////////////////////////////
 // (71) Silq style automatic uncomputation syntax using := operator for qubit bindings:
 ////////////////////////////////////////////////////////////////////////////////////////
+
+// The := operator marks the resulting qubit binding as automatically uncomputed when the enclosing function returns. This is similar to Silq's automatic uncomputation feature.
 
 let q: qubit := f(q);
 let qs: [qubit; 3] := f(qs);

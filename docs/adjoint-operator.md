@@ -75,16 +75,16 @@ The adjoint block expression replaces each unitary gate within the block and its
 Leaf has a special syntax for those functions where the compiler is able to infer that the function is invertible using the `supports` keyword:
 
 ```leaf
-unitary fn f(q: qubit) supports adjoint {
-    H(&q);
+unitary fn f(q: &qubit) supports adjoint {
+    H(q);
 }
 ```
 
 Control and adjoint supports clauses can be combined:
 
 ```leaf
-unitary fn f(q: qubit) supports adjoint, ctrl {
-    H(&q);
+unitary fn f(q: &qubit) supports adjoint, ctrl {
+    H(q);
 }
 ```
 

@@ -44,14 +44,14 @@ general fn deutsch_jozsa(
     let qs = qalloc(4);
 
     for q in &qs {
-        H(&q);
+        H(q);
     }
 
     // turn a bit-flip oracle into a phase oracle
     let qs = phase_kickback(qs, oracle);
 
     for q in &qs {
-        H(&q);
+        H(q);
     }
 
     measr(qs)

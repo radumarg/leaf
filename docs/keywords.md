@@ -55,7 +55,7 @@ while
 zero
 ```
 
-### Leaf Reserved Builtin Methods
+### Leaf Reserved Built-in Functions
 
 Cannot be shadowed by a local declaration.
 
