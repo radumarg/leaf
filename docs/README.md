@@ -1,6 +1,7 @@
 # Leaf Language Documentation
 
 - [Getting Started](getting-started.md)
+- [Overview and Architecture](overview-and-architecture.md)
 - [Definitions](defining-terms.md)
 - [Keywords](keywords.md)
 - [Operators](operators.md)
