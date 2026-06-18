@@ -129,20 +129,20 @@ like this:
 ```leaf
 qmatch x {
     Left(a) => Left(f(a)),
-    Right(b,c) => Right(g(b,c)),
+    Right(b, c) => Right(g(b, c)),
 }
 ```
 
 will denote something like f ⊕ g. If the input is:
 
 ```leaf
-α · Left(a) + β · Right(b)
+α · Left(a) + β · Right(b, c)
 ```
 
 then the result is:
 
 ```leaf
-α · Left(f(a)) + β · Right(g(b))
+α · Left(f(a)) + β · Right(g(b, c))
 ```
 
 Like in most circuit languages, everything is ultimately encoded into a register of qubits. So the six dimensional space `qubit + (qubit × qubit)` will be embedded into a register of 3 qubits corresponding to an eight dimensional Hilbert space with some unused states. This construction allows the programmer to describe algorithms over subspaces, not just registers and think on a level which is higher than the raw qubit representation of languages like OpenQasm3. For most near-term algorithms this is not very useful, however this construct becomes relevant for algorithms based on: quantum walks, automata, graph states, symbolic states, subspace algorithms.
