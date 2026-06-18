@@ -1,7 +1,7 @@
 
 ### Motivation
 
-Leaf builds on a broad body of [research](bibliography.md) in quantum programming languages. Our goal is to make it a practical language designed for users to write easily and safely useful quantum programs that will run on tomorrow's fault-tolerant quantum processors.
+Leaf builds on a broad body of [research](bibliography.md) in quantum programming languages. Our goal is to create a practical language that enables users to write useful quantum programs easily and safely for tomorrow’s fault-tolerant quantum computers.
 
 ### Starting point
 

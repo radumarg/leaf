@@ -24,4 +24,4 @@
     - [Deutsch-Jozsa Algorithm (3)](even-more-compact-deutsch-jozsa.md)
     - [Deutsch-Jozsa Algorithm (4)](phase-kickback-deutsch-jozsa.md)
     - [Deutsch-Jozsa Algorithm (5)](qmatch-deutsch-jozsa.md)
-- [Previous Work](bibliography.md)
+- [Prior Work](bibliography.md)
