@@ -2,7 +2,7 @@
 
 (1) Quantum computing specific types:
 ```leaf
-bit, qubit, squbit
+bit, qubit, qstate
 ```
 
 where the `qubit` type is used for ordinary qubits, that accept gate(s) application:
@@ -10,11 +10,11 @@ where the `qubit` type is used for ordinary qubits, that accept gate(s) applicat
 let q: qubit = H(q); 
 ```
 
-while the `squbit` is used for expression that declare quantum states like this:
+while the `qstate` is used for expression that declare quantum states like this:
 
 ```leaf
-let plusAlias : squbit = 1/sqrt(2) * (zero + one);
-let oneAlias  : squbit = 1/sqrt(2) * (plus - minus);
+let plusAlias : qstate = 1/sqrt(2) * (zero + one);
+let oneAlias  : qstate = 1/sqrt(2) * (plus - minus);
 ```
 
 (2) Angle types: 32-bit or 64-bit floating-point values in the range [0, 2π)

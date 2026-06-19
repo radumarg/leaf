@@ -80,17 +80,30 @@ Similar conditions that apply to quantum conditionals branches apply here as wel
 For a [state-oriented](qubit-representations.md#state-oriented-qubit-model) qubits model the elementary quantum conditional example is the X gate represented as a coherent operation via:
 
 ```leaf
-fn not(q: qubit) -> qubit {
-    sif q then zero selse one
+unitary fn x(q: qubit) -> qubit {
+    sif q then
+        zero
+    selse
+        one
 }
 ```
 
+An implementation of CNOT gate:
+
 ```leaf
-fn cnot(q: qubit) -> qubit {TODO
-    sif q then
-        zero + one
+unitary fn cnot(c: qubit, t: qubit) -> (qubit, qubit) {
+    sif c then
+        // c = |1>, so flip t
+        sif t then
+            one.tensor(zero)   // |1>|1> ↦ |1>|0>
+        selse
+            one.tensor(one)    // |1>|0> ↦ |1>|1>
     selse
-        zero - phase(PI / 2) * one
+        // c = |0>, so leave t unchanged
+        sif t then
+            zero.tensor(one)   // |0>|1> ↦ |0>|1>
+        selse
+            zero.tensor(zero)  // |0>|0> ↦ |0>|0>
 }
 ```
 
@@ -102,11 +115,11 @@ A generalization of quantum conditional state expressions for multiple branches 
 
 ```leaf
 smatch &qs {
-  bs"00" => (zero + one).tensor(zero - phase(PI/2) * one),
-  bs"01" => (plus - minus).tensor(plus + phase(PI/2) * minus),
-  bs"10" => (zero - one).tensor(zero + phase(PI/2) * one),
-  bs"11" => (plus - minus).tensor(plus - phase(PI/2) * minus),
+  bs"00" => (zero + one).tensor(zero - phase(turns(1/4)) * one),
+  bs"01" => (plus - minus).tensor(plus + phase(turns(1/4)) * minus),
+  bs"10" => (zero - one).tensor(zero + phase(turns(1/4)) * one),
+  bs"11" => (plus - minus).tensor(plus - phase(turns(1/4)) * minus),
 }
 ```
 
-All possible branches must be specified and must describe states that be provably orthogonal with respect to each other.
+All possible branches must be specified and must describe states that be provably orthogonal with respect to each other. The `phase(turns(1/4))` expression based on built-in functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp * i * (π/2)`.

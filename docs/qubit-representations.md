@@ -11,8 +11,7 @@ let q = H(q);
 
 #### State-oriented qubit model
 
-Qubits are represented using a language of expressions denoting vectors or states in a Hilbert space built using the `squbit` typed language constants: `zero`, `one`, `plus`, `minus`, `plusi` and `minusi`. These constants are used inside state expressions and do not denote allocated runtime qubits.
-
+Qubits are represented using a language of expressions denoting vectors or states in a Hilbert space built using the `qstate` typed language constants: `zero`, `one`, `plus`, `minus`, `plusi` and `minusi`. These constants are used inside state quantum expressions and do not denote allocated runtime qubits. An implementation of Hadamard gate using `sif/then/selse` pattern is shown next:
 
 ```leaf
 fn had(q: qubit) -> qubit {
@@ -23,7 +22,7 @@ fn had(q: qubit) -> qubit {
 }
 ```
 
-Is the same as:
+The above code is equivalent to:
 
 ```leaf
 fn had(q: qubit) -> qubit {
@@ -31,15 +30,15 @@ fn had(q: qubit) -> qubit {
 }
 ```
 
-Using `squbit` type, the Hadamard operation can be implemented as:
+Using `qstate` variables, the Hadamard operation can be implemented as:
 
 ```leaf
-let plusAlias : squbit = zero + one;
-let minusAlias : squbit = zero - one;
+let plusAlias : qstate = zero + one;
+let minusAlias : qstate = zero - one;
 
 fn had(q: qubit) -> qubit {
     sif q then minusAlias selse plusAlias
 }
 ```
 
-Note that the overall normalization factor is ignored in state expressions. The state-oriented representation of qubits establishes a denotational unitary expression fragment which is useful among others for generating quantum programs starting from physics denotation instead of relying on an abstract quantum circuit model. The prototypical example for this use case is generating a circuit for QFT from its mathematical definition within the Leaf programming language.
+Note that the overall normalization factor is ignored in quantum state expressions. The state-oriented representation of qubits establishes a denotational unitary expression fragment which is useful among others for generating quantum programs starting from physics denotation instead of relying on an abstract quantum circuit model. The prototypical example for this use case is generating a circuit for QFT from its mathematical definition within the Leaf programming language.

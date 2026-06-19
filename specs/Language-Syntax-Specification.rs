@@ -672,17 +672,17 @@ if x < 0 {
 // (22) qubit state expressions syntax: zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits:
 ///////////////////////////////////////////////
 
-let sq1: squbit = one;
-let sq2: squbit = one;
-let sq: [squbit; 2] = sq1.tensor(sq2);
+let sq1: qstate = one;
+let sq2: qstate = one;
+let sq: [qstate; 2] = sq1.tensor(sq2);
 
-let sq: [squbit; 2] = plus.tensor(zero - phase(1/2) * one);
+let sq: [qstate; 2] = plus.tensor(zero - phase(1/2) * one);
 
-// squbit type variable can be initialized from a basis string literals:
-let sq: squbit = bs"0";
-let sq: squbit = bs"1";
-let sq: [squbit; 2] = bs"++";
-let sq: [squbit; 4] = bs"iI01";
+// qstate type variable can be initialized from a basis string literals:
+let sq: qstate = bs"0";
+let sq: qstate = bs"1";
+let sq: [qstate; 2] = bs"++";
+let sq: [qstate; 4] = bs"iI01";
 
 //////////////////////////////////////////////////////////////////////
 // (23) sif/selse quantum conditionals syntax over state expressions:
@@ -706,6 +706,47 @@ let sq: [squbit; 4] = bs"iI01";
     (zero + one).tensor(zero - phase(1/2) * one)
   selse
     (plus - minus).tensor(plus + phase(1/2) * minus);
+
+  // an implementation of X gate using sif/selse syntax:
+  unitary fn x(q: qubit) -> qubit {
+    sif q then
+        zero
+    selse
+        one
+  }
+  // an implementation of H gate using sif/selse syntax:
+  fn had(q: qubit) -> qubit {
+    sif q then
+        (zero - one)
+    selse
+        (zero + one)
+  }
+  // another implementation of H gate using sif/selse syntax:
+  fn had(q: qubit) -> qubit {
+    sif q then minus selse plus
+  }
+  // another implementation of H gate using sif/selse syntax:
+  let plusAlias : qstate = zero + one;
+  let minusAlias : qstate = zero - one;
+
+  fn had(q: qubit) -> qubit {
+      sif q then minusAlias selse plusAlias
+  }
+  // an implementation of CNOT gate using sif/selse syntax:
+  unitary fn cnot(c: qubit, t: qubit) -> (qubit, qubit) {
+    sif c then
+        // c = |1>, so flip t
+        sif t then
+            one.tensor(zero)   // |1>|1> ↦ |1>|0>
+        selse
+            one.tensor(one)    // |1>|0> ↦ |1>|1>
+    selse
+        // c = |0>, so leave t unchanged
+        sif t then
+            zero.tensor(one)   // |0>|1> ↦ |0>|1>
+        selse
+            zero.tensor(zero)  // |0>|0> ↦ |0>|0>
+  }
 
 ///////////////////////////////////////////
 // (24) Classical Rust-style match syntax:
@@ -812,13 +853,15 @@ smatch &qs {
   3 => state_expression_3(data),
 }
 
-// state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits.
+// state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() and possibly turns function for applying complex phases, and tensor operator for combining states of multiple qubits.
 smatch &qs {
-  bs"00" => (zero + one).tensor(zero - phase(1/2) * one),
-  bs"01" => (plus - minus).tensor(plus + phase(1/2) * minus),
-  bs"10" => (zero - one).tensor(zero + phase(1/2) * one),
-  bs"11" => (plus - minus).tensor(plus - phase(1/2) * minus),
+  bs"00" => (zero + one).tensor(zero - phase(turns(1/4)) * one),
+  bs"01" => (plus - minus).tensor(plus + phase(turns(1/4)) * minus),
+  bs"10" => (zero - one).tensor(zero + phase(turns(1/4)) * one),
+  bs"11" => (plus - minus).tensor(plus - phase(turns(1/4)) * minus),
 }
+
+phase(turns(1/4))  // the same as `exp * i * (π/2)
 
 ////////////////////////////////
 // (27) Rust block expressions:

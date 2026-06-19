@@ -60,7 +60,7 @@ uncompute(&qs);
 
 - Tensor product for state expressions - $|1\rangle \otimes |1\rangle$:
 ```leaf
-let sq1: squbit = one;
-let sq2: squbit = one;
-let sq: [squbit; 2] = sq1.tensor(sq2);
+let sq1: qstate = one;
+let sq2: qstate = one;
+let sq: [qstate; 2] = sq1.tensor(sq2);
 ```
