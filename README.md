@@ -17,7 +17,6 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/radumarg/leaf/blob/main/LICENSE)
 ![Status](https://img.shields.io/badge/status-WIP-orange)
 [![Idris 2](https://img.shields.io/badge/Idris%202-v0.8.0-blue.svg)](https://github.com/idris-lang/Idris2/releases/tag/v0.8.0)
-![Quantum Programming](https://img.shields.io/badge/domain-quantum%20programming-0f766e)
 ![Lean4](https://img.shields.io/badge/Lean4-theorem%20proving-6f42c1)
 <!-- [![Supported By Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.foundation/) -->
 
