@@ -5,7 +5,7 @@ Quantum conditionals are the first step in an attempt to go beyond the *quantum 
 
 ### (1) Resource-oriented qubits model: `qif`/`qelse`/`qmatch`
 
-For a [resource oriented](qubit-representations.md#resource-oriented-qubit-model) qubits model, a quantum conditional on qubit q means applying two quantum operations on some other set of qubits depending on the state of `q` coherently without measuring it. The precise semantics of this construction is discussed [here](defining-terms.md#what-are-quantum-conditionals).
+For a [resource-oriented](qubit-representations.md#resource-oriented-qubit-model) qubits model, a quantum conditional on qubit q means applying two quantum operations on some other set of qubits depending on the state of `q` coherently without measuring it. The precise semantics of this construction is discussed [here](defining-terms.md#what-are-quantum-conditionals).
 
 ```leaf
 fn f1(q1 : qubit, q2 : qubit) -> (qubit, qubit) { ... }
@@ -31,7 +31,7 @@ qif &q1 {
 }
 ```
 
-It is required of f1 and f2 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded. The `qelse` branch is optional and if missing it is equivalent to applying the identity operator to the correponding qubits.
+It is required of f1 and f2 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded. The `qelse` branch is optional and if missing it is equivalent to applying the identity operator to the corresponding qubits.
 
 #### Generalizing `qif`/`qelse` to `qmatch`
 
@@ -77,7 +77,7 @@ Similar conditions that apply to quantum conditionals branches apply here as wel
 
 ### (2) State-oriented qubits model: `sif`/`selse`
 
-For a [state oriented](qubit-representations.md#state-oriented-qubit-model) qubits model the elementary quantum conditional example is the X gate represented as a coherent operation via:
+For a [state-oriented](qubit-representations.md#state-oriented-qubit-model) qubits model the elementary quantum conditional example is the X gate represented as a coherent operation via:
 
 ```leaf
 fn not(q: qubit) -> qubit {
@@ -109,4 +109,4 @@ smatch &qs {
 }
 ```
 
-All possible branches must be specified and be provably orthogonal with respect to each other.
+All possible branches must be specified and must describe states that be provably orthogonal with respect to each other.

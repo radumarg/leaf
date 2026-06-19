@@ -2,8 +2,6 @@
 
 
 [Qubit operations](quantum-data-operations.md#operations-on-qubits):
-
-
 ```leaf
 qalloc(), measr(), discard(), reset(), uncompute(), weaken(), tensor()
 ```
@@ -28,22 +26,27 @@ adjoint()
 ctrl().on().apply()
 ```
 
-Complex-valued helper function needed for quantum states specification:
+Complex-valued phase() prelude function is often used as helper for quantum states specification:
 ```leaf
-phase()
+phase(1.23) = exp(i * 1.23);
 ```
 
-Declaring angle parameters:
+The turns() prelude function translates floating point numbers representing fractions of 2π into angle type values:
+```leaf
+turns(0.25) = π/2;
+```
+
+Declaring angle parameters via Param() built-in:
 ```leaf
 Param()
 ```
 
-Trigonometric functions:
+Trigonometric prelude functions:
 ```leaf
 cos(), acos(), sin(), asin(), tan(), atan()
 ```
 
-Math utility functions:
+Math utility prelude functions:
 ```leaf
 abs(), exp(), ceil(), floor(), ln(), log2(), log10(), max(), min(), round(), sqrt()
 ```

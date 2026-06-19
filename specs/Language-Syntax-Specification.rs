@@ -40,14 +40,16 @@ barrier()
 adjoint()
 // Control operations
 ctrl().on().apply()
-// Complex-valued helper function needed for quantum states specification:
-phase()
-// Declaring angle parameters:
-Param()
 
-// (II) The following are built-in mathematical functions that can be used in Leaf programs. These are NOT part of language syntax, they should be parsed as regular functions:
+// (II) The following are prelude mathematical functions that can be used in Leaf programs. These are NOT part of language syntax, they should be parsed as regular functions:
 cos(), acos(), sin(), asin(), tan(), atan()
 abs(), exp(), ceil(), floor(), ln(), log2(), log10(), max(), min(), round(), sqrt()
+// Declaring angle parameters, part of prelude:
+Param()
+// phase() is a complex-valued helper function part of prelude needed for quantum states specification: phase(1.23) = exp(i * 1.23)
+phase()
+// turns() part of prelude translates floating point numbers representing fractions of 2π into angle types, so turns(0.25) = π/2, turns(0.5) = π, turns(1.0) = 2π, etc.
+turns()
 
 //////////////////////////////////////////////////////////////
 // (4) Reserved delimiters, punctuation, and operator tokens:
@@ -63,7 +65,7 @@ abs(), exp(), ceil(), floor(), ln(), log2(), log10(), max(), min(), round(), sqr
 bit, qubit
 
 // additional quantum types:
-// - angle type is similar to OpenQasm3's angle type
+// - angle type is similar to OpenQasm3's angle type,  represents values modulo 2π using 32 or 64 bits
 // - symbolic compile-time parameters param type is similar to Qiskit's Parameter type
 angle32, angle64, param
 
@@ -145,8 +147,55 @@ let mut x = 10;
 let r: &mut i32 = &mut x;
 
 // const variables
-const PI: f64 = 3.141592653589793;
 const FIVE: i32 = 5;
+
+// Rust-style casts are supported for primitive types:
+
+  // signed integers
+  let x: i8 = 34;
+  let x = 34 as i8;
+
+  let x: i16 = 34;
+  let x = 34 as i16;
+
+  let x: i32 = 34;
+  let x = 34 as i32;
+
+  let x: i64 = 34;
+  let x = 34 as i64;
+
+  let x: i128 = 34;
+  let x = 34 as i128;
+
+  // unsigned integers
+  let x: u8 = 34;
+  let x = 34 as u8;
+
+  let x: u16 = 34;
+  let x = 34 as u16;
+
+  let x: u32 = 34;
+  let x = 34 as u32;
+
+  let x: u64 = 34;
+  let x = 34 as u64;
+
+  let x: u128 = 34;
+  let x = 34 as u128;
+
+  // floating-point numbers
+  let x: f32 = 34.0;
+  let x = 34 as f32;
+
+  let x: f64 = 34.0;
+  let x = 34 as f64;
+
+  // angle types
+  let x: angle32 = 34.0;
+  let x = 34 as angle32;
+
+  let x: angle64 = 34.0;
+  let x = 34 as angle64;
 
 ///////////////////////////////////
 // (7) Syntax for declaring arrays
@@ -290,6 +339,12 @@ let q = qalloc();
 let qs = qalloc(3);
 let b = measr(q);
 
+// What happens when a qubit is measured?
+// qubit is consumed by measr() and cannot be used after measurement
+let b = measr(q);
+// qubit is borrowed by measr() and can be used after measurement
+let b = measr(&q);
+
 //////////////////////////////////////////////////////////////////////////
 // (11) Declaring basis strings literals (arrays of 0 and 1, +, -, I, i):
 //////////////////////////////////////////////////////////////////////////
@@ -355,6 +410,19 @@ CX(&q0, &q1);
 
 Id, X, Y, Z, H, S, SDG, T, TDG, SX, SXDG, RX, RY, RZ, U1, U2, U3, CNOT, CX, CY, CZ, CS, CSDG, CT, CTDG, CSX, CSXDG, CRX, CRY, CRZ, CU1, CU2, CU3, SWAP, RXX, RYY, RZZ, CCX, CSWAP, GPI, GPI2, MS, ZZ
 
+// Handling parameterized gates in general: the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
+
+// (i) when the angle argument is a floating point number, it is interpreted as fractions of 2π so 0.25 is π/2, 0.5 is π, 1.0 is 2π, etc.
+let q: qubit = U1(0.25, q);
+
+// (ii) angle32 and angle64 represent floating point numbers radians modulo 2π using 32 or 64 bits
+let angle: angle64 = 3.141592653589793;
+let q: qubit = U1(angle, q);
+
+// (iii) use of symbolic compile-time parameters for parameterized gates:
+let theta = Param("theta");
+let q: qubit = U1(theta, q);
+
 // Single-Qubit Gates
 let q: qubit = Id(q);
 let q: qubit = X(q);
@@ -411,11 +479,24 @@ let (q0, q1, q2) = CCX(q0, q1, q2);
 let (q0, q1, q2) = CSWAP(q0, q1, q2);
 
 // Ion-Native Gates
-// the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
 let q: qubit = GPI(1.0, q);
 let q: qubit = GPI2(1.0, q);
 let (q0, q1) = MS(1.0, 2.0, q0, q1);
 let (q0, q1) = ZZ(1.0, q0, q1);
+
+// Parameterized gates rotation angle arguments can be of type: param, angle32, angle64.
+
+// angle32 and angle64 represent floating point numbers radians modulo 2π using 32 or 64 bits
+let angle: angle64 = 3.141592653589793;
+let q: qubit = U1(angle, q);
+
+// use the turns() prelude function to convert integer to angles: turns(0.25) = π/2
+let q: qubit = U1(turns(0.25), q);
+
+// use of symbolic compile-time parameters for parameterized gates:
+let theta = Param("theta");
+let q: qubit = U1(theta, q);
+
 
 ////////////////////////////////////////////////////////
 // (15) Apply higher-order control gate modifiers: ctrl
@@ -432,9 +513,9 @@ ctrl(&q0, &q1) {
   H(&q2);
 }
 
-// applying controlls on "10" state
+// applying controls on "10" state
 let (q0, q1, q2) = ctrl(q0, q1).on(bs"10").apply(H)(q2);
-// same with borrowed qubits:
+// same as borrowed qubits:
 ctrl(&q0, &q1).on(bs"10").apply(H)(&q2);
 // block syntax
 ctrl(&q0, &q1).on(bs"10") {
@@ -443,7 +524,7 @@ ctrl(&q0, &q1).on(bs"10") {
 
 // apply controls on some generic function of qubits:
 let (q0, q1, q2, q3) = ctrl(q0, q1).apply(f)(q2, q3);
-// same with borrowed qubits:
+// same as borrowed qubits:
 ctrl(&q0, &q1).apply(f)(&q2, &q3);
 // block syntax
 ctrl(&q0, &q1) {
@@ -452,7 +533,7 @@ ctrl(&q0, &q1) {
 
 // apply controls on some generic function of qubits on ++ state:
 let (q0, q1, q2, q3) = ctrl(q0, q1).on(bs"++").apply(f)(q2, q3);
-// same with borrowed qubits:
+// same as borrowed qubits:
 ctrl(&q0, &q1).on(bs"++").apply(f)(&q2, &q3);
 // block syntax
 ctrl(&q0, &q1).on(bs"++") {
@@ -595,9 +676,9 @@ let sq1: squbit = one;
 let sq2: squbit = one;
 let sq: [squbit; 2] = sq1.tensor(sq2);
 
-let sq: [squbit; 2] = plus.tensor(zero - phase(PI/2) * one);
+let sq: [squbit; 2] = plus.tensor(zero - phase(1/2) * one);
 
-// squbit type variable can be intialized from a basis string literals:
+// squbit type variable can be initialized from a basis string literals:
 let sq: squbit = bs"0";
 let sq: squbit = bs"1";
 let sq: [squbit; 2] = bs"++";
@@ -622,9 +703,9 @@ let sq: [squbit; 4] = bs"iI01";
 
    // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits:
   sif q then
-    (zero + one).tensor(zero - phase(PI/2) * one)
+    (zero + one).tensor(zero - phase(1/2) * one)
   selse
-    (plus - minus).tensor(plus + phase(PI/2) * minus);
+    (plus - minus).tensor(plus + phase(1/2) * minus);
 
 ///////////////////////////////////////////
 // (24) Classical Rust-style match syntax:
@@ -733,10 +814,10 @@ smatch &qs {
 
 // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits.
 smatch &qs {
-  bs"00" => (zero + one).tensor(zero - phase(PI/2) * one),
-  bs"01" => (plus - minus).tensor(plus + phase(PI/2) * minus),
-  bs"10" => (zero - one).tensor(zero + phase(PI/2) * one),
-  bs"11" => (plus - minus).tensor(plus - phase(PI/2) * minus),
+  bs"00" => (zero + one).tensor(zero - phase(1/2) * one),
+  bs"01" => (plus - minus).tensor(plus + phase(1/2) * minus),
+  bs"10" => (zero - one).tensor(zero + phase(1/2) * one),
+  bs"11" => (plus - minus).tensor(plus - phase(1/2) * minus),
 }
 
 ////////////////////////////////
@@ -1168,8 +1249,8 @@ enum Data {
 }
 
 // usage of tuple-like enums:
-let x = Data::Left(q0);
-let y = Data::Right(q1, q2);
+let x = Data::Left(1);
+let y = Data::Right(2, 3);
 
 //  Struct-like enums:
 enum Message {
@@ -1263,7 +1344,7 @@ basis(q1, Z)
 separable(qs)
 isolated(q1)
 
-// For unary predicated, when we need multiple qubits as arguments we can specify them as an array of qubits:
+// For unary predicates, when we need multiple qubits as arguments we can specify them as an array of qubits:
 clean([q1, q2])
 
 // second argument is a Pauli string:
@@ -1385,6 +1466,9 @@ phase(1.5)
 // the phase function can take as arguments an angle
 let angle: angle64 = 1.88;
 phase(angle)
+
+// you can combine the phase() prelude function with turns() prelude function: exp(i * π/2)
+phase(turns(0.25))
 
 ///////////////////////////////////////////////////////////
 // (66) Like in Rust function arguments can be references:
@@ -1513,6 +1597,8 @@ general fn sample_until_zero() -> qubit {
 
 // Like in Rust, Leaf supports string literals. Leaf does not have a print statement and since Leaf commpiles to OpenQasm3 and OpenQASM3 does not have a string type, strings in Leaf are used mainly to help write more expressive code:
 
+let mut string = String::new();
+
 // String literal using the string-slice type:
 let message: &str = "Hello, world!";
 
@@ -1532,7 +1618,7 @@ let message = format!("{first}, {second}!");
 // Same code as above but with explicit type annotations and string concatenation:
 let first: &str = "Hello";
 let second: &str = "world";
-let message: &str = first + ", " + second + "!";
+let message: String = first + ", " + second + "!";
 
 // Strings may also be required lexically for Param types. Another example using string interpolation:
 let i: i32 = 1;
@@ -1575,3 +1661,14 @@ let c = &text[..];   // "Hello"
 
 let q: qubit := f(q);
 let qs: [qubit; 3] := f(qs);
+
+////////////////////////////////////////////////
+// (71) format! macro for string interpolation:
+/////////////////////////////////////////////////
+
+// Leaf does not support macros yet but "format!" macro for string interpolation is supported as a built-in feature of the language. The syntax is similar to Rust's format! macro.
+
+let first: &str = "Trying";
+let second: i32 = 3;
+let third: &str = "times";
+let message: String = format!("{first} {second} {third}!");

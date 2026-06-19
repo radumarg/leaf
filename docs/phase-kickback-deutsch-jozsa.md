@@ -39,6 +39,7 @@ general fn phase_kickback(
 }
 
 general fn deutsch_jozsa(
+    // contracts are inferred by the compiler
     oracle: uncompsafe fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
 ) -> [bit; 4] {
     let qs = qalloc(4);

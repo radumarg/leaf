@@ -57,7 +57,7 @@ zero
 
 ### Leaf Reserved Built-in Functions
 
-Cannot be shadowed by a local declaration.
+Built-in Functions CANNOT be shadowed by a local declaration:
 
 ```leaf
 adjoint
@@ -68,7 +68,6 @@ clean
 discard
 isolated
 measr
-Param
 phase
 product
 qalloc
@@ -82,7 +81,7 @@ weaken
 
 ### Leaf Prelude Functions
 
-Can be shadowed by a local declaration.
+Prelude functions CAN be shadowed by a local declaration:
 
 ```leaf
 abs
@@ -98,8 +97,10 @@ log2
 log10
 max
 min
+Param
 round
 sin
 sqrt
 tan
+turns
 ```

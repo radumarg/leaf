@@ -14,13 +14,13 @@ These are Rust-style function qualifiers used by the Leaf type checker to verify
         classical
 ```
 
-- `classical` is used to classify strictly classical functions i.e. function that do not have qubit arguments, do not return qubits and do not perform any quantum operations like qubit allocation or operations on quantum data:
+- `classical` is used to classify strictly classical functions i.e. functions that do not have qubit arguments, do not return qubits and do not perform any quantum operations like qubit allocation or operations on quantum data:
 
 ```leaf
 classical fn parity (x : u32) -> bool { ... }
 ```
 
-- `uncompsafe` effect is used to classify functions containing a subset of strictly unitary quantum gates that do not generate or destroy entanglement *on basis states*. For example X and CNOT gates are `uncompsafe` while H is not, These basis-preserving quantum gates are used to generate circuits whose effects can be undone automatically such that the ancilla qubits can be subsequently discarded safely. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded. Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean) is possible when the computation of the temporary value can be described classically on basis states which is exactly what `uncompsafe` effect is capturing. In addition to this condition, if the operation to be uncomputed depends on some variable, this variable needs to be available at the moment of uncomputation, so it needs to act like a constant value. This means that it is either a classical constant variable, or quantum data that we can infer is unaffected by the computation we want to undo.
+- `uncompsafe` effect is used to classify functions containing a subset of strictly unitary quantum gates that do not generate or destroy entanglement *on basis states*. For example X and CNOT gates are `uncompsafe` while H is not, These basis-preserving quantum gates are used to generate circuits whose effects can be undone automatically such that the ancilla qubits can be subsequently discarded safely. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same as the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded. Automatic [uncomputation](defining-terms.md#what-does-uncomputation-mean) is possible when the computation of the temporary value can be described classically on basis states which is exactly what `uncompsafe` effect is capturing. In addition to this condition, if the operation to be uncomputed depends on some variable, this variable needs to be available at the moment of uncomputation, so it needs to act like a constant value. This means that it is either a classical constant variable, or quantum data that we can infer is unaffected by the computation we want to undo.
 
 ```leaf
 uncompsafe fn oracle (ancillas : [qubit; 3]) -> [qubit; 3] { ... }
@@ -32,7 +32,7 @@ uncompsafe fn oracle (ancillas : [qubit; 3]) -> [qubit; 3] { ... }
 unitary fn grover (qubits : [qubit; 7]) -> [qubit; 7] { ... }
 ```
 
-A function qualified as `unitary` contains only unitary quantum operations. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same with the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded.
+A function qualified as `unitary` contains only unitary quantum operations. Since the quantum gates preserve the number of qubits, for such functions the number of qubits must be the same as the number of output qubits. Such a function can allocate local ancilla qubits as long as the ancilla qubits are being restored to a clean state and discarded.
 
 - a `isometry` function is the same as a `unitary` function except that the number of output qubits is larger than the number of input qubits:
 

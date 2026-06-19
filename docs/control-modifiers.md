@@ -1,6 +1,6 @@
 ### Control Gate Modifiers
 
-Technically these are higher-order operators that change the way functions with quantum operations behave. Only `uncompsafe`, `unitary`, `isometry` or `coisometry` functions can be controlled via using apply() construct.
+Technically these are higher-order operators that change the way functions with quantum operations behave. Only `uncompsafe`, `unitary`, `isometry` or `coisometry` functions can be controlled via apply() construct.
 
 Canonical declaration:
 ```leaf
@@ -51,7 +51,7 @@ ctrl(&q0, &q1).on(bs"+-") {
 
 ### Control Operator vs Block Expression
 
-The control block expression has the effect to apply the control operation to all unitary gates within the block expression and sub-expressions. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary`, `isometry` or `coisometry` effects. On the other hand, the control function operator `ctrl().on().apply(f)` can be applied only to functions that declare control support in function signature (see below).
+The control block expression applies the control operation to all unitary gates within the block expression and sub-expressions. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary`, `isometry` or `coisometry` effects. On the other hand, the control function operator `ctrl().on().apply(f)` can be applied only to functions that declare control support in function signature (see below).
 
 ### Declaring Control Support
 
@@ -69,4 +69,4 @@ unitary fn f(q: &qubit) supports adjoint, ctrl {
 }
 ```
 
-A function that contains only unitary quantum gates can always be controlled and usually cannot when it measures, resets or discards qubits. Sometimes quantum code containing measure/reset/discard operations can be controlled as long as those operations are applied to qubits that are in driven to a provable clean, all zero, separable state. However, a function that returns classical data in general is usually not controllable since there is no general method to adjust classical output data for positive/negative control.
+A function that contains only unitary quantum gates can always be controlled and usually cannot when it measures, resets or discards qubits. Sometimes quantum code containing measure/reset/discard operations can be controlled as long as those operations are applied to qubits that are driven to a provable clean, all-zero, separable state. However, a function that returns classical data in general is usually not controllable since there is no general method to adjust classical output data for positive/negative control.

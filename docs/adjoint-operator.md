@@ -5,13 +5,13 @@ Although this may be obvious, it is important to note that classical functions a
 
 ### Reversing Quantum Subroutines
 
-When can the action function be reversed? The safest answer is that it can be reversed when it contains only unitary operations on qubits: no resets, not measurements and no discarding of qubits. However, there are conditions when these requirements can be relaxed.
+When can the action function be reversed? The safest answer is that it can be reversed when it contains only unitary operations on qubits: no resets, no measurements and no discarding of qubits. However, there are conditions when these requirements can be relaxed.
 
-Discarding a quantum register in code amounts allowing the physical qubits to dissipate. In general dissipating a register means its coherent information is lost to the environment, with possible side effects on the remaining quantum state and this is in general not a reversible operation. However, when discarded register is known to be in a clean (separable, all zero) state this operation becomes harmless. If the discarded qubits are reinitialized to the all zero, this can be written formally as:
+Discarding a quantum register in code amounts allowing the physical qubits to dissipate. In general dissipating a register means its coherent information is lost to the environment, with possible side effects on the remaining quantum state and this is in general not a reversible operation. However, when the discarded register is known to be in a clean (separable, all-zero) state this operation becomes harmless. If the discarded qubits are reinitialized to the all-zero, this can be written formally as:
 
  $\rho_{AB}' = Tr_{B}(\rho_{AB}) \otimes  \lvert 0 \rangle  \langle 0 \rvert_{B}$
 
-Under such conditions a subroutine that contains no measurement, no side effects, and no classical output, no mutation of classical data, can be in principle reversed.
+Under such conditions a subroutine that contains no measurement, no side effects, and no classical output, no mutation of classical data, can in principle be reversed.
 
 ### The Adjoint Operation
 
@@ -88,5 +88,5 @@ unitary fn f(q: &qubit) supports adjoint, ctrl {
 }
 ```
 
-A function that returns classical data or generates side effects cannot in general support adjoint operation since classical functions are not always invertible. A function that contains only unitary quantum gates always supports the adjoint operation and usually does not when it measures, resets or discards qubits. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are provably driven to the all zero, separable state.
+A function that returns classical data or generates side effects cannot in general support adjoint operation since classical functions are not always invertible. A function that contains only unitary quantum gates always supports the adjoint operation and usually does not when it measures, resets or discards qubits. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are provably driven to the all-zero, separable state.
 
