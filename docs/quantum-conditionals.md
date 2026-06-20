@@ -120,4 +120,4 @@ smatch &qs {
 }
 ```
 
-All possible branches must be specified and must describe states that are provably orthogonal with respect to each other. This implies the wildcard placeholder is not supported in this case. The `phase(turns(1/4))` expression based on built-in helper functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp * i * (π/2)`. Mixing bit string expressions `bs"00"` with digits `0,1,2` in the same smatch expression is not allowed.
+All possible branches must be specified and must describe states that are provably orthogonal with respect to each other. This implies the wildcard placeholder is not supported in this case. The `phase(turns(1/4))` expression based on built-in helper functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp(i * π/2)`. Mixing bit string expressions `bs"00"` with digits `0,1,2` in the same smatch expression is not allowed.
