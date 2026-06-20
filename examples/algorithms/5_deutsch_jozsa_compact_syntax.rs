@@ -36,6 +36,7 @@ general fn deutsch_jozsa_balanced() -> [bit; 4] {
         H(&qs[i]);
     }
 
+    // todo: partial moves out of arrays need explicit documentation
     let (b0, b1, b2, b3) = measr(qs[0], qs[1], qs[2], qs[3]);
 
     // qs[4] is not part of the Deutsch-Jozsa result.

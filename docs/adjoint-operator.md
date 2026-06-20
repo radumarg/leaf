@@ -68,7 +68,7 @@ H(&q1);
 
 ### Adjoint Operator vs Block Expression
 
-The adjoint block expression replaces each unitary gate within the block and its sub-expressions with its unitary adjoint, while also reversing the order in which the gates are applied. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary` effects. On the other hand, the adjoint function operator `adjoint(f)` can be applied only to functions that declare adjoint support in function signature (see below).
+The adjoint block expression replaces each unitary gate within the block and its sub-expressions with its unitary adjoint, while also reversing the order in which the gates are applied. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary` effects. On the other hand, the adjoint function operator `adjoint(f)` can be applied only to functions that declare adjoint support in function signature (see below). While technically the adjoint of an isometry is a coisometry and the reverse, adjoint cannot be applied to function annotated with the `isometry` or `coisometry` qualifiers.
 
 ### Declaring Adjoint Support
 

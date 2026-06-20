@@ -62,7 +62,7 @@ turns()
 ///////////////////////////////////////
 
 // quantum computing specific:
-bit, qubit
+bit, qubit, qstate
 
 // additional quantum types:
 // - angle type is similar to OpenQasm3's angle type,  represents values modulo 2π using 32 or 64 bits
@@ -340,9 +340,9 @@ let qs = qalloc(3);
 let b = measr(q);
 
 // What happens when a qubit is measured?
-// qubit is consumed by measr() and cannot be used after measurement
+// if qubit is consumed by measr(), cannot be used after measurement:
 let b = measr(q);
-// qubit is borrowed by measr() and can be used after measurement
+// if qubit is borrowed by measr(), can be used after measurement:
 let b = measr(&q);
 
 //////////////////////////////////////////////////////////////////////////
@@ -668,15 +668,26 @@ if x < 0 {
 
   let (q1, q2, q3) = qif q1 expression1(q2, q3) qelse expression2(q2, q3);
 
-///////////////////////////////////////////////
-// (22) qubit state expressions syntax: zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits:
-///////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// (22) qubit quantum state expressions syntax: zero/one/plus/minus/plusi/minusi basis string literals
+// phase() and/or turns() prelude helper function are used for applying complex phases
+// tensor() prelude function is used for combining states of multiple qstate variables into an array of qstates
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// zero/one/plus/minus/plusi/minusi are all of type qstate
 let sq1: qstate = one;
 let sq2: qstate = one;
-let sq: [qstate; 2] = sq1.tensor(sq2);
 
-let sq: [qstate; 2] = plus.tensor(zero - phase(1/2) * one);
+// zero/one/plus/minus/plusi/minusi can be added/subtracted and multiplied by complex phases using the phase() and possibly turns() prelude functions
+// the normalization factor of a qstate expression is ignored, same goes for the global phase of a qstate, so the following are all valid qstate expressions:
+let sq: qstate = zero + one;
+let sq: qstate = zero - phase(turns(1/3)) * one;
+
+// qstate variables can be combined into an array of qstates using the tensor() prelude function:
+let sq1: qstate = zero + one;
+let sq2: qstate = zero - one;
+let sq: [qstate; 2] = sq1.tensor(sq2);
+let sq: [qstate; 2] = plus.tensor(zero - phase(turns(1/3)) * one);
 
 // qstate type variable can be initialized from a basis string literals:
 let sq: qstate = bs"0";
@@ -703,33 +714,34 @@ let sq: [qstate; 4] = bs"iI01";
 
    // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits:
   sif q then
-    (zero + one).tensor(zero - phase(1/2) * one)
+    (zero + one).tensor(zero - phase(turns(1/3)) * one)
   selse
-    (plus - minus).tensor(plus + phase(1/2) * minus);
+    (plus - minus).tensor(plus + phase(turns(1/3)) * minus);
 
-  // an implementation of X gate using sif/selse syntax:
+  // an implementation of X gate using sif/selse syntax, note that while the branches of sif/then/selse are both qstate expressions the type returned by the quantum conditional expression sif/then/selse is qubit.
   unitary fn x(q: qubit) -> qubit {
     sif q then
         zero
     selse
         one
   }
+
   // an implementation of H gate using sif/selse syntax:
-  fn had(q: qubit) -> qubit {
+  unitary fn had(q: qubit) -> qubit {
     sif q then
         (zero - one)
     selse
         (zero + one)
   }
   // another implementation of H gate using sif/selse syntax:
-  fn had(q: qubit) -> qubit {
+  unitary fn had(q: qubit) -> qubit {
     sif q then minus selse plus
   }
   // another implementation of H gate using sif/selse syntax:
   let plusAlias : qstate = zero + one;
   let minusAlias : qstate = zero - one;
 
-  fn had(q: qubit) -> qubit {
+  unitary fn had(q: qubit) -> qubit {
       sif q then minusAlias selse plusAlias
   }
   // an implementation of CNOT gate using sif/selse syntax:
@@ -828,6 +840,8 @@ qmatch &qs {
 // Like in Rust, wildcard patterns are supported for qmatch: 
 _ => f()
 
+// mixing bit string expressions bs"00" with digits 0,1,2 in the same qmatch expression is not permitted.
+
 ////////////////////////////////////////////////
 // (26) Quantum match style expressions smatch:
 ////////////////////////////////////////////////
@@ -846,6 +860,7 @@ smatch &qs {
   bs"11" => state_expression_11(data),
 }
 
+// mixing bit string expressions bs"00" with digits 0,1,2 in the same smatch expression is not permitted.
 smatch &qs {
   0 => state_expression_0(data),
   1 => state_expression_1(data),
@@ -1215,10 +1230,12 @@ requires separable(qs[2], [qs[0], qs[1]])
     [qs[0], qs[1]]
 }
 
-// may include measurements, reset, discard quantum operations
+// may include measurements, reset and discard quantum operations
 general fn sample(q: qubit) -> bit {
   measr(q)
 }
+
+// Being the default effect, the general keyword is optional and is mainly used for generating explicit API specification. If a function does not have a qualifier the compiler will treat it as a general function.
 
 /////////////////////////
 // (54) Integer literals
@@ -1374,10 +1391,10 @@ let is_adult = person.is_adult();
 //
 // - clean(qs) - the qubit(s) are all in $|0\rangle$ state and separated from the rest of qubits in the program.
 // - basis([q1, q2, q3], XYZ) - the qubit(s) are in an eigenstate of Pauli string operator like XYZ and separated from the rest of qubits in the program.
-// - separable(qs) - these qubits are in a separable state meaning that they are not entangled among and separated from the rest of qubits in the program.
+// - separable(qs) - these qubits are in a separable state meaning that they are not entangled among themselves and separated from the rest of qubits in the program.
 // - isolated(qs) - these qubits are not entangled with the rest of qubits in the program even if possibly entangled among them.
 // - stabilized(qs) - these qubits are in a state which is stabilized by the supplied operators and at the same time they are separated from the rest of qubits in the program.
-// - product(qs, qs') - these qubit sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled to other unspecified qubits in the program.
+// - product(qs, qs') - these qubit sets are not mutually entangled (their joint state in the program is a product state) but in each set qubits may be entangled among each other and may be entangled with other unspecified qubits in the program.
 
 // Clean, stabilized, basis, separable, isolated are all unary predicates:
 clean(q1)
@@ -1474,7 +1491,7 @@ unitary fn f(q1: qubit, q2: qubit, qs: [qubit; 2])
     supports adjoint, ctrl
     requires clean(q1)
     requires isolated(qs)
-    ensures basis(q2)
+    ensures basis(q2, X)
     ensures product(q1, q2, qs) {
     // some code here
 }
@@ -1661,7 +1678,7 @@ let message = format!("{first}, {second}!");
 // Same code as above but with explicit type annotations and string concatenation:
 let first: &str = "Hello";
 let second: &str = "world";
-let message: String = first + ", " + second + "!";
+let message: String = String::from(first) + ", " + second + "!";
 
 // Strings may also be required lexically for Param types. Another example using string interpolation:
 let i: i32 = 1;

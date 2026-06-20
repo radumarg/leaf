@@ -5,7 +5,7 @@
 bit, qubit, qstate
 ```
 
-where the `qubit` type is used for ordinary qubits, that accept gate(s) application:
+where the `qubit` type is used for ordinary qubits to which gates can be applied:
 ```leaf
 let q: qubit = H(q); 
 ```

@@ -49,9 +49,9 @@ ctrl(&q0, &q1).on(bs"+-") {
 }
 ```
 
-### Control Operator vs Block Expression
+### Control Operator vs Control Block Expression
 
-The control block expression applies the control operation to all unitary gates within the block expression and sub-expressions. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary`, `isometry` or `coisometry` effects. On the other hand, the control function operator `ctrl().on().apply(f)` can be applied only to functions that declare control support in function signature (see below).
+The control block expression applies the control operation to all unitary gates within the block expression and sub-expressions. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary`, `isometry` or `coisometry` effects. On the other hand, the control function operator `ctrl().on().apply(f)` can be applied only to functions that declare control support in function signature as exemplified below.
 
 ### Declaring Control Support
 
@@ -61,9 +61,11 @@ Leaf has a special syntax for those functions where the compiler is able to infe
 unitary fn f(q: &qubit) supports ctrl {
     H(q);
 }
+```
 
 Control and adjoint supports clauses can be combined:
 
+```leaf
 unitary fn f(q: &qubit) supports adjoint, ctrl {
     H(q);
 }

@@ -36,7 +36,7 @@ The turns() prelude function translates floating point numbers representing frac
 turns(0.25) = π/2;
 ```
 
-Declaring angle parameters via Param() built-in:
+Declaring angle parameters via Param() prelude built-in:
 ```leaf
 Param()
 ```

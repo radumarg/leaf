@@ -31,9 +31,9 @@ qif &q1 {
 }
 ```
 
-It is required of f1/f2 or f3/f4 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded. The `qelse` branch is optional and if missing it is equivalent to applying the identity operator in the second branch.
+It is required of f1/f2 or f3/f4 to be unitary functions (no discarding on input qubits, no measurements or resets), to operate on the same number of qubits, and to not act on the control qubit. Any ancilla qubits created inside the two functions must be returned in a clean pure zero state and in the end safely discarded. The `qelse` branch is optional and if missing it is equivalent to applying the identity operator in the second branch. If both branches are present the operations implemented by the two branches are in no way conditioned with respect to each other.
 
-#### Generalizing `qif`/`qelse` to `qmatch`
+#### Generalizing `qif/qelse` to `qmatch`
 
 A straightforward generalization of a quantum conditional for multiple branches implies coherent control over qubits `qs` without performing measurements:
 
@@ -73,7 +73,7 @@ A straightforward generalization of a quantum conditional for multiple branches 
   }
 ```
 
-Similar conditions that apply to quantum conditionals branches apply here as well for functions in `qmatch` branches. Like in Rust, match must be exhaustive and the `_ => ` syntax is supported.
+Similar conditions that apply to quantum conditionals branches apply here as well for functions in `qmatch` branches. The operations implemented by different branches are in no way conditioned with respect to each other but must not act on the match condition qubits. Like in Rust, match must be exhaustive but the placeholder `_ => ` syntax is supported such that match expressions that are not specified can be assigned a default, possibly trivial operation. Mixing bit string expressions `bs"00"` with digits `0,1,2` in the same qmatch expression is not allowed.
 
 ### (2) State-oriented qubits model: `sif`/`selse/smatch`
 
@@ -107,7 +107,7 @@ unitary fn cnot(c: qubit, t: qubit) -> (qubit, qubit) {
 }
 ```
 
-#### Generalizing `sif`/`selse` to `smatch`
+#### Generalizing `sif/then/selse` to `smatch`
 
 A generalization of quantum conditional state expressions for multiple branches implies coherent control over qubits `qs` without performing measurements:
 
@@ -120,4 +120,4 @@ smatch &qs {
 }
 ```
 
-All possible branches must be specified and must describe states that are provably orthogonal with respect to each other. The `phase(turns(1/4))` expression based on built-in helper functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp * i * (π/2)`.
+All possible branches must be specified and must describe states that are provably orthogonal with respect to each other. This implies the wildcard placeholder is not supported in this case. The `phase(turns(1/4))` expression based on built-in helper functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp * i * (π/2)`. Mixing bit string expressions `bs"00"` with digits `0,1,2` in the same smatch expression is not allowed.

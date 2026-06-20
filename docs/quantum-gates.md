@@ -126,7 +126,7 @@ let angle: angle64 = 3.141592653589793;
 let q: qubit = U1(angle, q);
 ```
 
-(i1) use the turns() prelude function to convert integer to angles: turns(0.25) = π/2
+(ii) use the turns() prelude function to convert integer to angles: turns(0.25) = π/2
 ```leaf
 let q: qubit = U1(turns(0.25), q);
 ```

@@ -8,11 +8,18 @@ let q: qubit = qalloc();
 let qs: [qubit; 2] = qalloc(2);
 ```
 
-- Measuring qubits (result type can be inferred):
+- Measuring qubits (result type can be inferred), the qubit variable(s) is consumed and cannot be reused:
 ```leaf
 let b : bit = measr(q);
 let bs: [bit; 3] = measr(q1, q2, q3);
 let bs = measr(qs);
+```
+
+- Measuring borrowed qubits makes the qubit variable(s) usable later in the program:
+```leaf
+let b : bit = measr(&q);
+let bs: [bit; 3] = measr(&q1, &q2, &q3);
+let bs = measr(&qs);
 ```
 
 - Unlike a linear qubit which must be used `exactly once`, an affine qubit must be used `at most once`. Downgrading qubit type from `linear` to `affine`:
