@@ -876,7 +876,7 @@ smatch &qs {
   bs"11" => (plus - minus).tensor(plus - phase(turns(1/4)) * minus),
 }
 
-phase(turns(1/4))  // the same as `exp * i * (π/2)
+phase(turns(1/4))  // the same as: exp(i * π/2)
 
 ////////////////////////////////
 // (27) Rust block expressions:
