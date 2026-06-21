@@ -50,7 +50,7 @@ bool
 (8) String type:
 ```leaf
 String
-&str
+str
 ```
 
 (9) Unit type:

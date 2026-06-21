@@ -68,7 +68,6 @@ clean
 discard
 isolated
 measr
-phase
 product
 qalloc
 reset
@@ -98,6 +97,7 @@ log10
 max
 min
 Param
+phase
 round
 sin
 sqrt

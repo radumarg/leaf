@@ -13,11 +13,11 @@ fn oracle(x: qubit, ancilla: [qubit; 3])
 
 The following contracts are supported:
 
-- clean(qs) - the qubit(s) are all in $|0\rangle$ state and separated from the rest of qubits in the program.
-- basis([q1, q2, q3], pauli-string) - the qubit(s) are in a product state that is an eigenstate of a Pauli string, such as XYZ, and separated from the rest of qubits in the program.
-- separable(qs) - these qubits are in a separable state meaning that they are not entangled with each other and separated from the rest of qubits in the program.
+- clean(qs) - the qubit(s) are all in $|0\rangle$ state which is not entangled with rest of qubits in the program.
+- basis([q1, q2, q3], pauli-string) - the qubit(s) are in a product state that is a separable eigenstate of a Pauli string operator such as XYZ, and not entangled with rest of qubits in the program.
+- separable(qs) - these qubits are in a separable state meaning that they are not entangled with each other and not entangled with rest of qubits in the program.
 - isolated(qs) - these qubits are not entangled with the rest of qubits in the program even if possibly entangled between them.
-- stabilized(qs) - these qubits are in a state which is [stabilized](https://quantumcomputing.stackexchange.com/questions/18235/what-is-a-stabilizer-state) by the supplied operators and at the same time they are separated from the rest of qubits in the program. Within the Clifford gates fragment stabilizer contracts are statically decidable in polynomial time.
+- stabilized(qs) - these qubits are in a state which is [stabilized](https://quantumcomputing.stackexchange.com/questions/18235/what-is-a-stabilizer-state) by the supplied operators and at the same time they are not entangled with rest of qubits in the program. Within the Clifford gates fragment stabilizer contracts are statically decidable in polynomial time.
 - product(qs, qs') - these qubit sets are not mutually entangled (their joint state in the program is a product state) but within each set, qubits may be entangled among each other. This expression is making a statement about the relation between $qs$ and $qs`$, which separately may or may not be entangled with other unspecified qubits in the program.
 
 Clean, stabilized, basis, separable, isolated are all unary predicates:
@@ -87,10 +87,10 @@ Contracts form two partially ordered sets with `dirty` for unary predicates and 
                      isolated(qs)                                            product(qs, qs')
                     /            \
              separable(qs)  stabilized(qs, [+pauli_str1, -pauli_str2, ..])
-                  |
-           basis(qs, pauli_str)
-                  |
-              clean(qs)
+                  |               |
+          basis(qs, pauli_str)    |
+                       \         /
+                        clean(qs)
 ```
 
 The order specifies a refinement relation on predicates, so `ensures clean(qs)` which is more refined should also satisfy `ensures basis(qs, ZZ)` etc. Being the most general state of qubit(s) the `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`.

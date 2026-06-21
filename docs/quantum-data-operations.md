@@ -11,7 +11,7 @@ let qs: [qubit; 2] = qalloc(2);
 - Measuring qubits (result type can be inferred), the qubit variable(s) is consumed and cannot be reused:
 ```leaf
 let b : bit = measr(q);
-let bs: [bit; 3] = measr(q1, q2, q3);
+let (b1, b2, b3): (bit, bit, bit) = measr(q1, q2, q3);
 let bs = measr(qs);
 ```
 

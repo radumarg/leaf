@@ -1,6 +1,6 @@
 ### Control Gate Modifiers
 
-Technically these are higher-order operators that change the way functions with quantum operations behave. Only `uncompsafe`, `unitary`, `isometry` or `coisometry` functions can be controlled via apply() construct.
+Technically these are higher-order operators that change the way functions with quantum operations behave. Only `uncompsafe` and `unitary` functions can be controlled via apply() construct.
 
 Canonical declaration:
 ```leaf

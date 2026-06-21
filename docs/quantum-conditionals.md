@@ -113,11 +113,11 @@ A generalization of quantum conditional state expressions for multiple branches 
 
 ```leaf
 smatch &qs {
-  bs"00" => (zero + one).tensor(zero - phase(turns(1/4)) * one),
-  bs"01" => (plus - minus).tensor(plus + phase(turns(1/4)) * minus),
-  bs"10" => (zero - one).tensor(zero + phase(turns(1/4)) * one),
-  bs"11" => (plus - minus).tensor(plus - phase(turns(1/4)) * minus),
+  bs"00" => (zero + one).tensor(zero - phase(turns(1.0/4.0)) * one),
+  bs"01" => (plus - minus).tensor(plus + phase(turns(1.0/4.0)) * minus),
+  bs"10" => (zero - one).tensor(zero + phase(turns(1.0/4.0)) * one),
+  bs"11" => (plus - minus).tensor(plus - phase(turns(1.0/4.0)) * minus),
 }
 ```
 
-All possible branches must be specified and must describe states that are provably orthogonal with respect to each other. This implies the wildcard placeholder is not supported in this case. The `phase(turns(1/4))` expression based on built-in helper functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp(i * π/2)`. Mixing bit string expressions `bs"00"` with digits `0,1,2` in the same smatch expression is not allowed.
+All possible branches must be specified and must describe states that are provably orthogonal with respect to each other. This implies the wildcard placeholder is not supported in this case. The `phase(turns(1.0/4.0))` expression based on built-in helper functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp(i * π/2)`. Mixing bit string expressions `bs"00"` with digits `0,1,2` in the same smatch expression is not allowed.

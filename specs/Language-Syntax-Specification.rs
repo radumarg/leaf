@@ -28,7 +28,7 @@
 // (3) Reserved Keywords + Built-in Identifiers: 
 /////////////////////////////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, str, String, struct, supports, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, struct, supports, tensor, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
 
 // (I) The following are built-in identifiers that can be used in Leaf programs which ARE part of language syntax and should be parsed as keywords or built-in functions:
 
@@ -412,14 +412,18 @@ Id, X, Y, Z, H, S, SDG, T, TDG, SX, SXDG, RX, RY, RZ, U1, U2, U3, CNOT, CX, CY, 
 
 // Handling parameterized gates in general: the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
 
-// (i) when the angle argument is a floating point number, it is interpreted as fractions of 2π so 0.25 is π/2, 0.5 is π, 1.0 is 2π, etc.
+// (i) when the angle argument is a float32/ float64 number, it will be casted to an angle32/ angle64 value.
 let q: qubit = U1(0.25, q);
 
 // (ii) angle32 and angle64 represent floating point numbers radians modulo 2π using 32 or 64 bits
 let angle: angle64 = 3.141592653589793;
 let q: qubit = U1(angle, q);
 
-// (iii) use of symbolic compile-time parameters for parameterized gates:
+// (iii) angle32 and angle64 can be specified using the turns() prelude function to convert integer to angles: turns(0.25) = π/2
+let angle: angle64 = turns(0.25);
+let q: qubit = U1(angle, q);
+
+// (iv) use of symbolic compile-time parameters for parameterized gates:
 let theta = Param("theta");
 let q: qubit = U1(theta, q);
 
@@ -666,28 +670,29 @@ if x < 0 {
     H(&t);
   }
 
+  // provided expression1(q2, q3) returns a tuple of qubits, and expression2(q2, q3) returns a tuple of qubits, then the following is valid syntax:
   let (q1, q2, q3) = qif q1 expression1(q2, q3) qelse expression2(q2, q3);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // (22) qubit quantum state expressions syntax: zero/one/plus/minus/plusi/minusi basis string literals
 // phase() and/or turns() prelude helper function are used for applying complex phases
-// tensor() prelude function is used for combining states of multiple qstate variables into an array of qstates
+// tensor() built-in function is used for combining states of multiple qstate variables into an array of qstates
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // zero/one/plus/minus/plusi/minusi are all of type qstate
 let sq1: qstate = one;
 let sq2: qstate = one;
 
-// zero/one/plus/minus/plusi/minusi can be added/subtracted and multiplied by complex phases using the phase() and possibly turns() prelude functions
+// zero/one/plus/minus/plusi/minusi can be added/subtracted and multiplied by complex phases using the phase() and possibly turns() built-in functions
 // the normalization factor of a qstate expression is ignored, same goes for the global phase of a qstate, so the following are all valid qstate expressions:
 let sq: qstate = zero + one;
-let sq: qstate = zero - phase(turns(1/3)) * one;
+let sq: qstate = zero - phase(turns(1.0/3.0)) * one;
 
-// qstate variables can be combined into an array of qstates using the tensor() prelude function:
+// qstate variables can be combined into an array of qstates using the tensor() built-in function:
 let sq1: qstate = zero + one;
 let sq2: qstate = zero - one;
 let sq: [qstate; 2] = sq1.tensor(sq2);
-let sq: [qstate; 2] = plus.tensor(zero - phase(turns(1/3)) * one);
+let sq: [qstate; 2] = plus.tensor(zero - phase(turns(1.0/3.0)) * one);
 
 // qstate type variable can be initialized from a basis string literals:
 let sq: qstate = bs"0";
@@ -714,9 +719,9 @@ let sq: [qstate; 4] = bs"iI01";
 
    // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() function for applying complex phases, and tensor operator for combining states of multiple qubits:
   sif q then
-    (zero + one).tensor(zero - phase(turns(1/3)) * one)
+    (zero + one).tensor(zero - phase(turns(1.0/3.0)) * one)
   selse
-    (plus - minus).tensor(plus + phase(turns(1/3)) * minus);
+    (plus - minus).tensor(plus + phase(turns(1.0/3.0)) * minus);
 
   // an implementation of X gate using sif/selse syntax, note that while the branches of sif/then/selse are both qstate expressions the type returned by the quantum conditional expression sif/then/selse is qubit.
   unitary fn x(q: qubit) -> qubit {
@@ -870,13 +875,13 @@ smatch &qs {
 
 // state expressions are built using zero/one/plus/minus/plusi/minusi basis string literals, phase() and possibly turns function for applying complex phases, and tensor operator for combining states of multiple qubits.
 smatch &qs {
-  bs"00" => (zero + one).tensor(zero - phase(turns(1/4)) * one),
-  bs"01" => (plus - minus).tensor(plus + phase(turns(1/4)) * minus),
-  bs"10" => (zero - one).tensor(zero + phase(turns(1/4)) * one),
-  bs"11" => (plus - minus).tensor(plus - phase(turns(1/4)) * minus),
+  bs"00" => (zero + one).tensor(zero - phase(turns(1.0/4.0)) * one),
+  bs"01" => (plus - minus).tensor(plus + phase(turns(1.0/4.0)) * minus),
+  bs"10" => (zero - one).tensor(zero + phase(turns(1.0/4.0)) * one),
+  bs"11" => (plus - minus).tensor(plus - phase(turns(1.0/4.0)) * minus),
 }
 
-phase(turns(1/4))  // the same as: exp(i * π/2)
+phase(turns(1.0/4.0))  // the same as: exp(i * π/2)
 
 ////////////////////////////////
 // (27) Rust block expressions:
@@ -1017,12 +1022,21 @@ let qs = reset(qs);
 // qubits are borrowed and reset in place
 reset(&qs);
 
+// resetting multiple qubits:
+let (q1, q2, q3): (qubit, qubit, qubit) = reset(q1, q2, q3);
+// resetting multiple qubits with inferred:
+let (q1, q2, q3) = reset(q1, q2, q3);
+
 //////////////////////
 // (39) Discard qubits:
 //////////////////////
 
 let q: qubit = qalloc();
 discard(q);
+
+let q1: qubit = qalloc();
+let q2: qubit = qalloc();
+discard(q1, q2);
 
 let qs: [qubit; 3] = qalloc(3);
 discard(qs);
@@ -1042,6 +1056,11 @@ let qs: [qubit; 3] = qalloc(3);
 let qs = uncompute(qs);
 uncompute(&qs);
 
+// uncomputing multiple qubits:
+let (q1, q2, q3): (qubit, qubit, qubit) = uncompute(q1, q2, q3);
+// uncomputing multiple qubits with inferred types:
+let (q1, q2, q3) = uncompute(q1, q2, q3);
+
 //////////////////////////////////////////////////////////
 // (41) Weakening qubits: demote linear qubits to affine:
 //////////////////////////////////////////////////////////
@@ -1052,12 +1071,17 @@ let affine q = weaken(q);
 let linear qs: [qubit; 3] = qalloc(3);
 let affine qs = weaken(qs);
 
+let (q1, q2, q3): (affine qubit, affine qubit, affine qubit) = weaken(q1, q2, q3);
+let (q1, q2, q3) = weaken(q1, q2, q3);
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // (42) ':=' marks the resulting qubit binding as automatically uncomputed when the enclosing function returns:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-let q: qubit := fun(q);
-let qs: [qubit; 3] := fun(qs);
+// The := operator marks the resulting qubit binding as automatically uncomputed when the enclosing function returns. This is similar to Silq's automatic uncomputation feature.
+
+let q: qubit := f(q);
+let qs: [qubit; 3] := f(qs);
 
 //////////////////////////
 // (43) Measuring qubits:
@@ -1069,14 +1093,18 @@ let b : bit = measr(q);
 // qubit is borrowed
 let b : bit = measr(&q);
 
+// measuring multiple qubits:
+let (b1, b2, b3): (bit, bit, bit) = measr(q1, q2, q3);
+// measuring multiple qubits wiyh inferred types:
+let (b1, b2, b3) = measr(q1, q2, q3);
+
 let qs: [qubit; 3] = qalloc(3);
 // qubits are consumed permanently
 let bs : [bit; 3] = measr(qs);
 // qubits are borrowed
 let bs : [bit; 3] = measr(&qs);
 
-// casting bits array measurement results to a tuple of bits:
-let (b0, b1, b2) = measr(qs);
+let [b0, b1, b2]: [bit; 3] = measr(qs);
 
 ////////////////////////
 // (44) Barrier syntax:
@@ -1085,6 +1113,8 @@ let (b0, b1, b2) = measr(qs);
 barrier();
 let (q0, q1, q2) = barrier(q0, q1, q2);
 barrier(&q0, &q1);
+let qs = barrier(qs);
+barrier(&qs);
 
 ////////////////////////////////////////////////////////////////////
 // (45) declaring and using modules and imports follows Rust syntax:
@@ -1201,14 +1231,14 @@ uncompsafe fn f(q: qubit) -> qubit {
   q
 }
 
-// only unitary quantum operations allowed
+// only unitary quantum operations allowed, nr. output qubits == nr. input qubits
 unitary fn f(q: qubit) -> qubit {
   let q = X(q);
   let q = H(q);
   q
 }
 
-// only unitary quantum operations allowed, nr. output qubits > input qubits
+// only unitary quantum operations allowed, nr. output qubits > nr. input qubits
 isometry fn f(qs: [qubit; 2]) -> [qubit; 4] {
   let q1 = X(qs[0]);
   let q2 = H(qs[1]);
@@ -1219,12 +1249,12 @@ isometry fn f(qs: [qubit; 2]) -> [qubit; 4] {
   [q1, q2, q3, q4]
 }
 
-// only unitary quantum operations allowed, nr. output qubits < input qubits
+// only unitary quantum operations allowed, nr. output qubits < nr. input qubits
 coisometry fn remove_clean_ancilla(
     qs: [qubit; 3]
 ) -> [qubit; 2]
 requires clean(qs[2])
-requires separable(qs[2], [qs[0], qs[1]])
+requires separable([qs[2], qs[0], qs[1]])
 {
     discard(qs[2]);
     [qs[0], qs[1]]
@@ -1390,7 +1420,7 @@ let is_adult = person.is_adult();
 // There can be multiple requires or ensures clauses for a function, and they can be used in any combination with each other.
 //
 // - clean(qs) - the qubit(s) are all in $|0\rangle$ state and separated from the rest of qubits in the program.
-// - basis([q1, q2, q3], XYZ) - the qubit(s) are in an eigenstate of Pauli string operator like XYZ and separated from the rest of qubits in the program.
+// - basis([q1, q2, q3], XYZ) - the qubit(s) are in a separable eigenstate of Pauli string like XYZ operator and separated from the rest of qubits in the program.
 // - separable(qs) - these qubits are in a separable state meaning that they are not entangled among themselves and separated from the rest of qubits in the program.
 // - isolated(qs) - these qubits are not entangled with the rest of qubits in the program even if possibly entangled among them.
 // - stabilized(qs) - these qubits are in a state which is stabilized by the supplied operators and at the same time they are separated from the rest of qubits in the program.
@@ -1712,15 +1742,6 @@ let text = "Hello";
 let a = &text[..2];  // "He"
 let b = &text[2..];  // "llo"
 let c = &text[..];   // "Hello"
-
-////////////////////////////////////////////////////////////////////////////////////////
-// (71) Silq style automatic uncomputation syntax using := operator for qubit bindings:
-////////////////////////////////////////////////////////////////////////////////////////
-
-// The := operator marks the resulting qubit binding as automatically uncomputed when the enclosing function returns. This is similar to Silq's automatic uncomputation feature.
-
-let q: qubit := f(q);
-let qs: [qubit; 3] := f(qs);
 
 ////////////////////////////////////////////////
 // (71) format! macro for string interpolation:

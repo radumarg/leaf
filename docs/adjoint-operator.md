@@ -68,7 +68,7 @@ H(&q1);
 
 ### Adjoint Operator vs Block Expression
 
-The adjoint block expression replaces each unitary gate within the block and its sub-expressions with its unitary adjoint, while also reversing the order in which the gates are applied. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `classical`, `uncompsafe` or `unitary` effects. On the other hand, the adjoint function operator `adjoint(f)` can be applied only to functions that declare adjoint support in function signature (see below). While technically the adjoint of an isometry is a coisometry and the reverse, adjoint cannot be applied to function annotated with the `isometry` or `coisometry` qualifiers.
+The adjoint block expression replaces each unitary gate within the block and its sub-expressions with its unitary adjoint, while also reversing the order in which the gates are applied. It can be applied to blocks containing built-in unitary quantum gates and functions qualified with `uncompsafe` or `unitary` effects.  On the other hand, the adjoint function operator `adjoint(f)` can be applied only to functions that declare adjoint support in function signature (see below). While technically the adjoint of an isometry is a coisometry and the reverse, adjoint cannot be applied to function annotated with the `isometry` or `coisometry` qualifiers.
 
 ### Declaring Adjoint Support
 
@@ -88,5 +88,9 @@ unitary fn f(q: &qubit) supports adjoint, ctrl {
 }
 ```
 
-A function that returns classical data or generates side effects cannot in general support adjoint operation since classical functions are not always invertible. A function that contains only unitary quantum gates always supports the adjoint operation and usually does not when it measures, resets or discards qubits. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are provably driven to the all-zero, separable state.
+A function that contains only unitary quantum gates always supports the adjoint operation and usually does not when it measures, resets or discards qubits. Sometimes quantum code can measure/reset/discard qubits and still be treated as unitary as long as those operations are applied to qubits that are provably driven to the all-zero, separable state.
+
+TODO: how classical calls inside the adjoint block are handled? left unchanged?
+TODO: how adjoint applies or not to function that returns classical data or generates side effects
+TODO: similar issues with control
 

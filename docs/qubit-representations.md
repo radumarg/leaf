@@ -11,11 +11,11 @@ let q = H(q);
 
 #### State-oriented qubit model
 
-Qubits are represented using a language of expressions denoting vectors or states in a Hilbert space built using the `qstate` typed language constants: `zero`, `one`, `plus`, `minus`, `plusi` and `minusi`. These constants are used inside state quantum state expressions and do not denote allocated runtime qubits. These constants can be combined into state expressions using addition, subtraction operators and complex phases specified using the prelude functions: phase() and turn(). The quantum state denoted by such a state expression is always a separable quantum state, making circuit the synthesis of quantum circuits based on specified state expressions workable by the compiler. The normalization factor of a state expression is ignored, same goes for the global phase of a state, so the following are all valid `qstate` expressions:
+Qubits are represented using a language of expressions denoting vectors or states in a Hilbert space built using the `qstate` typed language constants: `zero`, `one`, `plus`, `minus`, `plusi` and `minusi`. These constants are used inside state quantum state expressions and do not denote allocated runtime qubits. These constants can be combined into state expressions using addition, subtraction operators and complex phases specified using the prelude functions: phase() and turns(). The quantum state denoted by such a state expression is always a separable quantum state, making circuit the synthesis of quantum circuits based on specified state expressions workable by the compiler. The normalization factor of a state expression is ignored, same goes for the global phase of a state, so the following are all valid `qstate` expressions:
 
 ```leaf
 let sq: qstate = zero + one;
-let sq: qstate = zero - phase(turns(1/3)) * one;
+let sq: qstate = zero - phase(turns(1.0/3.0)) * one;
 ```
 
 Variables of type `qstate` can be combined into an array of same type using the tensor() prelude function:
@@ -23,7 +23,7 @@ Variables of type `qstate` can be combined into an array of same type using the 
 let sq1: qstate = zero + one;
 let sq2: qstate = zero - one;
 let sq: [qstate; 2] = sq1.tensor(sq2);
-let sq: [qstate; 2] = plus.tensor(zero - phase(turns(1/3)) * one);
+let sq: [qstate; 2] = plus.tensor(zero - phase(turns(1.0/3.0)) * one);
 ```
 
 An implementation of Hadamard gate using `sif/then/selse` pattern is shown next:
