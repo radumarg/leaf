@@ -48,6 +48,9 @@
 <a id="rand-2018-qwire-practice-formal-verification"></a>
 - **Rand, R., Paykin, J., & Zdancewic, S.** (2018). QWIRE Practice: Formal Verification of Quantum Circuits in Coq. In *Proceedings of the 14th International Conference on Quantum Physics and Logic (QPL 2017)*. *Electronic Proceedings in Theoretical Computer Science* 266, pp. 119–132. DOI: [10.4204/EPTCS.266.8](https://doi.org/10.4204/EPTCS.266.8). [arXiv:1803.00699](https://arxiv.org/abs/1803.00699).
 
+<a id="rand-2019-reqwire"></a>
+- **Rand, R., Paykin, J., Lee, D.-H., & Zdancewic, S.** (2019). ReQWIRE: Reasoning about Reversible Quantum Circuits. In *Proceedings of the 15th International Conference on Quantum Physics and Logic (QPL 2018)*. *Electronic Proceedings in Theoretical Computer Science* 287, pp. 299–312. DOI: [10.4204/EPTCS.287.17](https://doi.org/10.4204/EPTCS.287.17). [arXiv:1901.10118](https://arxiv.org/abs/1901.10118).
+
 <a id="bichsel-2020-silq-high-level-quantum-language"></a>
 - **Bichsel, B., Baader, M., Gehr, T., & Vechev, M.** (2020). Silq: A High-Level Quantum Language with Safe Uncomputation and Intuitive Semantics. In *Proceedings of the 41st ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI 2020)*, pp. 286–300. DOI: [10.1145/3385412.3386007](https://dl.acm.org/doi/10.1145/3385412.3386007). Project website: [silq.ethz.ch](https://silq.ethz.ch/).
 
