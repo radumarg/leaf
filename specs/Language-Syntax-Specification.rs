@@ -28,8 +28,7 @@
 // (3) Reserved Keywords + Built-in Identifiers: 
 /////////////////////////////////////////////////
 
-// Leaf Keywords, belong to language syntax and should be parsed as keywords
-
+// Leaf Keywords, belong to language syntax and should be parsed as keywords:
 adjoint
 affine
 as
@@ -83,8 +82,7 @@ use
 while
 zero
 
-// Leaf Reserved Built-in Functions, built-in Functions CANNOT be shadowed by a local declaration, belong to language syntax and should be parsed as built-in functions
-
+// Leaf Reserved Built-in Functions, built-in Functions CANNOT be shadowed by a local declaration, belong to language syntax and should be parsed as built-in functions:
 adjoint
 barrier
 ctrl + on + apply
@@ -102,9 +100,7 @@ stabilized
 uncompute
 weaken
 
-// Leaf Prelude Functions, prelude functions CAN be shadowed by a local declaration
-// Syntax should be parsed as regular functions, NOT keywords or built-in functions
-
+// Leaf Prelude Functions, prelude functions CAN be shadowed by a local declaration and should be parsed as regular functions, NOT keywords or built-in functions:
 abs
 acos
 asin
