@@ -14,7 +14,7 @@ record SourceSpan where
   constructor MkSourceSpan
   file  : String
   start : SourcePos  -- position of first character in the token
-  end   : SourcePos  -- position of last character in the token
+  end   : SourcePos  -- position immediately after last character
 
 public export
 record Located a where

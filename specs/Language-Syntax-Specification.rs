@@ -28,7 +28,103 @@
 // (3) Reserved Keywords + Built-in Identifiers: 
 /////////////////////////////////////////////////
 
-adjoint, affine, as, barrier, basis, break, classical, clean, ctrl, coisometry, const, continue, discard, else, enum, ensures, false, fn, for, general, if, impl, in, isolated, isometry, let, linear, loop, match, minusi, measr, mod, mut, minus, one, plus, plusi, pub, product, qalloc, qif, qelse, qenum, qmatch, requires, reset, return, scratch, sif, selse, self, separable, smatch, stabilized, struct, supports, tensor, then, true, unitary, uncompute, uncompsafe, use, weaken, while, zero, _
+// Leaf Keywords, belong to language syntax and should be parsed as keywords
+
+adjoint
+affine
+as
+break
+classical
+coisometry
+ctrl
+const
+continue
+else
+ensures
+enum
+false
+fn
+for
+general
+if
+impl
+in
+isometry
+let
+linear
+loop
+match
+minus
+minusi
+mod
+mut
+one
+plus
+plusi
+pub
+qif
+qelse
+qenum
+qmatch
+requires
+return
+scratch
+self
+selse
+sif
+smatch
+struct
+supports
+then
+true
+unitary
+uncompsafe
+use
+while
+zero
+
+// Leaf Reserved Built-in Functions, built-in Functions CANNOT be shadowed by a local declaration, belong to language syntax and should be parsed as built-in functions
+
+adjoint
+barrier
+ctrl + on + apply
+basis
+clean
+discard
+isolated
+measr
+product
+qalloc
+reset
+tensor
+separable
+stabilized
+uncompute
+weaken
+
+// Leaf Prelude Functions, prelude functions CAN be shadowed by a local declaration
+// Syntax should be parsed as regular functions, NOT keywords or built-in functions
+
+abs
+acos
+asin
+atan
+ceil
+cos
+exp
+floor
+ln
+log2
+log10
+max
+min
+Param
+phase
+round
+sin
+sqrt
+tan
+turns
 
 // (I) The following are built-in identifiers that can be used in Leaf programs which ARE part of language syntax and should be parsed as keywords or built-in functions:
 
