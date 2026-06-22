@@ -82,45 +82,48 @@ use
 while
 zero
 
-// Leaf Reserved Built-in Functions, built-in Functions CANNOT be shadowed by a local declaration, belong to language syntax and should be parsed as built-in functions:
+// adjoint is used both as function and as a block operator
 adjoint
-barrier
-ctrl + on + apply
-basis
-clean
-discard
-isolated
-measr
-product
-qalloc
-reset
-tensor
-separable
-stabilized
-uncompute
-weaken
+
+// Leaf Reserved Built-in Functions, built-in Functions CANNOT be shadowed by a local declaration, belong to language syntax and should be parsed as built-in functions:
+adjoint()
+barrier()
+ctrl().on().apply()
+basis()
+clean()
+discard()
+isolated()
+measr()
+product()
+qalloc()
+reset()
+tensor()
+separable()
+stabilized()
+uncompute()
+weaken()
 
 // Leaf Prelude Functions, prelude functions CAN be shadowed by a local declaration and should be parsed as regular functions, NOT keywords or built-in functions:
-abs
-acos
-asin
-atan
-ceil
-cos
-exp
-floor
-ln
-log2
-log10
-max
-min
-Param
-phase
-round
-sin
-sqrt
-tan
-turns
+abs()
+acos()
+asin()
+atan()
+ceil()
+cos()
+exp()
+floor()
+ln()
+log2()
+log10()
+max()
+min()
+Param()
+phase()
+round()
+sin()
+sqrt()
+tan()
+turns()
 
 // (I) The following are built-in identifiers that can be used in Leaf programs which ARE part of language syntax and should be parsed as keywords or built-in functions:
 
