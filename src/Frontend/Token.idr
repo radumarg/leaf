@@ -87,16 +87,73 @@ data ContractName
 ----------------------------------------------------------------------
 public export
 data Keyword
-  = KwAdjoint | KwAffine | KwAs
-  | KwBarrier | KwBreak
-  | KwCoisometry | KwClassical | KwCtrl | KwContinue | KwConst | KwDiscard
-  | KwElse | KwEnsures | KwEnum | KwFn | KwFor | KwGeneral
-  | KwIf | KwImpl | KwIn | KwIsometry
-  | KwLet | KwLinear | KwLoop
-  | KwMatch | KwMeasr | KwMod | KwMut | KwPub
-  | KwQAlloc | KwQenum | KwQelse | KwQif | KwQmatch | KwReset | KwRequires | KwReturn
-  | KwSelse | KwSif | KwSmatch | KwScratch | KwSelf | KwStruct | KwSupports | KwThen
-  | KwUncompute | KwUncompsafe | KwUnitary | KwUse | KwWeaken | KwWhile
+  = KwAdjoint
+  | KwAffine
+  | KwAs
+  | KwBreak
+  | KwCoisometry
+  | KwClassical
+  | KwContinue
+  | KwConst
+  | KwElse
+  | KwEnsures
+  | KwEnum
+  | KwFn
+  | KwFor
+  | KwGeneral
+  | KwIf
+  | KwImpl
+  | KwIn
+  | KwIsometry
+  | KwLet
+  | KwLinear
+  | KwLoop
+  | KwMatch
+  | KwMod
+  | KwMut
+  | KwPub
+  | KwQenum
+  | KwQelse
+  | KwQif
+  | KwQmatch
+  | KwRequires
+  | KwReturn
+  | KwSelse
+  | KwSif
+  | KwSmatch
+  | KwScratch
+  | KwSelf
+  | KwStruct
+  | KwSupports
+  | KwThen
+  | KwUncompsafe
+  | KwUnitary
+  | KwUse
+  | KwWhile
+
+----------------------------------------------------------------------
+-- Builtins: reserved built-in functions.
+----------------------------------------------------------------------
+public export
+data Builtins
+  = BuiltinAdjoint
+  | BuiltinBarrier
+  | BuiltinCtrl
+  | BuiltinOn
+  | BuiltinApply
+  | BuiltinBasis
+  | BuiltinClean
+  | BuiltinDiscard
+  | BuiltinIsolated
+  | BuiltinMeasr
+  | BuiltinProduct
+  | BuiltinQAlloc
+  | BuiltinReset
+  | BuiltinTensor
+  | BuiltinSeparable
+  | BuiltinStabilized
+  | BuiltinUncompute
+  | BuiltinWeaken
 
 ----------------------------------------------------------------------
 -- Symbols: punctuation and operators.
@@ -226,17 +283,14 @@ public export
 keywordFromString : String -> Maybe Keyword
 keywordFromString s =
   case s of
-    "affine"      => Just KwAffine
     "adjoint"     => Just KwAdjoint
+    "affine"      => Just KwAffine
     "as"          => Just KwAs
-    "barrier"     => Just KwBarrier
     "break"       => Just KwBreak
     "coisometry"  => Just KwCoisometry
     "classical"   => Just KwClassical
     "const"       => Just KwConst
-    "ctrl"        => Just KwCtrl
     "continue"    => Just KwContinue
-    "discard"     => Just KwDiscard
     "else"        => Just KwElse
     "ensures"     => Just KwEnsures
     "enum"        => Just KwEnum
@@ -251,17 +305,14 @@ keywordFromString s =
     "linear"      => Just KwLinear
     "loop"        => Just KwLoop
     "match"       => Just KwMatch
-    "measr"       => Just KwMeasr
     "mod"         => Just KwMod
     "mut"         => Just KwMut
     "pub"         => Just KwPub
-    "qalloc"      => Just KwQAlloc
     "qenum"       => Just KwQenum
     "qelse"       => Just KwQelse
     "qif"         => Just KwQif
     "qmatch"      => Just KwQmatch
     "requires"    => Just KwRequires
-    "reset"       => Just KwReset
     "return"      => Just KwReturn
     "selse"       => Just KwSelse
     "sif"         => Just KwSif
@@ -271,12 +322,34 @@ keywordFromString s =
     "struct"      => Just KwStruct
     "supports"    => Just KwSupports
     "then"        => Just KwThen
-    "uncompute"   => Just KwUncompute
     "uncompsafe"  => Just KwUncompsafe
     "unitary"     => Just KwUnitary
     "use"         => Just KwUse
-    "weaken"      => Just KwWeaken
     "while"       => Just KwWhile
+    _             => Nothing
+
+public export
+builtinFromString : String -> Maybe Builtins
+builtinFromString s =
+  case s of
+    "adjoint"    => Just BuiltinAdjoint
+    "barrier"    => Just BuiltinBarrier
+    "ctrl"       => Just BuiltinCtrl
+    "on"         => Just BuiltinOn
+    "apply"      => Just BuiltinApply
+    "basis"      => Just BuiltinBasis
+    "clean"      => Just BuiltinClean
+    "discard"    => Just BuiltinDiscard
+    "isolated"   => Just BuiltinIsolated
+    "measr"      => Just BuiltinMeasr
+    "product"    => Just BuiltinProduct
+    "qalloc"     => Just BuiltinQAlloc
+    "reset"      => Just BuiltinReset
+    "tensor"     => Just BuiltinTensor
+    "separable"  => Just BuiltinSeparable
+    "stabilized" => Just BuiltinStabilized
+    "uncompute"  => Just BuiltinUncompute
+    "weaken"     => Just BuiltinWeaken
     _             => Nothing
 
 public export
@@ -387,17 +460,14 @@ public export
 showKeywordLeaf : Keyword -> String
 showKeywordLeaf kw =
   case kw of
-    KwAdjoint   => "adjoint"
+    KwAdjoint  => "adjoint"
     KwAffine    => "affine"
     KwAs        => "as"
-    KwBarrier   => "barrier"
     KwBreak     => "break"
     KwCoisometry => "coisometry"
     KwClassical => "classical"
     KwConst     => "const"
-    KwCtrl      => "ctrl"
     KwContinue  => "continue"
-    KwDiscard   => "discard"
     KwElse      => "else"
     KwEnsures   => "ensures"
     KwEnum      => "enum"
@@ -412,16 +482,13 @@ showKeywordLeaf kw =
     KwLinear    => "linear"
     KwLoop      => "loop"
     KwMatch     => "match"
-    KwMeasr     => "measr"
     KwMod       => "mod"
     KwMut       => "mut"
     KwPub       => "pub"
-    KwQAlloc    => "qalloc"
     KwQenum     => "qenum"
     KwQelse     => "qelse"
     KwQif       => "qif"
     KwQmatch    => "qmatch"
-    KwReset     => "reset"
     KwRequires  => "requires"
     KwReturn    => "return"
     KwScratch   => "scratch"
@@ -431,12 +498,33 @@ showKeywordLeaf kw =
     KwSmatch    => "smatch"
     KwSupports  => "supports"
     KwThen      => "then"
-    KwUncompute => "uncompute"
     KwUncompsafe => "uncompsafe"
     KwUnitary   => "unitary"
     KwUse       => "use"
-    KwWeaken    => "weaken"
     KwWhile     => "while"
+
+public export
+showBuiltinLeaf : Builtins -> String
+showBuiltinLeaf b =
+  case b of
+    BuiltinAdjoint   => "adjoint"
+    BuiltinBarrier   => "barrier"
+    BuiltinCtrl      => "ctrl"
+    BuiltinOn        => "on"
+    BuiltinApply     => "apply"
+    BuiltinBasis     => "basis"
+    BuiltinClean     => "clean"
+    BuiltinDiscard   => "discard"
+    BuiltinIsolated  => "isolated"
+    BuiltinMeasr     => "measr"
+    BuiltinProduct   => "product"
+    BuiltinQAlloc    => "qalloc"
+    BuiltinReset     => "reset"
+    BuiltinTensor    => "tensor"
+    BuiltinSeparable => "separable"
+    BuiltinStabilized => "stabilized"
+    BuiltinUncompute => "uncompute"
+    BuiltinWeaken    => "weaken"
 
 public export
 showStateBasisLeaf : StateBasisName -> String
@@ -506,6 +594,10 @@ implementation Show Keyword where
   show = showKeywordLeaf
 
 public export
+implementation Show Builtins where
+  show = showBuiltinLeaf
+
+public export
 implementation Show Symbol where
   show = showSymbolLeaf
 
@@ -513,6 +605,7 @@ implementation Show Symbol where
 %runElab derive "TypPrimName" [Show, Eq]
 %runElab derive "StateBasisName" [Show, Eq]
 %runElab derive "ContractName" [Show, Eq]
+%runElab derive "Builtins" [Eq]
 %runElab derive "Keyword" [Eq]
 %runElab derive "Symbol" [Eq]
 %runElab derive "Token" [Show, Eq]
