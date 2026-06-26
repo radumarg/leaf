@@ -81,6 +81,19 @@ uncompute
 weaken
 ```
 
+### Global Language Constants
+
+Globally reserved quantum state literals:
+
+```leaf
+one
+minus
+minusi
+plus
+plusi
+zero
+```
+
 ### Leaf Prelude Functions
 
 Prelude functions CAN be shadowed by a local declaration:
@@ -106,17 +119,4 @@ sin
 sqrt
 tan
 turns
-```
-
-### Global Language Constants
-
-Globally reserved quantum state literals:
-
-```leaf
-one
-minus
-minusi
-plus
-plusi
-zero
 ```
