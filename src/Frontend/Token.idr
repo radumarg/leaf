@@ -37,26 +37,6 @@ data TypPrimName
   | TypPrimString
   | TypPrimStrSlice
 
-------------------------------------------------------
--- GateName: enumerates the built-in quantum gates.
-------------------------------------------------------
-public export
-data GateName
-  = GateId | GateX | GateY | GateZ | GateH
-  | GateS | GateSDG | GateT | GateTDG
-  | GateSX | GateSXDG
-  | GateRX | GateRY | GateRZ
-  | GateU1 | GateU2 | GateU3
-  | GateCNOT | GateCX
-  | GateCY | GateCZ | GateCS | GateCSDG | GateCT | GateCTDG
-  | GateCSX | GateCSXDG
-  | GateCRX | GateCRY | GateCRZ
-  | GateCU1 | GateCU2 | GateCU3
-  | GateSWAP
-  | GateRXX | GateRYY | GateRZZ
-  | GateCCX | GateCSWAP
-  | GateGPI | GateGPI2 | GateMS | GateZZ
-
 ----------------------------------------------------------
 -- StateBasisName: enumerates quantum state basis values.
 ----------------------------------------------------------
@@ -254,7 +234,6 @@ symbolTable =
 --   TokContractLit ContractClean
 --   TokKw KwLet
 --   TokTypPrim TypPrimI32
---   TokGate GateH
 --   TokSym SymPlusEq
 --   TokUnderscore
 ----------------------------------------------------------------------
@@ -272,7 +251,6 @@ data Token
   | TokContractLit      ContractName
   | TokKw               Keyword
   | TokTypPrim          TypPrimName
-  | TokGate             GateName
   | TokSym              Symbol
   | TokUnderscore
   | TokEOF
@@ -351,55 +329,6 @@ builtinFromString s =
     "uncompute"  => Just BuiltinUncompute
     "weaken"     => Just BuiltinWeaken
     _             => Nothing
-
-public export
-gateFromString : String -> Maybe GateName
-gateFromString s =
-  case s of
-    "Id"    => Just GateId
-    "X"     => Just GateX
-    "Y"     => Just GateY
-    "Z"     => Just GateZ
-    "H"     => Just GateH
-    "S"     => Just GateS
-    "SDG"   => Just GateSDG
-    "T"     => Just GateT
-    "TDG"   => Just GateTDG
-    "SX"    => Just GateSX
-    "SXDG"  => Just GateSXDG
-    "RX"    => Just GateRX
-    "RY"    => Just GateRY
-    "RZ"    => Just GateRZ
-    "U1"    => Just GateU1
-    "U2"    => Just GateU2
-    "U3"    => Just GateU3
-    "CNOT"  => Just GateCNOT
-    "CX"    => Just GateCX
-    "CY"    => Just GateCY
-    "CZ"    => Just GateCZ
-    "CS"    => Just GateCS
-    "CSDG"  => Just GateCSDG
-    "CT"    => Just GateCT
-    "CTDG"  => Just GateCTDG
-    "CSX"   => Just GateCSX
-    "CSXDG" => Just GateCSXDG
-    "CRX"   => Just GateCRX
-    "CRY"   => Just GateCRY
-    "CRZ"   => Just GateCRZ
-    "CU1"   => Just GateCU1
-    "CU2"   => Just GateCU2
-    "CU3"   => Just GateCU3
-    "SWAP"  => Just GateSWAP
-    "RXX"   => Just GateRXX
-    "RYY"   => Just GateRYY
-    "RZZ"   => Just GateRZZ
-    "CCX"   => Just GateCCX
-    "CSWAP" => Just GateCSWAP
-    "GPI"   => Just GateGPI
-    "GPI2"  => Just GateGPI2
-    "MS"    => Just GateMS
-    "ZZ"    => Just GateZZ
-    _       => Nothing
 
 public export
 stateBasisFromString : String -> Maybe StateBasisName
@@ -601,7 +530,6 @@ public export
 implementation Show Symbol where
   show = showSymbolLeaf
 
-%runElab derive "GateName" [Show, Eq]
 %runElab derive "TypPrimName" [Show, Eq]
 %runElab derive "StateBasisName" [Show, Eq]
 %runElab derive "ContractName" [Show, Eq]
