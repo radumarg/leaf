@@ -1,13 +1,11 @@
 ### Leaf Keywords
 
 ```leaf
-adjoint
 affine
 as
 break
 classical
 coisometry
-ctrl
 const
 continue
 else
@@ -25,13 +23,8 @@ let
 linear
 loop
 match
-minus
-minusi
 mod
 mut
-one
-plus
-plusi
 pub
 qif
 qelse
@@ -52,7 +45,17 @@ unitary
 uncompsafe
 use
 while
-zero
+```
+
+### Adjoint
+
+Adjoint is used both as built-in function and as a block keyword operator:
+
+```leaf
+adjoint()
+adjoint {
+    // block of code
+}
 ```
 
 ### Leaf Reserved Built-in Functions
@@ -103,4 +106,17 @@ sin
 sqrt
 tan
 turns
+```
+
+### Global Language Constants
+
+Globally reserved quantum state literals:
+
+```leaf
+one
+minus
+minusi
+plus
+plusi
+zero
 ```

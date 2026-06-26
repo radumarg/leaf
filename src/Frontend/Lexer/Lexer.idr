@@ -1,18 +1,9 @@
 module Frontend.Lexer.Lexer
-
 import Derive.Prelude
 import Language.Reflection
 
-import Text.Lex
-import Text.Lex.Manual
-
 import Frontend.Token
-import Frontend.Source
 import Frontend.Lexer.Error
-
--- idris2-parser manual tooling for span tracking:
--- Position, begin, next, Bounded, bounded, ...
-import Text.Parse.Manual
 
 %default total
 %language ElabReflection

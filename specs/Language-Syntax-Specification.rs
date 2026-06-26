@@ -54,7 +54,6 @@ as
 break
 classical
 coisometry
-ctrl
 const
 continue
 else
@@ -101,8 +100,11 @@ use
 while
 zero
 
-// adjoint is used both as function and as a block operator
-adjoint
+// adjoint is used both as builtin function and as a block operator:
+adjoint()
+adjoint {
+    // block of code
+}
 
 // Leaf Reserved Built-in Functions, built-in Functions CANNOT be shadowed by a local declaration, belong to language syntax and should be parsed as built-in functions:
 adjoint()

@@ -33,12 +33,13 @@ data TypPrimName
   | TypPrimU64
   | TypPrimU128
   | TypPrimQubit
-  | TypePrimQState
+  | TypPrimQState
   | TypPrimString
   | TypPrimStrSlice
 
 ----------------------------------------------------------
--- StateBasisName: enumerates quantum state basis values.
+-- StateBasisName: enumerates quantum basis states values.
+-- These are globally reserved quantum state literals.
 ----------------------------------------------------------
 public export
 data StateBasisName
@@ -48,19 +49,6 @@ data StateBasisName
   | StateMinus
   | StatePlusI
   | StateMinusI
-
-----------------------------------------------------------------
--- ContractName: enumerates built-in quantum contract literals.
-----------------------------------------------------------------
-public export
-data ContractName
-  = ContractClean
-  | ContractStabilized
-  | ContractBasis
-  | ContractSeparable
-  | ContractIsolated
-  | ContractProduct
-  | ContractCollapsed
 
 ----------------------------------------------------------------------
 -- Keywords: reserved words that affect syntax.
@@ -112,12 +100,12 @@ data Keyword
   | KwWhile
 
 ----------------------------------------------------------------------
--- Builtins: reserved built-in functions.
+-- Builtin: reserved intrinsic functions names.
+-- These cannot be shadowed by user declarations.
 ----------------------------------------------------------------------
 public export
-data Builtins
-  = BuiltinAdjoint
-  | BuiltinBarrier
+data Builtin
+  = BuiltinBarrier
   | BuiltinCtrl
   | BuiltinOn
   | BuiltinApply
@@ -161,7 +149,7 @@ data Symbol
   | SymArrow                              -- ->
   | SymFatArrow                           -- =>  (match arm separator)
   | SymShl | SymShlEq | SymShr | SymShrEq -- <<, <<=, >>, >>=
-  | SymAndEq | SymOrEq  |SymCaretEq       -- "&=", "|=", "^="
+  | SymAndEq | SymOrEq | SymCaretEq       -- "&=", "|=", "^="
  
 ------------------------------------------------------------------------------------------------------------
 -- A symbol table ordered from longest to shortest, the lexer must use longest match first to disambiguate.
@@ -231,10 +219,10 @@ symbolTable =
 --   TokStringLitRaw "Hello"
 --   TokBoolLit True
 --   TokStateLit StateZero
---   TokContractLit ContractClean
 --   TokKw KwLet
 --   TokTypPrim TypPrimI32
 --   TokSym SymPlusEq
+--   TokBuiltin BuiltinMeasr
 --   TokUnderscore
 ----------------------------------------------------------------------
 public export
@@ -248,10 +236,10 @@ data Token
   | TokStringLitRaw     String
   | TokBoolLit          Bool
   | TokStateLit         StateBasisName
-  | TokContractLit      ContractName
   | TokKw               Keyword
   | TokTypPrim          TypPrimName
   | TokSym              Symbol
+  | TokBuiltin          Builtin
   | TokUnderscore
   | TokEOF
 ----------------------------------------------------------------------
@@ -307,10 +295,9 @@ keywordFromString s =
     _             => Nothing
 
 public export
-builtinFromString : String -> Maybe Builtins
+builtinFromString : String -> Maybe Builtin
 builtinFromString s =
   case s of
-    "adjoint"    => Just BuiltinAdjoint
     "barrier"    => Just BuiltinBarrier
     "ctrl"       => Just BuiltinCtrl
     "on"         => Just BuiltinOn
@@ -343,18 +330,6 @@ stateBasisFromString s =
     _        => Nothing
 
 public export
-contractFromString : String -> Maybe ContractName
-contractFromString s =
-  case s of
-    "clean"       => Just ContractClean
-    "stabilized"  => Just ContractStabilized
-    "basis"       => Just ContractBasis
-    "separable"   => Just ContractSeparable
-    "isolated"    => Just ContractIsolated
-    "product"     => Just ContractProduct
-    _             => Nothing
-
-public export
 typeFromString : String -> Maybe TypPrimName
 typeFromString s =
   case s of
@@ -380,6 +355,41 @@ typeFromString s =
     "str"     => Just TypPrimStrSlice
     "String"  => Just TypPrimString
     _         => Nothing
+
+public export
+boolFromString : String -> Maybe Bool
+boolFromString s =
+  case s of
+    "true"  => Just True
+    "false" => Just False
+    _       => Nothing
+
+
+---------------------------------------------------------------------
+-- single authoritative classification order for token-like strings:
+-- bools, keywords, types, state basis, builtins, identifiers
+---------------------------------------------------------------------
+public export
+tokenFromIdentLike : String -> Token
+tokenFromIdentLike s =
+  case s of
+    "_" => TokUnderscore
+    _ =>
+      case boolFromString s of
+        Just b => TokBoolLit b
+        Nothing =>
+          case keywordFromString s of
+            Just kw => TokKw kw
+            Nothing =>
+              case typeFromString s of
+                Just ty => TokTypPrim ty
+                Nothing =>
+                  case stateBasisFromString s of
+                    Just st => TokStateLit st
+                    Nothing =>
+                      case builtinFromString s of
+                        Just bi => TokBuiltin bi
+                        Nothing => TokIdent s
 
 ----------------------------------------------------------------------
 -- Implementation and Derivations for debugging/testing
@@ -425,6 +435,7 @@ showKeywordLeaf kw =
     KwSelse     => "selse"
     KwSif       => "sif"
     KwSmatch    => "smatch"
+    KwStruct    => "struct"
     KwSupports  => "supports"
     KwThen      => "then"
     KwUncompsafe => "uncompsafe"
@@ -433,10 +444,9 @@ showKeywordLeaf kw =
     KwWhile     => "while"
 
 public export
-showBuiltinLeaf : Builtins -> String
+showBuiltinLeaf : Builtin -> String
 showBuiltinLeaf b =
   case b of
-    BuiltinAdjoint   => "adjoint"
     BuiltinBarrier   => "barrier"
     BuiltinCtrl      => "ctrl"
     BuiltinOn        => "on"
@@ -519,21 +529,54 @@ showSymbolLeaf sym =
     SymBang        => "!"
 
 public export
+showTypPrimLeaf : TypPrimName -> String
+showTypPrimLeaf ty =
+  case ty of
+    TypPrimAngle32  => "angle32"
+    TypPrimAngle64  => "angle64"
+    TypPrimBit      => "bit"
+    TypPrimBool     => "bool"
+    TypPrimF32      => "f32"
+    TypPrimF64      => "f64"
+    TypPrimI8       => "i8"
+    TypPrimI16      => "i16"
+    TypPrimI32      => "i32"
+    TypPrimI64      => "i64"
+    TypPrimI128     => "i128"
+    TypPrimParam    => "param"
+    TypPrimU8       => "u8"
+    TypPrimU16      => "u16"
+    TypPrimU32      => "u32"
+    TypPrimU64      => "u64"
+    TypPrimU128     => "u128"
+    TypPrimQubit    => "qubit"
+    TypPrimQState   => "qstate"
+    TypPrimString   => "String"
+    TypPrimStrSlice => "str"
+
+public export
 implementation Show Keyword where
   show = showKeywordLeaf
 
 public export
-implementation Show Builtins where
+implementation Show Builtin where
   show = showBuiltinLeaf
 
 public export
 implementation Show Symbol where
   show = showSymbolLeaf
 
-%runElab derive "TypPrimName" [Show, Eq]
-%runElab derive "StateBasisName" [Show, Eq]
-%runElab derive "ContractName" [Show, Eq]
-%runElab derive "Builtins" [Eq]
+public export
+implementation Show StateBasisName where
+  show = showStateBasisLeaf
+
+public export
+implementation Show TypPrimName where
+  show = showTypPrimLeaf
+
+%runElab derive "TypPrimName" [Eq]
+%runElab derive "StateBasisName" [Eq]
+%runElab derive "Builtin" [Eq]
 %runElab derive "Keyword" [Eq]
 %runElab derive "Symbol" [Eq]
 %runElab derive "Token" [Show, Eq]
