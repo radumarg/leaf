@@ -4,15 +4,34 @@
 
 // Leaf is deliberately designed to replicate Rust’s basic syntax, with minimal extensions for quantum programming which are meant to look and feel like Rust.
 
-////////////////////////////////////////////////////////////////////////////////
-// (1) Comments syntax for the Leaf language follows the same syntax as Rust:
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// (1) Comments syntax for the Leaf language follows the same syntax as Rust, including nested block comments:
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // single line comment
 
   /*
      multi-line comment
   */
+
+  /*
+    This is an outer block comment.
+
+    /*
+        This is a nested block comment.
+        Leaf allows this.
+    */
+
+    Back in the outer comment.
+  */
+
+  /// Documentation comment for a function, struct, or module. Leaf supports Rust-style documentation comments.
+
+  /** Documentation comment. */
+
+  //! Documentation comment.
+
+  /*! Documentation comment. */
 
 ///////////////////////////////////
 // (2) Basic Leaf Language Syntax
