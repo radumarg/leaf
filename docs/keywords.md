@@ -1,3 +1,21 @@
+### Boolean Literals
+
+```leaf
+false
+true
+```
+
+### Quantum State Literals
+
+```leaf
+one
+minus
+minusi
+plus
+plusi
+zero
+```
+
 ### Leaf Keywords
 
 ```leaf
@@ -11,7 +29,6 @@ continue
 else
 ensures
 enum
-false
 fn
 for
 general
@@ -40,7 +57,6 @@ smatch
 struct
 supports
 then
-true
 unitary
 uncompsafe
 use
@@ -49,7 +65,7 @@ while
 
 ### Adjoint
 
-Adjoint is used both as built-in function and as a block keyword operator:
+Keyword usable as both a higher-order operator and a block operator:
 
 ```leaf
 adjoint()
@@ -79,19 +95,6 @@ separable
 stabilized
 uncompute
 weaken
-```
-
-### Global Language Constants
-
-Globally reserved quantum state literals:
-
-```leaf
-one
-minus
-minusi
-plus
-plusi
-zero
 ```
 
 ### Leaf Prelude Functions

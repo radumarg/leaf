@@ -87,10 +87,10 @@ Contracts form two partially ordered sets with `dirty` for unary predicates and 
                      isolated(qs)                                            product(qs, qs')
                     /            \
              separable(qs)  stabilized(qs, [+pauli_str1, -pauli_str2, ..])
-                  |               |
-          basis(qs, pauli_str)    |
-                       \         /
-                        clean(qs)
+                  |
+          basis(qs, pauli_str)
+                  |
+              clean(qs)
 ```
 
 The order specifies a refinement relation on predicates, so `ensures clean(qs)` which is more refined should also satisfy `ensures basis(qs, ZZ)` etc. Being the most general state of qubit(s) the `dirty` is the default and is not a Leaf language keyword. Same goes for `entangled`.

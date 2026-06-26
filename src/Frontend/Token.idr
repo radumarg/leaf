@@ -32,10 +32,11 @@ data TypPrimName
   | TypPrimU32
   | TypPrimU64
   | TypPrimU128
-  | TypPrimQubit
-  | TypPrimQState
+  | TypPrimChar
   | TypPrimString
   | TypPrimStrSlice
+  | TypPrimQubit
+  | TypPrimQState
 
 ----------------------------------------------------------
 -- StateBasisName: enumerates quantum basis states values.
@@ -100,7 +101,7 @@ data Keyword
   | KwWhile
 
 ----------------------------------------------------------------------
--- Builtin: reserved intrinsic functions names.
+-- Builtin: reserved intrinsic function names.
 -- These cannot be shadowed by user declarations.
 ----------------------------------------------------------------------
 public export
@@ -216,7 +217,13 @@ symbolTable =
 --   TokIdent "x"
 --   TokIntLitRaw "123"
 --   TokFloatLitRaw "3.14"
---   TokStringLitRaw "Hello"
+--   TokByteLitRaw "b'a'"
+--   TokByteStringLitRaw "b\"hello\""
+--   TokBasisStringLitRaw "bs\"01+-iI\""
+--   TokCharLitRaw "'a'"
+--   TokStringLitRaw "\"Hello\""
+--   TokOuterDoc "/// docs for following item"
+--   TokInnerDoc "//! docs for enclosing item"
 --   TokBoolLit True
 --   TokStateLit StateZero
 --   TokKw KwLet
@@ -224,22 +231,26 @@ symbolTable =
 --   TokSym SymPlusEq
 --   TokBuiltin BuiltinMeasr
 --   TokUnderscore
+--   TokEOF
 ----------------------------------------------------------------------
 public export
 data Token
-  = TokIdent            String
-  | TokIntLitRaw        String
-  | TokFloatLitRaw      String
-  | TokByteLitRaw       String
-  | TokByteStringLitRaw String
-  | TokBitStringLit     String
-  | TokStringLitRaw     String
-  | TokBoolLit          Bool
-  | TokStateLit         StateBasisName
-  | TokKw               Keyword
-  | TokTypPrim          TypPrimName
-  | TokSym              Symbol
-  | TokBuiltin          Builtin
+  = TokIdent             String
+  | TokIntLitRaw         String
+  | TokFloatLitRaw       String
+  | TokByteLitRaw        String
+  | TokByteStringLitRaw  String
+  | TokBasisStringLitRaw String
+  | TokCharLitRaw        String
+  | TokStringLitRaw      String
+  | TokOuterDoc          String   -- /// line  or  /** … */ block: documents the item that FOLLOWS
+  | TokInnerDoc          String   -- //! line  or  /*! … */ block: documents the ENCLOSING item
+  | TokBoolLit           Bool
+  | TokStateLit          StateBasisName
+  | TokKw                Keyword
+  | TokTypPrim           TypPrimName
+  | TokSym               Symbol
+  | TokBuiltin           Builtin
   | TokUnderscore
   | TokEOF
 ----------------------------------------------------------------------
@@ -337,6 +348,7 @@ typeFromString s =
     "angle64" => Just TypPrimAngle64
     "bit"     => Just TypPrimBit
     "bool"    => Just TypPrimBool
+    "char"    => Just TypPrimChar
     "f32"     => Just TypPrimF32
     "f64"     => Just TypPrimF64
     "i8"      => Just TypPrimI8
@@ -536,6 +548,7 @@ showTypPrimLeaf ty =
     TypPrimAngle64  => "angle64"
     TypPrimBit      => "bit"
     TypPrimBool     => "bool"
+    TypPrimChar     => "char"
     TypPrimF32      => "f32"
     TypPrimF64      => "f64"
     TypPrimI8       => "i8"

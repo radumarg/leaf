@@ -73,7 +73,7 @@ A straightforward generalization of a quantum conditional for multiple branches 
   }
 ```
 
-Similar conditions that apply to quantum conditionals branches apply here as well for functions in `qmatch` branches. The operations implemented by different branches are in no way conditioned with respect to each other but must not act on the match condition qubits. Like in Rust, match must be exhaustive but the placeholder `_ => ` syntax is supported such that match expressions that are not specified can be assigned a default, possibly trivial operation. Mixing bit string expressions `bs"00"` with digits `0,1,2` in the same qmatch expression is not allowed.
+Similar conditions that apply to quantum conditionals branches apply here as well for functions in `qmatch` branches. The operations implemented by different branches are in no way conditioned with respect to each other but must not act on the match condition qubits. Like in Rust, match must be exhaustive but the placeholder `_ => ` syntax is supported such that match expressions that are not specified can be assigned a default, possibly trivial operation. Mixing basis string expressions `bs"00"` with digits `0,1,2` in the same qmatch expression is not allowed.
 
 ### (2) State-oriented qubits model: `sif`/`selse/smatch`
 
@@ -120,4 +120,4 @@ smatch &qs {
 }
 ```
 
-All possible branches must be specified and must describe states that are provably orthogonal with respect to each other. This implies the wildcard placeholder is not supported in this case. The `phase(turns(1.0/4.0))` expression based on built-in helper functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp(i * π/2)`. Mixing bit string expressions `bs"00"` with digits `0,1,2` in the same smatch expression is not allowed.
+All possible branches must be specified and must describe states that are provably orthogonal with respect to each other. This implies the wildcard placeholder is not supported in this case. The `phase(turns(1.0/4.0))` expression based on built-in helper functions [phase()](builtins.md#built-in-functions) and [turns()](builtins.md#built-in-functions), is equivalent to: `exp(i * π/2)`. Mixing basis string expressions `bs"00"` with digits `0,1,2` in the same smatch expression is not allowed.

@@ -43,9 +43,21 @@
 
 // Parentheses, square brackets and curly braces follow the same rules from Rust.
 
-/////////////////////////////////////////////////
-// (3) Reserved Keywords + Built-in Identifiers: 
-/////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+// (3) Reserved Keywords + Built-in Identifiers + Literals for Leaf Language Syntax:
+/////////////////////////////////////////////////////////////////////////////////////
+
+// reserved boolean literals, belong to language syntax and should be parsed such
+false
+true
+
+// reserved quantum state literals, belong to language syntax and should be parsed such
+one
+zero
+minus
+minusi
+plus
+plusi
 
 // Leaf Keywords, belong to language syntax and should be parsed as keywords:
 adjoint
@@ -59,7 +71,6 @@ continue
 else
 ensures
 enum
-false
 fn
 for
 general
@@ -71,13 +82,8 @@ let
 linear
 loop
 match
-minus
-minusi
 mod
 mut
-one
-plus
-plusi
 pub
 qif
 qelse
@@ -93,21 +99,19 @@ smatch
 struct
 supports
 then
-true
 unitary
 uncompsafe
 use
 while
-zero
 
-// adjoint is used both as builtin function and as a block operator:
+// keyword usable as both a higher-order operator and a block operator:
+// CANNOT be shadowed by a local declaration, belong to language syntax and should be parsed as a keyword:
 adjoint()
 adjoint {
     // block of code
 }
 
 // Leaf Reserved Built-in Functions, built-in Functions CANNOT be shadowed by a local declaration, belong to language syntax and should be parsed as built-in functions:
-adjoint()
 barrier()
 ctrl().on().apply()
 basis()
@@ -145,6 +149,7 @@ sin()
 sqrt()
 tan()
 turns()
+
 
 // (I) The following are built-in identifiers that can be used in Leaf programs which ARE part of language syntax and should be parsed as keywords or built-in functions:
 
@@ -200,6 +205,9 @@ bool
 // unit type:
 ()
 
+// character type:
+char
+
 // string type:
 str, String
 
@@ -239,7 +247,7 @@ let unit : () = ();
 // inferred type for unit literal
 let unit = ();
 
-// syntax for declaring parameters, here "param" is a builtin function:
+// syntax for declaring parameters, here "Param" is a builtin function:
 let theta : param = Param("theta");
 
 // var assignment syntax for basic types:
@@ -520,9 +528,9 @@ let (q0, q1) : (qubit, qubit) = CX(q0, q1);
 let (q0, q1) = CX(q0, q1);
 CX(&q0, &q1);
 
-///////////////////////////////////////////
-// (14) Built-in quantum gate identifiers:
-///////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+// (14) Prelude quantum gates, CAN be shadowed by a local declaration
+//////////////////////////////////////////////////////////////////////
 
 Id, X, Y, Z, H, S, SDG, T, TDG, SX, SXDG, RX, RY, RZ, U1, U2, U3, CNOT, CX, CY, CZ, CS, CSDG, CT, CTDG, CSX, CSXDG, CRX, CRY, CRZ, CU1, CU2, CU3, SWAP, RXX, RYY, RZZ, CCX, CSWAP, GPI, GPI2, MS, ZZ
 
@@ -961,7 +969,7 @@ qmatch &qs {
 // Like in Rust, wildcard patterns are supported for qmatch: 
 _ => f()
 
-// mixing bit string expressions bs"00" with digits 0,1,2 in the same qmatch expression is not permitted.
+// mixing basis string expressions bs"00" with digits 0,1,2 in the same qmatch expression is not permitted.
 
 ////////////////////////////////////////////////
 // (26) Quantum match style expressions smatch:
@@ -981,7 +989,7 @@ smatch &qs {
   bs"11" => state_expression_11(data),
 }
 
-// mixing bit string expressions bs"00" with digits 0,1,2 in the same smatch expression is not permitted.
+// mixing basis string expressions bs"00" with digits 0,1,2 in the same smatch expression is not permitted.
 smatch &qs {
   0 => state_expression_0(data),
   1 => state_expression_1(data),
@@ -1869,3 +1877,14 @@ let first: &str = "Trying";
 let second: i32 = 3;
 let third: &str = "times";
 let message: String = format!("{first} {second} {third}!");
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// (73) Rust style characters, only ASCII characters are supported for now, Unicode characters are not supported yet:
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+let c: char = 'a';
+let digit: char = '7';
+let space: char = ' ';
+let newline: char = '\n';
+let quote: char = '\'';
+let backslash: char = '\\';
