@@ -378,7 +378,7 @@ boolFromString s =
 
 
 ---------------------------------------------------------------------
--- single authoritative classification order for token-like strings:
+-- single authoritative classification order for identifier-like text:
 -- bools, keywords, types, state basis, builtins, identifiers
 ---------------------------------------------------------------------
 public export
