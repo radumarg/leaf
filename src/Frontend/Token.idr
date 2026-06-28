@@ -39,11 +39,11 @@ data TypPrimName
   | TypPrimQState
 
 ----------------------------------------------------------
--- StateBasisName: enumerates quantum basis states values.
+-- BasisStateName: enumerates quantum basis states values.
 -- These are globally reserved quantum state literals.
 ----------------------------------------------------------
 public export
-data StateBasisName
+data BasisStateName
   = StateZero
   | StateOne
   | StatePlus
@@ -246,7 +246,7 @@ data Token
   | TokOuterDoc          String   -- /// line  or  /** … */ block: documents the item that FOLLOWS
   | TokInnerDoc          String   -- //! line  or  /*! … */ block: documents the ENCLOSING item
   | TokBoolLit           Bool
-  | TokStateLit          StateBasisName
+  | TokStateLit          BasisStateName
   | TokKw                Keyword
   | TokTypPrim           TypPrimName
   | TokSym               Symbol
@@ -329,7 +329,7 @@ builtinFromString s =
     _             => Nothing
 
 public export
-stateBasisFromString : String -> Maybe StateBasisName
+stateBasisFromString : String -> Maybe BasisStateName
 stateBasisFromString s =
   case s of
     "zero"   => Just StateZero
@@ -478,7 +478,7 @@ showBuiltinLeaf b =
     BuiltinWeaken    => "weaken"
 
 public export
-showStateBasisLeaf : StateBasisName -> String
+showStateBasisLeaf : BasisStateName -> String
 showStateBasisLeaf sb =
   case sb of
     StateZero   => "zero"
@@ -580,7 +580,7 @@ implementation Show Symbol where
   show = showSymbolLeaf
 
 public export
-implementation Show StateBasisName where
+implementation Show BasisStateName where
   show = showStateBasisLeaf
 
 public export
@@ -588,7 +588,7 @@ implementation Show TypPrimName where
   show = showTypPrimLeaf
 
 %runElab derive "TypPrimName" [Eq]
-%runElab derive "StateBasisName" [Eq]
+%runElab derive "BasisStateName" [Eq]
 %runElab derive "Builtin" [Eq]
 %runElab derive "Keyword" [Eq]
 %runElab derive "Symbol" [Eq]

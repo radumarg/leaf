@@ -1419,8 +1419,7 @@ let z = 123_i32;
 // (55) Floating point literals
 ////////////////////////////////
 
-let x = 1.0;
-let x = 1.;
+let x = 1.0; // at least one digit is required after the decimal point
 let x = 0.1;
 let x = 1.0e-3;
 let x = 12E+99;
