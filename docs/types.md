@@ -47,12 +47,6 @@ f32, f64
 bool
 ```
 
-(8) String type:
-```leaf
-String
-str
-```
-
 (9) Unit type:
 ```leaf
 ()

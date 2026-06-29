@@ -1,62 +1,75 @@
 module Frontend.Lexer.Lexer
+
+import Data.Bits
 import Derive.Prelude
 import Language.Reflection
+import Text.Bounds
+import Text.ILex
+import Text.ParseError
 
 import Frontend.Token
-import Frontend.Lexer.Error
+import Frontend.Lexer.Errors
+import Frontend.Lexer.Rules
 
 %default total
 %language ElabReflection
 
 --------------------------------------------------------------------------------
--- Main entry point: lexProgram
+-- Translating ilex native errors into Leaf's public LexerError.
+--
+-- Latest idris2-ilex exposes `BoundedErr e`, i.e. a `Bounded (InnerError e)`.
+-- The prompt asks `lexProgram` to expose only `Bounded LexerError`, so this
+-- module is the single place where native ilex failures are translated.
 --------------------------------------------------------------------------------
 public export
-lexProgram : String -> Either (Bounded LexerErr) (List (Bounded Token))
-lexProgram inputString = TODO
+translateInnerLexerError : InnerError LexerError -> LexerError
+translateInnerLexerError (Custom lexerError) =
+  lexerError
 
-- I want manual lexer based primarily on Stefan Höck's idris2-parser Text.Lex.Manual with this signature:
- lexProgram : String -> Either (Bounded LexerErr) (List (Bounded Token))
+translateInnerLexerError EOI =
+  LexUnexpectedEndOfInput
 
-- I plan to use use idris2-parser Bounded for tokens and my own Located for AST nodes. So for the current lexer, I will return Bounded Token.
+translateInnerLexerError (Expected expectedTokens actualText) =
+  LexUnexpectedInput expectedTokens actualText
 
-- Every successful token consumes at least one character, and every error-recovery step also consumes at least one character. That keeps totality and avoids accidental infinite loops.
+translateInnerLexerError (ExpectedChar characterClass) =
+  LexUnexpectedInput [interpolate characterClass] ""
 
-- symbolTable in Token.idr is ordered from longest to shortest, the lexer must use longest match first to disambiguate.
+translateInnerLexerError ExpectedEOI =
+  LexUnexpectedInput ["end of input"] "more input"
 
-- Preserve raw numeric literals in the lexer. Do not parse integer bounds, suffixes, signedness, or floating-point precision in the lexer. The lexer should preserve the spelling.
+translateInnerLexerError (InvalidControl characterValue) =
+  LexUnexpectedInput [] (show characterValue)
 
-- Keep unary minus out of numeric literals. -1 should be lexed as two tokens: TokSym SymMinus and TokIntLitRaw "1". Later the parser can then decide how to interpret the minus sign based on context.
+translateInnerLexerError InvalidEscape =
+  LexInternalLexerError "Invalid escape sequence reported by ilex"
 
-- Identifiers should be lexed as:
+translateInnerLexerError (OutOfBounds rawText) =
+  LexInternalLexerError ("Out-of-bounds value reported by ilex: " ++ rawText)
 
-  identifier_start = letter or _
-  identifier_rest  = letter or digit or _
+translateInnerLexerError (Unclosed delimiterText) =
+  case delimiterText == "block comment" of
+    True => LexUnterminatedBlockComment
+    False => LexUnclosedDelimiter delimiterText
 
-  Corner case: `_` should be lexed as: TokUnderscore` and not as an identifier with the name `_`. 
+translateInnerLexerError (Unknown actualText) =
+  LexUnexpectedInput [] actualText
 
-  On the other hand: `_x` should be lexed as an identifier TokIdent with the name `_x`.
+translateInnerLexerError (InvalidByte byteValue) =
+  LexInvalidUtf8Byte byteValue
 
-  Leaf allows apostrophes in identifiers: `foo'`
+--------------------------------------------------------------------------------
+-- Main entry point: lexProgram
+--
+-- The lexer itself already emits `Bounded Token` and `BoundedErr LexerError`
+-- using the current source-positioned ilex API.  No legacy byte-bound conversion layer is needed here.
+--------------------------------------------------------------------------------
+public export
+lexProgram : String -> Either (Bounded LexerError) (List (Bounded Token))
+lexProgram inputString =
+  case runString leafLexer inputString of
+    Left ilexError =>
+      Left (map translateInnerLexerError ilexError)
 
-- Do not make the lexer context-sensitive, If `basis` is a keyword, it is always a keyword. If it is an identifier, it is always an identifier.
-
-- Keep parser concerns out of the lexer. The lexer should not decide that this is a function call: H(&q)
-
-- Validate bitstring literals in the lexer. bs"++" is special enough to deserve a dedicated scanner.
-
-- Make lexical errors structured. Do not return plain strings
-
-- Keep comments and whitespace out of the token stream. But always update source positions.
-
-- Avoid context-sensitive lexing. Let the parser and later frontend phases handle meaning.
-
-- Source code is orgnized like this:
-
-  Frontend/
-    Token.idr
-    Source.idr
-    Lexer/
-      Error.idr
-      Helpers.idr
-      Lexer.idr
+    Right boundedTokens =>
+      Right boundedTokens

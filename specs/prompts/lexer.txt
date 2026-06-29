@@ -1,6 +1,6 @@
 
 
-I want you to generate a lexer using Stefan Höck's idris2-ilex library: https://github.com/stefan-hoeck/idris2-ilex for the Leaf programming language. As a starting point please use the following language specification for Leaf:
+I want you to generate a stateful lexer using Stefan Höck's idris2-ilex library: https://github.com/stefan-hoeck/idris2-ilex for the Leaf programming language. As a starting point please use the following language specification for Leaf:
 
 // BEGINNING OF LEAF LANGUAGE SYNTAX SPECIFICATION
 
@@ -211,12 +211,6 @@ bool
 // unit type:
 ()
 
-// character type:
-char
-
-// string type:
-str, String
-
 ////////////////////////////////
 // (6) Syntax for Basic Types
 ////////////////////////////////
@@ -253,7 +247,7 @@ let unit : () = ();
 // inferred type for unit literal
 let unit = ();
 
-// syntax for declaring parameters, here "Param" is a builtin function:
+// syntax for declaring parameters:
 let theta : param = Param("theta");
 
 // var assignment syntax for basic types:
@@ -488,7 +482,7 @@ let state = bs"iiiiIIIII";
 // (12) Syntax for type qualifiers for qubits
 //////////////////////////////////////////////
 
-// linear qubits: must be consumed exactly once, no copying or implicit discarding allowed (discarding must be explicit via the discard keyword)
+// linear qubits: must be consumed exactly once, no copying or implicit discarding allowed (discarding must be explicit via the discard builit-in function)
 // this is the default, so the 'linear' keyword is optional
 let linear q: qubit = qalloc();
 let linear qs: [qubit; 2] = qalloc(2);
@@ -1474,7 +1468,7 @@ let y = Data::Right(2, 3);
 //  Struct-like enums:
 enum Message {
     Move { x: i32, y: i32 },
-    Write { text: String },
+    Write { age: i8 },
 }
 
 // usage of struct-like enums:
@@ -1808,97 +1802,11 @@ general fn sample_until_zero() -> qubit {
     }
 }
 
-// Quantum controlled recursion and recursive quantum types are not supported at this moment
-
-/////////////////
-// (70) Strings:
-/////////////////
-
-// Like in Rust, Leaf supports string literals. Leaf does not have a print statement and since Leaf commpiles to OpenQasm3 and OpenQASM3 does not have a string type, strings in Leaf are used mainly to help write more expressive code:
-
-let mut string = String::new();
-
-// String literal using the string-slice type:
-let message: &str = "Hello, world!";
-
-// Owned strings: String
-let message: String = String::from("Hello");
-
-// A String type owns its allocated text and can be modified:
-let mut text: String = String::from("Hello");
-text.push_str(", world");
-text.push('!');
-
-// String interpolation:
-let first = "Hello";
-let second = "world";
-let message = format!("{first}, {second}!");
-
-// Same code as above but with explicit type annotations and string concatenation:
-let first: &str = "Hello";
-let second: &str = "world";
-let message: String = String::from(first) + ", " + second + "!";
-
-// Strings may also be required lexically for Param types. Another example using string interpolation:
-let i: i32 = 1;
-let theta: param = Param(format!("theta_{i}"));
-
-// String ownership and borrowing:
-let owned: String = String::from("Hello");
-let borrowed: &str = &owned;
-
-// Comparing strings:
-let a = "hello";
-let b = "hello";
-
-if a == b {
-    // some code
-}
-
-if a != "world" {
-    // some code
-}
-
-let a = "apple";
-let b = "banana";
-
-if a < b {
-    // some code
-}
-
-// String slices can be indexed and sliced:
-let text = "Hello";
-let a = &text[..2];  // "He"
-let b = &text[2..];  // "llo"
-let c = &text[..];   // "Hello"
-
-////////////////////////////////////////////////
-// (71) format! macro for string interpolation:
-/////////////////////////////////////////////////
-
-// Leaf does not support macros yet but "format!" macro for string interpolation is supported as a built-in feature of the language. The syntax is similar to Rust's format! macro.
-
-let first: &str = "Trying";
-let second: i32 = 3;
-let third: &str = "times";
-let message: String = format!("{first} {second} {third}!");
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (73) Rust style characters, only ASCII characters are supported for now, Unicode characters are not supported yet:
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-let c: char = 'a';
-let digit: char = '7';
-let space: char = ' ';
-let newline: char = '\n';
-let quote: char = '\'';
-let backslash: char = '\\';
-
 // END OF LEAF LANGUAGE SYNTAX SPECIFICATION
 
-The lexer should start from the following Token.idr and Source.idr files. The Token.idr defines the tokens that the lexer will recognize for the following categories: primitive types, basis states literals, keywords, built-in functions, boolean literals. The Source.idr defines the Located type that will be used by AST after parsing but should not directly impact the lexer since the lexer will produce tokens defined using idris2-parser Bounded data type and the Located type will be generated by the parser after parsing the tokens produced by the lexer:
+The lexer should start from the following Token.idr and Source.idr files. The Token.idr defines the tokens that the lexer will recognize for the following categories: primitive types, basis states literals, keywords, built-in functions, boolean literals. The Source.idr defines the Located type that will be used by AST after parsing but should not directly impact the lexer since the lexer will produce tokens defined using Bounded/ByteBounded type expected by idris2-ilex and the Located type will be generated by the parser after parsing the tokens produced by the lexer:
 
-    lexProgram : String -> Either (Bounded LexerErr) (List (Bounded Token))
+    lexProgram : String -> Either (Bounded LexerError) (List (Bounded Token))
 
 // BEGINNING OF Token.idr
 
@@ -1936,9 +1844,6 @@ data TypPrimName
   | TypPrimU32
   | TypPrimU64
   | TypPrimU128
-  | TypPrimChar
-  | TypPrimString
-  | TypPrimStrSlice
   | TypPrimQubit
   | TypPrimQState
 
@@ -2124,8 +2029,6 @@ symbolTable =
 --   TokByteLitRaw "b'a'"
 --   TokByteStringLitRaw "b\"hello\""
 --   TokBasisStringLitRaw "bs\"01+-iI\""
---   TokCharLitRaw "'a'"
---   TokStringLitRaw "\"Hello\""
 --   TokOuterDoc "/// docs for following item"
 --   TokInnerDoc "//! docs for enclosing item"
 --   TokBoolLit True
@@ -2145,7 +2048,6 @@ data Token
   | TokByteLitRaw        String
   | TokByteStringLitRaw  String
   | TokBasisStringLitRaw String
-  | TokCharLitRaw        String
   | TokStringLitRaw      String
   | TokOuterDoc          String   -- /// line  or  /** … */ block: documents the item that FOLLOWS
   | TokInnerDoc          String   -- //! line  or  /*! … */ block: documents the ENCLOSING item
@@ -2252,7 +2154,6 @@ typeFromString s =
     "angle64" => Just TypPrimAngle64
     "bit"     => Just TypPrimBit
     "bool"    => Just TypPrimBool
-    "char"    => Just TypPrimChar
     "f32"     => Just TypPrimF32
     "f64"     => Just TypPrimF64
     "i8"      => Just TypPrimI8
@@ -2268,8 +2169,6 @@ typeFromString s =
     "u128"    => Just TypPrimU128
     "qubit"   => Just TypPrimQubit
     "qstate"  => Just TypPrimQState
-    "str"     => Just TypPrimStrSlice
-    "String"  => Just TypPrimString
     _         => Nothing
 
 public export
@@ -2452,7 +2351,6 @@ showTypPrimLeaf ty =
     TypPrimAngle64  => "angle64"
     TypPrimBit      => "bit"
     TypPrimBool     => "bool"
-    TypPrimChar     => "char"
     TypPrimF32      => "f32"
     TypPrimF64      => "f64"
     TypPrimI8       => "i8"
@@ -2468,8 +2366,6 @@ showTypPrimLeaf ty =
     TypPrimU128     => "u128"
     TypPrimQubit    => "qubit"
     TypPrimQState   => "qstate"
-    TypPrimString   => "String"
-    TypPrimStrSlice => "str"
 
 public export
 implementation Show Keyword where
@@ -2530,7 +2426,7 @@ record Located a where
 
 Here are more requirements for the lexer implementation:
 
-- nested comment should be supported by a custom handler
+- nested comment should be supported as a context-aware use case
 - skip:
     whitespace
     line comments
@@ -2540,36 +2436,43 @@ Here are more requirements for the lexer implementation:
   /** Documentation comment. */
   //! Documentation comment.
   /*! Documentation comment. */
+- classify doc-vs-normal on the opening delimiter, then consume to the balanced close in the counting state, accumulating bytes only for the doc variants.
+  //// (four+ slashes) is a normal comment, not outer-doc;
+  /***/ is a normal block comment, not outer-doc;
+  /**/ is an empty normal block comment, not a doc; 
+  /*! */ is inner block doc.
+    ///! is still an outer line doc, because it starts with ///
+    //// is normal line comment
+    //!/ is inner line doc, because it starts with //!
+    /*! ... */ inner block doc
+    /*!*/     valid empty inner block doc
 - Tokens should stay simple, do not make the lexer understand expressions, types, borrow rules, or quantum effects that belongs in the parser/type checker.
-- Define keywords and built-in functions before identifiers. Because fn also matches the identifier pattern, keywords must win over identifiers.
+- use single identifier rule + tokenFromIdentLike for classifying identifiers into keywords, builtins, types, and state basis literals.
 - Model attributes lexically, parse structurally. For example for function annotations #[qasm_gate("foo")] the lexer should probably emit something simlar to the following tokens for hash, left bracket, identifier, string literal, right bracket.
-- generate Bounded tokens from ilex, these will be convert later by a future parser to my Located AST.
-- for nested comments support use state/context support
+- Keep in mind that Installed ilex package here exposes the newer BoundedErr/Bounded API.
+- for nested comments support use context-aware multi-state lexer
 - make illegal characters explicit, do not silently skip unknown input.
-- strings should support escape sequences, including unicode escapes,
-- strings should support interpolation: "hello {name}"
-- use state/context support for nested comments, string interpolation, and other context-sensitive lexing.
-- the lexer implementation must check prefixes in this order:
-    1. doc comments and normal comments
-    2. basis string: bs"..."
-    3. byte string: b"..."
-    4. byte char: b'...'
-    5. normal string: "..."
-    6. normal char: '...'
-    7. identifiers/keywords/builtins/types
-    8. symbols
+- CRLF, LF, CR, tab, and spaces are whitespace.
+- normal string literals used by Param() and function annotations like #[qasm_gate("qasm_subroutine_name")], support only alphanumeric ascii characters and no escapes.  Leaf strings need no state and no interpolation,
+- use state/context support for nested comments, and other context-sensitive lexing.
 - Lexer must check doc comments before normal comments and before /.
 - Lexer must support nested block comments.
 - Keep unary minus out of numeric literals,  "-7" should be lexed as two tokens: a minus sign and a number, not as a single token.
-- symbolTable in Token.idr is ordered from longest to shortest, the lexer must use longest match first to disambiguate.
+- 1..2 must lex as TokIntLitRaw "1", SymDotDot, TokIntLitRaw "2"
+- 5f32 is a floating-point literal of type f32.
+- Byte chars and byte strings support only ASCII bytes and byte escapes.
+- Byte chars must decode to exactly one byte.
+- munch handles length; rule order only breaks equal-length ties; here is the tie case: recognize documentation comments before ordinary comments and before treating / as SymSlash
 - preserve raw numeric literals in the lexer. Do not parse integer bounds, suffixes, signedness, or floating-point precision in the lexer. The lexer should preserve the spelling.
 - Identifiers should be lexed as:
-  identifier_start = letter or _
-  identifier_rest  = letter or digit or _
+  identifier_start = Unicode alphabetic character or _
+  identifier_rest = Unicode alphabetic character, Unicode digit, _, or apostrophe
   Corner case: `_` should be lexed as: TokUnderscore` and not as an identifier with the name `_`. 
   On the other hand: `_x` should be lexed as an identifier TokIdent with the name `_x`.
   Leaf allows apostrophes in identifiers: `foo'`
   An apostrophe will not be accepted as the first character of an identifier.
+  foo' is TokIdent "foo'"
+  fn' is TokIdent "fn'", not KwFn followed by apostrophe
 - Keep parser concerns out of the lexer. The lexer should not decide that this is a function call: H(&q)
 - Make lexical errors structured. Do not return plain strings
 - The library runner does not automatically produce your TokEOF; lexProgram must synthesize it after successful scanning.
@@ -2583,8 +2486,27 @@ Here are more requirements for the lexer implementation:
 	decimal floats
 	exponents
 	float suffixes
+- enforce bs"[01+\-iI]*" at lex time
+- a user can never spell an identifier as exactly b + 'x' — it's always a byte char.
+- Param, phase, turns, and mathematical functions are Prelude identifiers. They must be lexed as TokIdent, not TokBuiltin. Only non-shadowable intrinsic names listed in Builtin are classified as TokBuiltin. Here is a list of the non-shadowable intrinsic names that must be lexed as TokBuiltin: barrier, ctrl, on, apply, basis, clean, discard, isolated, measr, product, qalloc, reset, tensor, separable, stabilized, uncompute, weaken
+- do not use the single-state lexer {r = 1} token map. Nested block comments need state that survives across matches, which a single-state lexer cannot provide. Build the lexer as a context-sensitive P1 value via the P constructor. This is still a lexer: the output is List (ByteBounded Token), with no grammar and no AST. Keep in mind that Installed ilex package here exposes the newer BoundedErr/Bounded API.
+- the lexer has exactly two states: Initial (ordinary tokens, line comments, and block-comment openers) and InBlockComment (the counting state).
+- carry commentDepth : Ref q Nat in the lexer stack. On /* increment it; on */ decrement it; return to Initial only when it reaches 0. This counter — not the number of states — is what makes arbitrary nesting work.
+- Decide doc-vs-normal once, on the opening delimiter: /** and /*! set a doc flag and accumulate the body; /* does not. Nested opens inside a doc comment keep accumulating and never flip the 
+flag.
+- Synthesise TokEOF in the EOI handler. If input ends while commentDepth > 0, raise an unterminated-block-comment error instead.
+- The float rule must be the union {digit+ '.' digit+ exp? suf?, digit+ exp suf?, digit+ ('f32'|'f64')} and must not admit a trailing-dot float
+- whenever in doubt the lexer should follow Rust conventions and Rustc behavior, since Leaf is a Rust-like language. This is especially true for floating-point literals, integer literals, and other numeric formats.
 - use slightly longer more explicit variable and function names as opposed to using ultra compact prefixes and postixes that do not reveal code meaning 
 - PLEASE MAKESURE THE GENERATED CODE IS COMMENTED, COMMENTS SHOULD EXPLAIN CODE INTENT
+
+PREFERED IDRIS2 SYNTAX AND STYLE:  Please write Idris2 code in a readable, explicit style. Prefer clear multi-line definitions, nested case expressions, and descriptive formatting over ultra-compact or point-free code that is harder to read. Avoid overly dense helper combinators, deeply chained operators, or compact expressions if doing so reduces readability.
+
+
+LEXER SCOPE CLARIFICATION
+
+The lexer must only produce lexical tokens. It must not parse expressions,
+types, function calls, borrow rules, effects, contracts, or quantum semantics.
 
 LEXER ARCHITECTURE:
 
@@ -2595,9 +2517,8 @@ LEXER ARCHITECTURE:
   Frontend/Lexer/
     Regex.idr          -- ilex regex definitions (library of reusable sub-patterns)
     Rules.idr          -- token rules based on tokens declared in Token.idr, this is where pattern -> token rules get assembled
-    Errors.idr         -- lexer errors,  should own the translation from ilex's native failure into LexError
+    Errors.idr         -- lexer errors,  should own the translation from ilex's native failure into LexerError
     Lexer.idr          -- public lexing API
-    Comments.idr       -- explicit module for the comments handler
     
 
 Start from the following code for my Lexer.idr:
@@ -2608,8 +2529,7 @@ Start from the following code for my Lexer.idr:
         import Language.Reflection
 
         import Frontend.Token
-        import Frontend.Source
-        import Frontend.Lexer.Error
+        import Frontend.Lexer.Errors
 
         %default total
         %language ElabReflection
@@ -2618,5 +2538,31 @@ Start from the following code for my Lexer.idr:
         -- Main entry point: lexProgram
         --------------------------------------------------------------------------------
         public export
-        lexProgram : String -> Either (Bounded LexerErr) (List (Bounded Token))
+        lexProgram : String -> Either (Bounded LexerError) (List (Bounded Token))
         lexProgram inputString = TODO
+
+
+Here is the Lexer errors I want you to use, make sure you CONSIDER everything error this list, make sure the ASSOCIATED FUNCTIONALITY is handled by your code. You may add more errors if needed or drop some tof them if not needed after all.
+
+--------------------------------------------------------------------------------
+-- LexerError
+--
+-- These are the user-facing lexer errors.  The ilex runner can also produce
+-- native parse those are translated here so lexProgram exposes only Bounded LexerError.
+--------------------------------------------------------------------------------
+public export
+data LexerError
+  = LexUnexpectedEndOfInput
+  | LexUnexpectedInput (List String) String
+  | LexInvalidUtf8Byte Bits8
+  | LexUnclosedDelimiter String
+  | LexUnterminatedBlockComment
+  | LexInvalidBasisStringLiteral String
+  | LexInvalidByteLiteral String
+  | LexInvalidByteStringLiteral String
+  | LexInvalidStringLiteral String
+  | LexUnterminatedStringLiteral
+  | LexOrdinaryCharLiteralNeedsToken
+  | LexInternalLexerError String
+
+Please us the the installed new ilex API no longer expose the old Text.ByteBounds, BBErr, or ByteBounded API directly and It exposes BoundedErr and Bounded.

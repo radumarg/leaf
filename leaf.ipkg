@@ -2,6 +2,7 @@ package leaf
 
 sourcedir = "src"
 depends = elab-util,
+          ilex,
           parser
 
 modules = Main,
@@ -14,10 +15,11 @@ modules = Main,
           DSL.GateHelpers,
           --Frontend.AST,
           --Frontend.ExprPrettyPrinter,
-          Frontend.Lexer.Error,
-          Frontend.Lexer.Helpers,
+          Frontend.Lexer.Errors,
           Frontend.Lexer.Lexer,
           --Frontend.Parser,
+          Frontend.Lexer.Regex,
+          Frontend.Lexer.Rules,
           Frontend.Source,
           Frontend.Token,
           Serialize.OpenQASM3Serializer,

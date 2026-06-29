@@ -32,9 +32,6 @@ data TypPrimName
   | TypPrimU32
   | TypPrimU64
   | TypPrimU128
-  | TypPrimChar
-  | TypPrimString
-  | TypPrimStrSlice
   | TypPrimQubit
   | TypPrimQState
 
@@ -160,7 +157,6 @@ data Symbol
 --   TokByteLitRaw "b'a'"
 --   TokByteStringLitRaw "b\"hello\""
 --   TokBasisStringLitRaw "bs\"01+-iI\""
---   TokCharLitRaw "'a'"
 --   TokStringLitRaw "\"Hello\""
 --   TokOuterDoc "/// docs for following item"
 --   TokInnerDoc "//! docs for enclosing item"
@@ -181,7 +177,6 @@ data Token
   | TokByteLitRaw        String
   | TokByteStringLitRaw  String
   | TokBasisStringLitRaw String
-  | TokCharLitRaw        String
   | TokStringLitRaw      String
   | TokOuterDoc          String   -- /// line  or  /** … */ block: documents the item that FOLLOWS
   | TokInnerDoc          String   -- //! line  or  /*! … */ block: documents the ENCLOSING item
@@ -288,7 +283,6 @@ typeFromString s =
     "angle64" => Just TypPrimAngle64
     "bit"     => Just TypPrimBit
     "bool"    => Just TypPrimBool
-    "char"    => Just TypPrimChar
     "f32"     => Just TypPrimF32
     "f64"     => Just TypPrimF64
     "i8"      => Just TypPrimI8
@@ -304,8 +298,6 @@ typeFromString s =
     "u128"    => Just TypPrimU128
     "qubit"   => Just TypPrimQubit
     "qstate"  => Just TypPrimQState
-    "str"     => Just TypPrimStrSlice
-    "String"  => Just TypPrimString
     _         => Nothing
 
 public export
@@ -316,6 +308,65 @@ boolFromString s =
     "false" => Just False
     _       => Nothing
 
+------------------------------------------------------------------------------------------------------------
+-- A symbol table ordered from longest to shortest, the lexer must use longest match first to disambiguate.
+-------------------------------------------------------------------------------------------------------------
+public export
+symbolTable : List (String, Symbol)
+symbolTable =
+  [ -- 3-character symbols
+    (">>=", SymShrEq)
+  , ("<<=", SymShlEq)
+  , ("..=", SymDotDotEq)
+
+    -- 2-character symbols
+  , ("=>",  SymFatArrow)
+  , ("->",  SymArrow)
+  , ("==",  SymEqEq)
+  , ("!=",  SymNotEq)
+  , (">=",  SymGe)
+  , ("<=",  SymLe)
+  , ("&&",  SymAndAnd)
+  , ("||",  SymOrOr)
+  , ("+=",  SymPlusEq)
+  , ("-=",  SymMinusEq)
+  , ("*=",  SymStarEq)
+  , ("/=",  SymSlashEq)
+  , ("%=",  SymPercentEq)
+  , ("&=",  SymAndEq)
+  , ("|=",  SymOrEq)
+  , ("^=",  SymCaretEq)
+  , (":=",  SymWalrusEq)
+  , ("::",  SymDoubleColon)
+  , ("..",  SymDotDot)
+  , (">>",  SymShr)
+  , ("<<",  SymShl)
+
+    -- 1-character symbols
+  , ("#", SymHash)
+  , ("&",   SymAmp)
+  , ("(",   SymLParen)
+  , (")",   SymRParen)
+  , ("[",   SymLBracket)
+  , ("]",   SymRBracket)
+  , ("{",   SymLBrace)
+  , ("}",   SymRBrace)
+  , (",",   SymComma)
+  , (";",   SymSemi)
+  , (":",   SymColon)
+  , (".",   SymDot)
+  , ("!",   SymBang)
+  , ("=",   SymEq)
+  , ("+",   SymPlus)
+  , ("-",   SymMinus)
+  , ("*",   SymStar)
+  , ("/",   SymSlash)
+  , ("%",   SymPercent)
+  , (">",   SymGt)
+  , ("<",   SymLt)
+  , ("|",   SymPipe)
+  , ("^",   SymCaret)
+  ]
 
 ---------------------------------------------------------------------
 -- single authoritative classification order for identifier-like text:
@@ -488,7 +539,6 @@ showTypPrimLeaf ty =
     TypPrimAngle64  => "angle64"
     TypPrimBit      => "bit"
     TypPrimBool     => "bool"
-    TypPrimChar     => "char"
     TypPrimF32      => "f32"
     TypPrimF64      => "f64"
     TypPrimI8       => "i8"
@@ -504,8 +554,6 @@ showTypPrimLeaf ty =
     TypPrimU128     => "u128"
     TypPrimQubit    => "qubit"
     TypPrimQState   => "qstate"
-    TypPrimString   => "String"
-    TypPrimStrSlice => "str"
 
 public export
 implementation Show Keyword where

@@ -205,12 +205,6 @@ bool
 // unit type:
 ()
 
-// character type:
-char
-
-// string type:
-str, String
-
 ////////////////////////////////
 // (6) Syntax for Basic Types
 ////////////////////////////////
@@ -247,7 +241,7 @@ let unit : () = ();
 // inferred type for unit literal
 let unit = ();
 
-// syntax for declaring parameters, here "Param" is a builtin function:
+// syntax for declaring parameters:
 let theta : param = Param("theta");
 
 // var assignment syntax for basic types:
@@ -482,7 +476,7 @@ let state = bs"iiiiIIIII";
 // (12) Syntax for type qualifiers for qubits
 //////////////////////////////////////////////
 
-// linear qubits: must be consumed exactly once, no copying or implicit discarding allowed (discarding must be explicit via the discard keyword)
+// linear qubits: must be consumed exactly once, no copying or implicit discarding allowed (discarding must be explicit via the discard built-in function)
 // this is the default, so the 'linear' keyword is optional
 let linear q: qubit = qalloc();
 let linear qs: [qubit; 2] = qalloc(2);
@@ -1468,7 +1462,7 @@ let y = Data::Right(2, 3);
 //  Struct-like enums:
 enum Message {
     Move { x: i32, y: i32 },
-    Write { text: String },
+    Write { age: i8 },
 }
 
 // usage of struct-like enums:
@@ -1804,86 +1798,96 @@ general fn sample_until_zero() -> qubit {
 
 // Quantum controlled recursion and recursive quantum types are not supported at this moment
 
-/////////////////
-// (70) Strings:
-/////////////////
 
-// Like in Rust, Leaf supports string literals. Leaf does not have a print statement and since Leaf commpiles to OpenQasm3 and OpenQASM3 does not have a string type, strings in Leaf are used mainly to help write more expressive code:
 
-let mut string = String::new();
 
-// String literal using the string-slice type:
-let message: &str = "Hello, world!";
 
-// Owned strings: String
-let message: String = String::from("Hello");
 
-// A String type owns its allocated text and can be modified:
-let mut text: String = String::from("Hello");
-text.push_str(", world");
-text.push('!');
 
-// String interpolation:
-let first = "Hello";
-let second = "world";
-let message = format!("{first}, {second}!");
 
-// Same code as above but with explicit type annotations and string concatenation:
-let first: &str = "Hello";
-let second: &str = "world";
-let message: String = String::from(first) + ", " + second + "!";
+// /////////////////
+// // (70) Strings:
+// /////////////////
 
-// Strings may also be required lexically for Param types. Another example using string interpolation:
-let i: i32 = 1;
-let theta: param = Param(format!("theta_{i}"));
+// // Like in Rust, Leaf supports string literals. Leaf does not have a print statement and since Leaf commpiles to OpenQasm3 and OpenQASM3 does not have a string type, strings in Leaf are used mainly to help write more expressive code:
 
-// String ownership and borrowing:
-let owned: String = String::from("Hello");
-let borrowed: &str = &owned;
+// let mut string = String::new();
 
-// Comparing strings:
-let a = "hello";
-let b = "hello";
+// // String literal using the string-slice type:
+// let message: &str = "Hello, world!";
 
-if a == b {
-    // some code
-}
+// // Owned strings: String
+// let message: String = String::from("Hello");
 
-if a != "world" {
-    // some code
-}
+// // A String type owns its allocated text and can be modified:
+// let mut text: String = String::from("Hello");
+// text.push_str(", world");
+// text.push('!');
 
-let a = "apple";
-let b = "banana";
+// // String interpolation:
+// let first = "Hello";
+// let second = "world";
+// let message = format!("{first}, {second}!");
 
-if a < b {
-    // some code
-}
+// // Same code as above but with explicit type annotations and string concatenation:
+// let first: &str = "Hello";
+// let second: &str = "world";
+// let message: String = String::from(first) + ", " + second + "!";
 
-// String slices can be indexed and sliced:
-let text = "Hello";
-let a = &text[..2];  // "He"
-let b = &text[2..];  // "llo"
-let c = &text[..];   // "Hello"
+// // Strings may also be required lexically for Param types. Another example using string interpolation:
+// let i: i32 = 1;
+// let theta: param = Param(format!("theta_{i}"));
 
-////////////////////////////////////////////////
-// (71) format! macro for string interpolation:
-/////////////////////////////////////////////////
+// // raw string literals are supported
+// let s = r"hello\nworld";
 
-// Leaf does not support macros yet but "format!" macro for string interpolation is supported as a built-in feature of the language. The syntax is similar to Rust's format! macro.
+// // String ownership and borrowing:
+// let owned: String = String::from("Hello");
+// let borrowed: &str = &owned;
 
-let first: &str = "Trying";
-let second: i32 = 3;
-let third: &str = "times";
-let message: String = format!("{first} {second} {third}!");
+// // Comparing strings:
+// let a = "hello";
+// let b = "hello";
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// (73) Rust style characters, only ASCII characters are supported for now, Unicode characters are not supported yet:
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// if a == b {
+//     // some code
+// }
 
-let c: char = 'a';
-let digit: char = '7';
-let space: char = ' ';
-let newline: char = '\n';
-let quote: char = '\'';
-let backslash: char = '\\';
+// if a != "world" {
+//     // some code
+// }
+
+// let a = "apple";
+// let b = "banana";
+
+// if a < b {
+//     // some code
+// }
+
+// // String slices can be indexed and sliced:
+// let text = "Hello";
+// let a = &text[..2];  // "He"
+// let b = &text[2..];  // "llo"
+// let c = &text[..];   // "Hello"
+
+// ////////////////////////////////////////////////
+// // (71) format! macro for string interpolation:
+// /////////////////////////////////////////////////
+
+// // Leaf does not support macros yet but "format!" macro for string interpolation is supported as a built-in feature of the language. The syntax is similar to Rust's format! macro.
+
+// let first: &str = "Trying";
+// let second: i32 = 3;
+// let third: &str = "times";
+// let message: String = format!("{first} {second} {third}!");
+
+// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // (73) Rust style characters, which are single Unicode scalar values, are supported in Leaf:
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// let c: char = 'a';
+// let digit: char = '7';
+// let space: char = ' ';
+// let newline: char = '\n';
+// let quote: char = '\'';
+// let backslash: char = '\\';

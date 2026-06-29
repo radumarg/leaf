@@ -1,17 +1,8 @@
 module Test.Run
 
-import Test.ArraysParseTests
-import Test.BitQubitParseTests
-import Test.QuantumGatesParserTests
-import Test.TypeParseTests
-import Test.TypeQualifierParserTests
-
+import Test.Lexer.LexerTest
 
 main : IO ()
 main = do
-  --runArraysParseTests
-  --runBitQubitParseTests
-  --runQuantumGatesParseTests
-  runTypeParseTests
-  --runTypeQualifierParseTests
+  runLexerTests
   putStrLn "All tests completed."
