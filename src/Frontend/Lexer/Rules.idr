@@ -2,14 +2,15 @@ module Frontend.Lexer.Rules
 
 import Data.ByteString
 import Data.List
-import Data.Prim.Bits32
 import Data.Linear.Ref1
 import Data.String
 import Derive.Prelude
 import Language.Reflection
 import Syntax.T1
 import Text.ILex
+import Text.ILex.Derive
 import Text.ILex.Interfaces
+import Text.ILex.Stack
 import Text.ParseError
 
 import Frontend.Token
@@ -33,21 +34,7 @@ import Frontend.Lexer.Regex
 --
 -- Arbitrary nesting is represented by `commentDepth`, not by adding more states.
 --------------------------------------------------------------------------------
-public export
-leafStateCount : Bits32
-leafStateCount = 2
-
-public export
-0 LeafState : Type
-LeafState = Index 2
-
-public export
-initialState : LeafState
-initialState = Ini
-
-public export
-inBlockCommentState : LeafState
-inBlockCommentState = 1
+%runElab deriveParserState "LeafSz" "LeafState" ["Initial", "InBlockComment"]
 
 --------------------------------------------------------------------------------
 -- Documentation-comment mode.
@@ -77,151 +64,60 @@ commentModeToToken InnerBlockDocComment rawText = Just (TokInnerDoc rawText)
 --------------------------------------------------------------------------------
 -- Mutable ilex stack.
 --
--- This version intentionally uses the installed Text.ILex interfaces:
---   * HasBytes.bytes     -- one current token byte string, maintained by ilex
---   * HasPosition        -- current source line/column plus opener stack
---   * HasError           -- first stored BoundedErr LexerError
---   * HasStack           -- emitted Bounded Token values
---
--- It relies only on current Text.ILex position, byte, error, and stack
--- interfaces.
+-- The installed Text.ILex.Stack.Stack record already supplies HasBytes,
+-- HasStringLits, HasBBErr, and HasStack instances (it derives them via
+-- `%runElab derive "Stack" [FullStack]`). `LeafStack` only has to carry what
+-- that generic record does not already provide: the emitted token buffer and
+-- the block-comment depth/mode counters.
 --------------------------------------------------------------------------------
 public export
-record LeafLexerStack (q : Type) where
-  constructor MkLeafLexerStack
-  currentBytes       : Ref q ByteString
-  currentLine        : Ref q Nat
-  currentColumn      : Ref q Nat
-  openingPositions   : Ref q (SnocList Position)
-  outputTokens       : Ref q (SnocList (Bounded Token))
-  pendingError       : Ref q (Maybe (BoundedErr LexerError))
-  commentDepth       : Ref q Nat
-  commentMode        : Ref q CommentMode
-  commentTextPieces  : Ref q (SnocList String)
-
-export
-HasBytes LeafLexerStack where
-  bytes = currentBytes
-
-export
-HasPosition LeafLexerStack where
-  line = currentLine
-  col = currentColumn
-  positions = openingPositions
-
-export
-HasError LeafLexerStack LexerError where
-  error = pendingError
-
-export
-HasStack LeafLexerStack (SnocList (Bounded Token)) where
-  stack = outputTokens
+record LeafStack where
+  constructor MkLeafStack
+  outputTokens : SnocList (ByteBounded Token)
+  commentDepth : Nat
+  commentMode  : CommentMode
 
 public export
-initLeafLexerStack : F1 q (LeafLexerStack q)
-initLeafLexerStack = T1.do
-  currentBytesRef      <- ref1 empty
-  currentLineRef       <- ref1 Z
-  currentColumnRef     <- ref1 Z
-  openingPositionsRef  <- ref1 [<]
-  outputTokensRef      <- ref1 [<]
-  pendingErrorRef      <- ref1 Nothing
-  commentDepthRef      <- ref1 Z
-  commentModeRef       <- ref1 NormalBlockComment
-  commentTextPiecesRef <- ref1 [<]
+0 LeafLexerStack : Type -> Type
+LeafLexerStack = Stack LexerError LeafStack LeafSz
 
-  pure $ MkLeafLexerStack
-    currentBytesRef
-    currentLineRef
-    currentColumnRef
-    openingPositionsRef
-    outputTokensRef
-    pendingErrorRef
-    commentDepthRef
-    commentModeRef
-    commentTextPiecesRef
+initLeafStack : LeafStack
+initLeafStack = MkLeafStack [<] Z NormalBlockComment
 
 --------------------------------------------------------------------------------
--- Local rule wrappers.
---
--- These wrappers deliberately use the installed Text.ILex action helpers.
---
--- `readRule` is for single-line/string-like lexemes. It passes the matched text
--- to the action and then advances the column.
---
--- `bytesRule` is for lexemes whose matched bytes may contain newlines. It passes
--- the matched ByteString to the action and then advances line/column with
--- `multiline`.
+-- Local rule alias.
 --------------------------------------------------------------------------------
 public export
 0 LeafRule : Type -> Type
-LeafRule q = (RExp True, Step q 2 LeafLexerStack)
-
-readRule :
-     RExp True
-  -> ((sk : LeafLexerStack q) => String -> F1 q LeafState)
-  -> LeafRule q
-readRule expression action =
-  Text.ILex.Interfaces.read expression action
-
-bytesRule :
-     RExp True
-  -> ((sk : LeafLexerStack q) => ByteString -> F1 q LeafState)
-  -> LeafRule q
-bytesRule expression action =
-  multiline expression action
-
-ignoreRule :
-     RExp True
-  -> LeafRule q
-ignoreRule expression =
-  multiline' expression initialState
+LeafRule q = (RExp True, Step q LeafSz LeafLexerStack)
 
 --------------------------------------------------------------------------------
--- Bounds helpers.
---
--- The action wrappers call the action before advancing the current position, and
--- the runner has already written the current token bytes to `bytes`. Therefore
--- a Bounded value for the current lexeme can be constructed from the current
--- position and `incBytes currentBytes currentPosition`.
+-- Bounds and position helpers built on top of the installed Text.ILex
+-- position/error machinery (`Text.ILex.Interfaces`).
 --------------------------------------------------------------------------------
-currentTokenBounds :
-     (sk : LeafLexerStack q)
-  => F1 q Bounds
-currentTokenBounds = T1.do
-  startPosition <- getPosition
-  tokenBytes <- read1 (bytes sk)
-  pure (BS startPosition (incBytes tokenBytes startPosition))
-
-boundedHere :
-     (sk : LeafLexerStack q)
-  => a
-  -> F1 q (Bounded a)
-boundedHere value = T1.do
-  tokenBounds <- currentTokenBounds
-  pure (B value tokenBounds)
-
-currentTokenString :
-     (sk : LeafLexerStack q)
-  => F1 q String
-currentTokenString = T1.do
-  tokenBytes <- read1 (bytes sk)
-  pure (toString tokenBytes)
-
-popOpenPositionForCurrentToken :
-     (sk : LeafLexerStack q)
-  => F1 q Bounds
-popOpenPositionForCurrentToken = T1.do
-  endPositionStart <- getPosition
-  tokenBytes <- read1 (bytes sk)
-  let endPosition = incBytes tokenBytes endPositionStart
-  read1 (positions sk) >>= \case
-    openStack :< openPosition => T1.do
-      write1 (positions sk) openStack
-      pure (BS openPosition endPosition)
-
+oldestOpenPosition : SnocList BytePos -> Maybe BytePos
+oldestOpenPosition [<] =
+  Nothing
+oldestOpenPosition (olderPositions :< openPosition) =
+  case olderPositions of
     [<] =>
-      pure NoBounds
+      Just openPosition
+
+    _ =>
+      oldestOpenPosition olderPositions
+
+unterminatedCommentBounds :
+     (sk : LeafLexerStack q)
+  => F1 q ByteBounds
+unterminatedCommentBounds = T1.do
+  endPosition <- endPos
+  openPositions <- read1 (positions sk)
+  case oldestOpenPosition openPositions of
+    Just openPosition =>
+      pure (BB openPosition endPosition)
+
+    Nothing =>
+      pure NoBB
 
 --------------------------------------------------------------------------------
 -- General character helpers used by literal validators.
@@ -607,21 +503,39 @@ classifyNumberLiteral rawText =
         False => Nothing
 
 --------------------------------------------------------------------------------
+-- Splits the dot-operator suffix matched by `digitsThenDotOperatorCandidate`
+-- (one of `.`, `..`, or `..=`) off the trailing end of the matched text,
+-- returning the leading digits together with the matched `Symbol`.
+--------------------------------------------------------------------------------
+classifyDotOperatorSuffix : List Char -> (List Char, Symbol)
+classifyDotOperatorSuffix chars =
+  case stripSuffixChars (unpack "..=") chars of
+    Just digitChars => (digitChars, SymDotDotEq)
+    Nothing =>
+      case stripSuffixChars (unpack "..") chars of
+        Just digitChars => (digitChars, SymDotDot)
+        Nothing =>
+          case stripSuffixChars (unpack ".") chars of
+            Just digitChars => (digitChars, SymDot)
+            Nothing => (chars, SymDot)
+
+--------------------------------------------------------------------------------
 -- Token and error actions.
 --------------------------------------------------------------------------------
 emitBoundedToken :
      (sk : LeafLexerStack q)
-  => Bounded Token
+  => ByteBounded Token
   -> F1 q LeafState
-emitBoundedToken boundedToken =
-  pushStackAs boundedToken initialState
+emitBoundedToken boundedToken = T1.do
+  st <- getStack
+  putStackAs ({ outputTokens $= (:< boundedToken) } st) Initial
 
 emitToken :
      (sk : LeafLexerStack q)
   => Token
   -> F1 q LeafState
 emitToken token = T1.do
-  boundedToken <- boundedHere token
+  boundedToken <- bounded' token
   emitBoundedToken boundedToken
 
 rememberFatalError :
@@ -631,11 +545,8 @@ rememberFatalError :
 rememberFatalError lexerError = T1.do
   existingError <- read1 (error sk)
   case existingError of
-    Just _ => pure initialState
-    Nothing => T1.do
-      errorBounds <- currentTokenBounds
-      write1 (error sk) (Just (B (Custom lexerError) errorBounds))
-      pure initialState
+    Just _ => pure Initial
+    Nothing => failHere (Custom lexerError) Initial
 
 emitValidatedLiteral :
      (sk : LeafLexerStack q)
@@ -704,6 +615,19 @@ emitNumberLiteral rawText =
     Nothing =>
       rememberFatalError (LexInvalidNumberLiteral rawText)
 
+emitDigitsThenDotOperator :
+     (sk : LeafLexerStack q)
+  => String
+  -> F1 q LeafState
+emitDigitsThenDotOperator rawText = T1.do
+  let (digitChars, dotSymbol) = classifyDotOperatorSuffix (unpack rawText)
+  let digitsLength = length digitChars
+  tokenStart <- startPos
+  tokenEnd <- endPos
+  let digitsEnd = incLen digitsLength tokenStart
+  _ <- emitBoundedToken (B (TokIntLitRaw (pack digitChars)) (BB tokenStart digitsEnd))
+  emitBoundedToken (B (TokSym dotSymbol) (BB (incLen (S digitsLength) tokenStart) tokenEnd))
+
 emitUnterminatedStringLiteral :
      (sk : LeafLexerStack q)
   => String
@@ -741,98 +665,94 @@ emitOrdinaryCharLiteralError _ =
 
 --------------------------------------------------------------------------------
 -- Block-comment actions.
+--
+-- `commentDepth`/`commentMode` live on `LeafStack`; doc-comment text pieces are
+-- accumulated using the built-in string-literal accumulator
+-- (`pushStr'`/`getStr`) instead of a hand-rolled SnocList field.
 --------------------------------------------------------------------------------
-resetCommentText :
+appendTextIfDoc :
      (sk : LeafLexerStack q)
-  => F1' q
-resetCommentText =
-  write1 (commentTextPieces sk) [<]
-
-appendCurrentBytesToCommentText :
-     (sk : LeafLexerStack q)
-  => F1' q
-appendCurrentBytesToCommentText = T1.do
-  mode <- read1 (commentMode sk)
+  => CommentMode
+  -> String
+  -> F1' q
+appendTextIfDoc mode rawText =
   case isDocCommentMode mode of
     False => pure ()
-    True => T1.do
-      rawPiece <- currentTokenString
-      push1 (commentTextPieces sk) rawPiece
+    True => pushStr' rawText
 
-collectedCommentText :
+appendCurrentTextIfDoc :
      (sk : LeafLexerStack q)
-  => F1 q String
-collectedCommentText = T1.do
-  pieces <- replace1 (commentTextPieces sk) [<]
-  pure (snocPack pieces)
+  => String
+  -> F1' q
+appendCurrentTextIfDoc rawText = T1.do
+  st <- getStack
+  appendTextIfDoc st.commentMode rawText
 
 beginBlockComment :
      (sk : LeafLexerStack q)
   => CommentMode
-  -> ByteString
+  -> String
   -> F1 q LeafState
-beginBlockComment mode _ = T1.do
+beginBlockComment mode rawText = T1.do
   pushPosition
-  write1 (commentDepth sk) 1
-  write1 (commentMode sk) mode
-  resetCommentText
-  appendCurrentBytesToCommentText
-  pure inBlockCommentState
+  st <- getStack
+  putStack ({ commentDepth := 1, commentMode := mode } st)
+  appendTextIfDoc mode rawText
+  pure InBlockComment
 
 beginNestedBlockComment :
      (sk : LeafLexerStack q)
-  => ByteString
+  => String
   -> F1 q LeafState
-beginNestedBlockComment _ = T1.do
+beginNestedBlockComment rawText = T1.do
   pushPosition
-  mod1 (commentDepth sk) S
-  appendCurrentBytesToCommentText
-  pure inBlockCommentState
+  st <- getStack
+  putStack ({ commentDepth $= S } st)
+  appendCurrentTextIfDoc rawText
+  pure InBlockComment
 
 finishOutermostBlockComment :
      (sk : LeafLexerStack q)
   => CommentMode
-  -> Bounds
+  -> ByteBounds
   -> F1 q LeafState
 finishOutermostBlockComment mode fullCommentBounds = T1.do
-  rawCommentText <- collectedCommentText
-  write1 (commentMode sk) NormalBlockComment
+  rawCommentText <- getStr
   case commentModeToToken mode rawCommentText of
-    Nothing => pure initialState
+    Nothing => pure Initial
     Just docToken =>
       emitBoundedToken (B docToken fullCommentBounds)
 
 closeBlockComment :
      (sk : LeafLexerStack q)
-  => ByteString
+  => String
   -> F1 q LeafState
-closeBlockComment _ = T1.do
-  appendCurrentBytesToCommentText
-  currentDepth <- read1 (commentDepth sk)
-  case currentDepth of
+closeBlockComment rawText = T1.do
+  appendCurrentTextIfDoc rawText
+  st <- getStack
+  case st.commentDepth of
     Z =>
       rememberFatalError LexUnterminatedBlockComment
 
     S remainingDepth =>
       case remainingDepth of
         Z => T1.do
-          mode <- read1 (commentMode sk)
-          fullCommentBounds <- popOpenPositionForCurrentToken
-          write1 (commentDepth sk) Z
-          finishOutermostBlockComment mode fullCommentBounds
+          fullCommentBounds <- closeBounds
+          putStack ({ commentDepth := Z } st)
+          finishOutermostBlockComment st.commentMode fullCommentBounds
 
         S _ => T1.do
           popPosition
-          write1 (commentDepth sk) remainingDepth
-          pure inBlockCommentState
+          putStack ({ commentDepth := remainingDepth } st)
+          pure InBlockComment
 
 consumeBlockCommentText :
      (sk : LeafLexerStack q)
-  => ByteString
+  => String
   -> F1 q LeafState
-consumeBlockCommentText _ = T1.do
-  appendCurrentBytesToCommentText
-  pure inBlockCommentState
+consumeBlockCommentText rawText = T1.do
+  appendCurrentTextIfDoc rawText
+  pure InBlockComment
 
 --------------------------------------------------------------------------------
 -- Symbol rule generation.
@@ -844,7 +764,7 @@ symbolRuleFromTableEntry (symbolText, symbol) =
   case unpack symbolText of
     [] => Nothing
     symbolChars@(_ :: _) =>
-      Just (readRule (chars symbolChars) (\_ => emitToken (TokSym symbol)))
+      Just (string (chars symbolChars) (\_ => emitToken (TokSym symbol)))
 
 public export
 symbolRules : List (LeafRule q)
@@ -864,31 +784,32 @@ symbolRules =
 public export
 initialRules : List (LeafRule q)
 initialRules =
-  [ readRule outerDocLineComment (\rawText => emitToken (TokOuterDoc rawText))
-  , readRule innerDocLineComment (\rawText => emitToken (TokInnerDoc rawText))
+  [ string outerDocLineComment (\rawText => emitToken (TokOuterDoc rawText))
+  , string innerDocLineComment (\rawText => emitToken (TokInnerDoc rawText))
 
-  , bytesRule outerBlockDocOpen (beginBlockComment OuterBlockDocComment)
-  , bytesRule innerBlockDocOpen (beginBlockComment InnerBlockDocComment)
-  , ignoreRule normalLineComment
-  , bytesRule normalBlockCommentOpen (beginBlockComment NormalBlockComment)
-  , ignoreRule leafWhitespace
+  , string outerBlockDocOpen (beginBlockComment OuterBlockDocComment)
+  , string innerBlockDocOpen (beginBlockComment InnerBlockDocComment)
+  , ignore' normalLineComment
+  , string normalBlockCommentOpen (beginBlockComment NormalBlockComment)
+  , ignore' leafWhitespace
 
-  , readRule basisStringCandidate emitBasisStringLiteral
-  , readRule byteStringCandidate emitByteStringLiteral
-  , readRule byteLiteralCandidate emitByteLiteral
-  , readRule normalStringCandidate emitNormalStringLiteral
+  , string basisStringCandidate emitBasisStringLiteral
+  , string byteStringCandidate emitByteStringLiteral
+  , string byteLiteralCandidate emitByteLiteral
+  , string normalStringCandidate emitNormalStringLiteral
 
   -- Unterminated candidates come after closed-literal candidates, so a valid
   -- string wins by maximal munch. They come before identifiers so `bs"bad` is
   -- not split into `bs` and a string fragment.
-  , readRule unterminatedBasisStringCandidate emitInvalidBasisStringLiteral
-  , readRule unterminatedByteStringCandidate emitInvalidByteStringLiteral
-  , readRule unterminatedByteLiteralCandidate emitInvalidByteLiteral
-  , readRule unterminatedNormalStringCandidate emitUnterminatedStringLiteral
-  , readRule ordinaryCharLiteralCandidate emitOrdinaryCharLiteralError
+  , string unterminatedBasisStringCandidate emitInvalidBasisStringLiteral
+  , string unterminatedByteStringCandidate emitInvalidByteStringLiteral
+  , string unterminatedByteLiteralCandidate emitInvalidByteLiteral
+  , string unterminatedNormalStringCandidate emitUnterminatedStringLiteral
+  , string ordinaryCharLiteralCandidate emitOrdinaryCharLiteralError
 
-  , readRule numberCandidate emitNumberLiteral
-  , readRule identifierLike (\rawText => emitToken (tokenFromIdentLike rawText))
+  , string numberCandidate emitNumberLiteral
+  , string digitsThenDotOperatorCandidate emitDigitsThenDotOperator
+  , string identifierLike (\rawText => emitToken (tokenFromIdentLike rawText))
   ] ++ symbolRules
 
 --------------------------------------------------------------------------------
@@ -900,55 +821,29 @@ initialRules =
 public export
 blockCommentRules : List (LeafRule q)
 blockCommentRules =
-  [ bytesRule normalBlockCommentOpen beginNestedBlockComment
-  , bytesRule blockCommentClose closeBlockComment
-  , bytesRule blockCommentBodyChunk consumeBlockCommentText
-  , bytesRule blockCommentLineBreak consumeBlockCommentText
-  , bytesRule blockCommentSingleStar consumeBlockCommentText
-  , bytesRule blockCommentSingleSlash consumeBlockCommentText
+  [ string normalBlockCommentOpen beginNestedBlockComment
+  , string blockCommentClose closeBlockComment
+  , string blockCommentBodyChunk consumeBlockCommentText
+  , string blockCommentLineBreak consumeBlockCommentText
+  , string blockCommentSingleStar consumeBlockCommentText
+  , string blockCommentSingleSlash consumeBlockCommentText
   ]
 
 --------------------------------------------------------------------------------
 -- DFAs, error handlers, and final P1 lexer.
 --------------------------------------------------------------------------------
 public export
-leafLexerSteps : Lex1 q 2 LeafLexerStack
+leafLexerSteps : Lex1 q LeafSz LeafLexerStack
 leafLexerSteps =
   lex1
-    [ E initialState (dfa initialRules)
-    , E inBlockCommentState (dfa blockCommentRules)
+    [ E Initial (dfa initialRules)
+    , E InBlockComment (dfa blockCommentRules)
     ]
-
-oldestOpenPosition : SnocList Position -> Maybe Position
-oldestOpenPosition [<] =
-  Nothing
-oldestOpenPosition (olderPositions :< openPosition) =
-  case olderPositions of
-    [<] =>
-      Just openPosition
-
-    _ =>
-      oldestOpenPosition olderPositions
-
-unterminatedCommentBounds :
-     LeafLexerStack q
-  -> F1 q Bounds
-unterminatedCommentBounds stackValue = T1.do
-  lineValue <- read1 (currentLine stackValue)
-  columnValue <- read1 (currentColumn stackValue)
-  let endPosition = P lineValue columnValue
-  openPositions <- read1 (positions stackValue)
-  case oldestOpenPosition openPositions of
-    Just openPosition =>
-      pure (BS openPosition endPosition)
-
-    Nothing =>
-      pure NoBounds
 
 public export
 unterminatedBlockCommentError :
      LeafLexerStack q
-  -> F1 q (BoundedErr LexerError)
+  -> F1 q (BBErr LexerError)
 unterminatedBlockCommentError stackValue = T1.do
   storedError <- read1 (error stackValue)
   case storedError of
@@ -956,20 +851,20 @@ unterminatedBlockCommentError stackValue = T1.do
       pure existingError
 
     Nothing => T1.do
-      unclosedBounds <- unterminatedCommentBounds stackValue
+      unclosedBounds <- unterminatedCommentBounds
       pure (B (Custom LexUnterminatedBlockComment) unclosedBounds)
 
 public export
 leafLexerErrors :
-  Arr32 2 (LeafLexerStack q -> F1 q (BoundedErr LexerError))
+  Arr32 LeafSz (LeafLexerStack q -> F1 q (BBErr LexerError))
 leafLexerErrors =
-  errs [E inBlockCommentState unterminatedBlockCommentError]
+  errs [E InBlockComment unterminatedBlockCommentError]
 
 public export
 leafLexerEOI :
      LeafState
   -> LeafLexerStack q
-  -> F1 q (Either (BoundedErr LexerError) (List (Bounded Token)))
+  -> F1 q (Either (BBErr LexerError) (List (ByteBounded Token)))
 leafLexerEOI _ stackValue = T1.do
   storedError <- read1 (error stackValue)
   case storedError of
@@ -977,22 +872,21 @@ leafLexerEOI _ stackValue = T1.do
       pure (Left existingError)
 
     Nothing => T1.do
-      blockCommentDepth <- read1 (commentDepth stackValue)
-      case blockCommentDepth of
+      st <- read1 (stack stackValue)
+      case st.commentDepth of
         S _ => T1.do
-          unclosedBounds <- unterminatedCommentBounds stackValue
+          unclosedBounds <- unterminatedCommentBounds
           pure (Left (B (Custom LexUnterminatedBlockComment) unclosedBounds))
 
-        Z => T1.do
-          tokens <- getList (outputTokens stackValue)
-          pure (Right (tokens ++ [B TokEOF NoBounds]))
+        Z =>
+          pure (Right (st.outputTokens <>> [B TokEOF NoBB]))
 
 public export
-leafLexer : Parser1 (BoundedErr LexerError) 2 LeafLexerStack (List (Bounded Token))
+leafLexer : Lexer LexerError Token
 leafLexer =
-  P initialState
-    initLeafLexerStack
+  P Initial
+    (init initLeafStack)
     leafLexerSteps
-    snocChunk
+    noChunk
     leafLexerErrors
     leafLexerEOI

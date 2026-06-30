@@ -248,6 +248,21 @@ numberCandidate =
   <|> plainDecimalNumberCandidate
 
 --------------------------------------------------------------------------------
+-- Digits immediately followed by `.`, `..`, or `..=` with no further digit.
+--
+-- `dottedDecimalNumberCandidate` only consumes a `.` when a digit follows, by
+-- design (see above), so the underlying lexer engine never has to choose
+-- between treating that `.` as the start of a float or as a separate `.`/`..`/
+-- `..=` symbol. This candidate covers exactly the complementary case: digits
+-- followed by one or two dots (optionally `..=`) with no digit after the dot,
+-- so `1..2` still lexes as `1`, `..`, `2` and `1.` still lexes as `1`, `.`.
+--------------------------------------------------------------------------------
+public export
+digitsThenDotOperatorCandidate : RExp True
+digitsThenDotOperatorCandidate =
+  decimalDigits >> ('.' >> opt ('.' >> opt '='))
+
+--------------------------------------------------------------------------------
 -- String, basis-string, byte literal, byte-string, and ordinary char candidates.
 --
 -- These candidates are deliberately broader than the set of valid literals.

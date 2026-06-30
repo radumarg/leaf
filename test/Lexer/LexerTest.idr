@@ -1,4 +1,4 @@
-module Test.Lexer.LexerTest
+module Lexer.LexerTest
 
 import Text.Bounds
 import Test.Simple
@@ -36,6 +36,10 @@ runLexerTests = runTests $ Test.do
 
   test "unary minus stays separate from integer literal" $
     lexTokenValues "-7" `shouldBe` Right [TokSym SymMinus, TokIntLitRaw "7", TokEOF]
+
+  test "range does not become a trailing-dot float" $
+    lexTokenValues "1..2" `shouldBe`
+      Right [TokIntLitRaw "1", TokSym SymDotDot, TokIntLitRaw "2", TokEOF]
 
   test "suffixed integer-looking float is a float" $
     lexTokenValues "5f32" `shouldBe` Right [TokFloatLitRaw "5f32", TokEOF]

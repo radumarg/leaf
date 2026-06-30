@@ -1,8 +1,5 @@
 module Frontend.Lexer.Lexer
 
-import Data.Bits
-import Derive.Prelude
-import Language.Reflection
 import Text.Bounds
 import Text.ILex
 import Text.ParseError
@@ -12,7 +9,6 @@ import Frontend.Lexer.Errors
 import Frontend.Lexer.Rules
 
 %default total
-%language ElabReflection
 
 --------------------------------------------------------------------------------
 -- Translating ilex native errors into Leaf's public LexerError.
@@ -61,15 +57,19 @@ translateInnerLexerError (InvalidByte byteValue) =
 --------------------------------------------------------------------------------
 -- Main entry point: lexProgram
 --
--- The lexer itself already emits `Bounded Token` and `BoundedErr LexerError`
--- using the current source-positioned ilex API.  No legacy byte-bound conversion layer is needed here.
+-- The installed ilex tracks positions as raw byte offsets while lexing and only
+-- exposes `Bounded` (line/column) values via a position map built from the whole
+-- input once lexing has finished. This module is therefore also the single place
+-- where ilex's byte-offset results are converted to line/column positions and
+-- native ilex failures are translated into Leaf's public `LexerError`.
 --------------------------------------------------------------------------------
 public export
 lexProgram : String -> Either (Bounded LexerError) (List (Bounded Token))
 lexProgram inputString =
+  let pm := stringPositionMap inputString in
   case runString leafLexer inputString of
-    Left ilexError =>
-      Left (map translateInnerLexerError ilexError)
+    Left byteBoundedError =>
+      Left (toBounded (map translateInnerLexerError byteBoundedError))
 
-    Right boundedTokens =>
-      Right boundedTokens
+    Right byteBoundedTokens =>
+      Right (map toBounded byteBoundedTokens)
