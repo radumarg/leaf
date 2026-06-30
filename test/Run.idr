@@ -1,6 +1,6 @@
-module Test.Run
+module Run
 
-import Test.Lexer.LexerTest
+import Lexer.LexerTest
 
 main : IO ()
 main = do

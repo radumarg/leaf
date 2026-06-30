@@ -1,0 +1,14 @@
+package leaf-tests
+
+sourcedir = "."
+
+depends = elab-util,
+          ilex,
+          parser,
+          simple-tests
+
+modules = Lexer.LexerTest,
+          Run
+
+main = Run
+executable = leaf-tests

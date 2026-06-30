@@ -1,0 +1,8 @@
+collection = "nightly-251227"
+
+[custom.all.leaf]
+type = "local"
+path = "."
+ipkg = "leaf.ipkg"
+test = "test/test.ipkg"
+
