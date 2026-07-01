@@ -22,6 +22,7 @@ modules = Main,
           Frontend.Lexer.Regex,
           Frontend.Lexer.Rules,
           Frontend.Source,
+          Frontend.Syntax.Name,
           Frontend.Token,
           Serialize.OpenQASM3Serializer,
           SampleCircuit
