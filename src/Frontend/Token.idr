@@ -4,11 +4,28 @@
 
 module Frontend.Token
 
+import Data.List
 import Derive.Prelude
+import Derive.Finite
 import Language.Reflection
 
 %default total
 %language ElabReflection
+
+----------------------------------------------------------------------
+-- Looks up the value of a `Finite` type by its `show`-style spelling.
+--
+-- This is the single mechanism behind every `xFromString` function below:
+-- rather than hand-writing a second string -> data mapping that has to be
+-- kept in sync with the data -> string one by hand (and that the compiler
+-- can't check, since it matches on the open `String` type), the forward
+-- direction is derived from the authoritative `showXLeaf` function plus the
+-- `Finite` instance's `values` (which the elaborator derives to always list
+-- every constructor). Add a constructor without giving it a `showXLeaf` case
+-- and the build fails immediately -- there is no second list to forget.
+----------------------------------------------------------------------
+findByShow : Finite a => (a -> String) -> String -> Maybe a
+findByShow showLeaf s = find (\x => showLeaf x == s) values
 
 ------------------------------------------------------
 -- Primitive built-in types
@@ -35,6 +52,40 @@ data TypPrimName
   | TypPrimQubit
   | TypPrimQState
 
+%runElab derive "TypPrimName" [Eq, Finite]
+
+public export
+showTypPrimLeaf : TypPrimName -> String
+showTypPrimLeaf ty =
+  case ty of
+    TypPrimAngle32  => "angle32"
+    TypPrimAngle64  => "angle64"
+    TypPrimBit      => "bit"
+    TypPrimBool     => "bool"
+    TypPrimF32      => "f32"
+    TypPrimF64      => "f64"
+    TypPrimI8       => "i8"
+    TypPrimI16      => "i16"
+    TypPrimI32      => "i32"
+    TypPrimI64      => "i64"
+    TypPrimI128     => "i128"
+    TypPrimParam    => "param"
+    TypPrimU8       => "u8"
+    TypPrimU16      => "u16"
+    TypPrimU32      => "u32"
+    TypPrimU64      => "u64"
+    TypPrimU128     => "u128"
+    TypPrimQubit    => "qubit"
+    TypPrimQState   => "qstate"
+
+public export
+implementation Show TypPrimName where
+  show = showTypPrimLeaf
+
+public export
+typeFromString : String -> Maybe TypPrimName
+typeFromString = findByShow showTypPrimLeaf
+
 ----------------------------------------------------------
 -- BasisStateName: enumerates quantum basis states values.
 -- These are globally reserved quantum state literals.
@@ -47,6 +98,27 @@ data BasisStateName
   | StateMinus
   | StatePlusI
   | StateMinusI
+
+%runElab derive "BasisStateName" [Eq, Finite]
+
+public export
+showStateBasisLeaf : BasisStateName -> String
+showStateBasisLeaf sb =
+  case sb of
+    StateZero   => "zero"
+    StateOne    => "one"
+    StatePlus   => "plus"
+    StateMinus  => "minus"
+    StatePlusI  => "plusi"
+    StateMinusI => "minusi"
+
+public export
+implementation Show BasisStateName where
+  show = showStateBasisLeaf
+
+public export
+stateBasisFromString : String -> Maybe BasisStateName
+stateBasisFromString = findByShow showStateBasisLeaf
 
 ----------------------------------------------------------------------
 -- Keywords: reserved words that affect syntax.
@@ -97,306 +169,7 @@ data Keyword
   | KwUse
   | KwWhile
 
-----------------------------------------------------------------------
--- Builtin: reserved intrinsic function names.
--- These cannot be shadowed by user declarations.
-----------------------------------------------------------------------
-public export
-data Builtin
-  = BuiltinBarrier
-  | BuiltinCtrl
-  | BuiltinOn
-  | BuiltinApply
-  | BuiltinBasis
-  | BuiltinClean
-  | BuiltinDiscard
-  | BuiltinIsolated
-  | BuiltinMeasr
-  | BuiltinProduct
-  | BuiltinQAlloc
-  | BuiltinReset
-  | BuiltinTensor
-  | BuiltinSeparable
-  | BuiltinStabilized
-  | BuiltinUncompute
-  | BuiltinWeaken
-
-----------------------------------------------------------------------
--- Symbols: punctuation and operators.
-----------------------------------------------------------------------
-public export
-data Symbol
-  = SymHash                               -- #   (starts an annotation: #[...])
-  | SymAmp                                -- &   (reserved; && exists too)
-  | SymLParen | SymRParen                 -- ( )
-  | SymLBracket | SymRBracket             -- [ ]
-  | SymLBrace | SymRBrace                 -- { }
-  | SymComma | SymSemi | SymColon         -- , ; :
-  | SymDot                                -- .
-  | SymBang                               -- !
-  | SymEq                                 -- =
-  | SymPlus | SymMinus | SymStar | SymSlash | SymPercent -- + - * / %
-  | SymPlusEq | SymMinusEq | SymStarEq | SymSlashEq | SymPercentEq
-  | SymWalrusEq                           --  :=
-  | SymGt | SymGe | SymLt | SymLe         -- >, >=, <, <=
-  | SymEqEq | SymNotEq                    -- ==, !=
-  | SymAndAnd | SymOrOr                   -- && and ||
-  | SymDotDot | SymDotDotEq               -- .. and ..=
-  | SymDoubleColon                        -- ::
-  | SymPipe | SymCaret                    -- | and ^
-  | SymArrow                              -- ->
-  | SymFatArrow                           -- =>  (match arm separator)
-  | SymShl | SymShlEq | SymShr | SymShrEq -- <<, <<=, >>, >>=
-  | SymAndEq | SymOrEq | SymCaretEq       -- "&=", "|=", "^="
- 
-----------------------------------------------------------------------
--- Token:
---   TokIdent "x"
---   TokIntLitRaw "123"
---   TokFloatLitRaw "3.14"
---   TokByteLitRaw "b'a'"
---   TokByteStringLitRaw "b\"hello\""
---   TokBasisStringLitRaw "bs\"01+-iI\""
---   TokStringLitRaw "\"Hello\""
---   TokOuterDoc "/// docs for following item"
---   TokInnerDoc "//! docs for enclosing item"
---   TokBoolLit True
---   TokStateLit StateZero
---   TokKw KwLet
---   TokTypPrim TypPrimI32
---   TokSym SymPlusEq
---   TokBuiltin BuiltinMeasr
---   TokUnderscore
---   TokEOF
-----------------------------------------------------------------------
-public export
-data Token
-  = TokIdent             String
-  | TokIntLitRaw         String
-  | TokFloatLitRaw       String
-  | TokByteLitRaw        String
-  | TokByteStringLitRaw  String
-  | TokBasisStringLitRaw String
-  | TokStringLitRaw      String
-  | TokOuterDoc          String   -- /// line  or  /** … */ block: documents the item that FOLLOWS
-  | TokInnerDoc          String   -- //! line  or  /*! … */ block: documents the ENCLOSING item
-  | TokBoolLit           Bool
-  | TokStateLit          BasisStateName
-  | TokKw                Keyword
-  | TokTypPrim           TypPrimName
-  | TokSym               Symbol
-  | TokBuiltin           Builtin
-  | TokUnderscore
-  | TokEOF
-----------------------------------------------------------------------
--- Mappings used by lexer: identifier text -> token category
-----------------------------------------------------------------------
-public export
-keywordFromString : String -> Maybe Keyword
-keywordFromString s =
-  case s of
-    "adjoint"     => Just KwAdjoint
-    "affine"      => Just KwAffine
-    "as"          => Just KwAs
-    "break"       => Just KwBreak
-    "coisometry"  => Just KwCoisometry
-    "classical"   => Just KwClassical
-    "const"       => Just KwConst
-    "continue"    => Just KwContinue
-    "else"        => Just KwElse
-    "ensures"     => Just KwEnsures
-    "enum"        => Just KwEnum
-    "fn"          => Just KwFn
-    "for"         => Just KwFor
-    "general"     => Just KwGeneral
-    "if"          => Just KwIf
-    "impl"        => Just KwImpl
-    "in"          => Just KwIn
-    "isometry"    => Just KwIsometry
-    "let"         => Just KwLet
-    "linear"      => Just KwLinear
-    "loop"        => Just KwLoop
-    "match"       => Just KwMatch
-    "mod"         => Just KwMod
-    "mut"         => Just KwMut
-    "pub"         => Just KwPub
-    "qenum"       => Just KwQenum
-    "qelse"       => Just KwQelse
-    "qif"         => Just KwQif
-    "qmatch"      => Just KwQmatch
-    "requires"    => Just KwRequires
-    "return"      => Just KwReturn
-    "selse"       => Just KwSelse
-    "sif"         => Just KwSif
-    "smatch"      => Just KwSmatch
-    "scratch"     => Just KwScratch
-    "self"        => Just KwSelf
-    "struct"      => Just KwStruct
-    "supports"    => Just KwSupports
-    "then"        => Just KwThen
-    "uncompsafe"  => Just KwUncompsafe
-    "unitary"     => Just KwUnitary
-    "use"         => Just KwUse
-    "while"       => Just KwWhile
-    _             => Nothing
-
-public export
-builtinFromString : String -> Maybe Builtin
-builtinFromString s =
-  case s of
-    "barrier"    => Just BuiltinBarrier
-    "ctrl"       => Just BuiltinCtrl
-    "on"         => Just BuiltinOn
-    "apply"      => Just BuiltinApply
-    "basis"      => Just BuiltinBasis
-    "clean"      => Just BuiltinClean
-    "discard"    => Just BuiltinDiscard
-    "isolated"   => Just BuiltinIsolated
-    "measr"      => Just BuiltinMeasr
-    "product"    => Just BuiltinProduct
-    "qalloc"     => Just BuiltinQAlloc
-    "reset"      => Just BuiltinReset
-    "tensor"     => Just BuiltinTensor
-    "separable"  => Just BuiltinSeparable
-    "stabilized" => Just BuiltinStabilized
-    "uncompute"  => Just BuiltinUncompute
-    "weaken"     => Just BuiltinWeaken
-    _             => Nothing
-
-public export
-stateBasisFromString : String -> Maybe BasisStateName
-stateBasisFromString s =
-  case s of
-    "zero"   => Just StateZero
-    "one"    => Just StateOne
-    "plus"   => Just StatePlus
-    "minus"  => Just StateMinus
-    "plusi"  => Just StatePlusI
-    "minusi" => Just StateMinusI
-    _        => Nothing
-
-public export
-typeFromString : String -> Maybe TypPrimName
-typeFromString s =
-  case s of
-    "angle32" => Just TypPrimAngle32
-    "angle64" => Just TypPrimAngle64
-    "bit"     => Just TypPrimBit
-    "bool"    => Just TypPrimBool
-    "f32"     => Just TypPrimF32
-    "f64"     => Just TypPrimF64
-    "i8"      => Just TypPrimI8
-    "i16"     => Just TypPrimI16
-    "i32"     => Just TypPrimI32
-    "i64"     => Just TypPrimI64
-    "i128"    => Just TypPrimI128
-    "param"   => Just TypPrimParam
-    "u8"      => Just TypPrimU8
-    "u16"     => Just TypPrimU16
-    "u32"     => Just TypPrimU32
-    "u64"     => Just TypPrimU64
-    "u128"    => Just TypPrimU128
-    "qubit"   => Just TypPrimQubit
-    "qstate"  => Just TypPrimQState
-    _         => Nothing
-
-public export
-boolFromString : String -> Maybe Bool
-boolFromString s =
-  case s of
-    "true"  => Just True
-    "false" => Just False
-    _       => Nothing
-
-------------------------------------------------------------------------------------------------------------
--- A symbol table ordered from longest to shortest, the lexer must use longest match first to disambiguate.
--------------------------------------------------------------------------------------------------------------
-public export
-symbolTable : List (String, Symbol)
-symbolTable =
-  [ -- 3-character symbols
-    (">>=", SymShrEq)
-  , ("<<=", SymShlEq)
-  , ("..=", SymDotDotEq)
-
-    -- 2-character symbols
-  , ("=>",  SymFatArrow)
-  , ("->",  SymArrow)
-  , ("==",  SymEqEq)
-  , ("!=",  SymNotEq)
-  , (">=",  SymGe)
-  , ("<=",  SymLe)
-  , ("&&",  SymAndAnd)
-  , ("||",  SymOrOr)
-  , ("+=",  SymPlusEq)
-  , ("-=",  SymMinusEq)
-  , ("*=",  SymStarEq)
-  , ("/=",  SymSlashEq)
-  , ("%=",  SymPercentEq)
-  , ("&=",  SymAndEq)
-  , ("|=",  SymOrEq)
-  , ("^=",  SymCaretEq)
-  , (":=",  SymWalrusEq)
-  , ("::",  SymDoubleColon)
-  , ("..",  SymDotDot)
-  , (">>",  SymShr)
-  , ("<<",  SymShl)
-
-    -- 1-character symbols
-  , ("#", SymHash)
-  , ("&",   SymAmp)
-  , ("(",   SymLParen)
-  , (")",   SymRParen)
-  , ("[",   SymLBracket)
-  , ("]",   SymRBracket)
-  , ("{",   SymLBrace)
-  , ("}",   SymRBrace)
-  , (",",   SymComma)
-  , (";",   SymSemi)
-  , (":",   SymColon)
-  , (".",   SymDot)
-  , ("!",   SymBang)
-  , ("=",   SymEq)
-  , ("+",   SymPlus)
-  , ("-",   SymMinus)
-  , ("*",   SymStar)
-  , ("/",   SymSlash)
-  , ("%",   SymPercent)
-  , (">",   SymGt)
-  , ("<",   SymLt)
-  , ("|",   SymPipe)
-  , ("^",   SymCaret)
-  ]
-
----------------------------------------------------------------------
--- single authoritative classification order for identifier-like text:
--- bools, keywords, types, state basis, builtins, identifiers
----------------------------------------------------------------------
-public export
-tokenFromIdentLike : String -> Token
-tokenFromIdentLike s =
-  case s of
-    "_" => TokUnderscore
-    _ =>
-      case boolFromString s of
-        Just b => TokBoolLit b
-        Nothing =>
-          case keywordFromString s of
-            Just kw => TokKw kw
-            Nothing =>
-              case typeFromString s of
-                Just ty => TokTypPrim ty
-                Nothing =>
-                  case stateBasisFromString s of
-                    Just st => TokStateLit st
-                    Nothing =>
-                      case builtinFromString s of
-                        Just bi => TokBuiltin bi
-                        Nothing => TokIdent s
-
-----------------------------------------------------------------------
--- Implementation and Derivations for debugging/testing
-----------------------------------------------------------------------
+%runElab derive "Keyword" [Eq, Finite]
 
 public export
 showKeywordLeaf : Keyword -> String
@@ -447,6 +220,40 @@ showKeywordLeaf kw =
     KwWhile     => "while"
 
 public export
+implementation Show Keyword where
+  show = showKeywordLeaf
+
+public export
+keywordFromString : String -> Maybe Keyword
+keywordFromString = findByShow showKeywordLeaf
+
+----------------------------------------------------------------------
+-- Builtin: reserved intrinsic function names.
+-- These cannot be shadowed by user declarations.
+----------------------------------------------------------------------
+public export
+data Builtin
+  = BuiltinBarrier
+  | BuiltinCtrl
+  | BuiltinOn
+  | BuiltinApply
+  | BuiltinBasis
+  | BuiltinClean
+  | BuiltinDiscard
+  | BuiltinIsolated
+  | BuiltinMeasr
+  | BuiltinProduct
+  | BuiltinQAlloc
+  | BuiltinReset
+  | BuiltinTensor
+  | BuiltinSeparable
+  | BuiltinStabilized
+  | BuiltinUncompute
+  | BuiltinWeaken
+
+%runElab derive "Builtin" [Eq, Finite]
+
+public export
 showBuiltinLeaf : Builtin -> String
 showBuiltinLeaf b =
   case b of
@@ -469,15 +276,42 @@ showBuiltinLeaf b =
     BuiltinWeaken    => "weaken"
 
 public export
-showStateBasisLeaf : BasisStateName -> String
-showStateBasisLeaf sb =
-  case sb of
-    StateZero   => "zero"
-    StateOne    => "one"
-    StatePlus   => "plus"
-    StateMinus  => "minus"
-    StatePlusI  => "plusi"
-    StateMinusI => "minusi"
+implementation Show Builtin where
+  show = showBuiltinLeaf
+
+public export
+builtinFromString : String -> Maybe Builtin
+builtinFromString = findByShow showBuiltinLeaf
+
+----------------------------------------------------------------------
+-- Symbols: punctuation and operators.
+----------------------------------------------------------------------
+public export
+data Symbol
+  = SymHash                               -- #   (starts an annotation: #[...])
+  | SymAmp                                -- &   (reserved; && exists too)
+  | SymLParen | SymRParen                 -- ( )
+  | SymLBracket | SymRBracket             -- [ ]
+  | SymLBrace | SymRBrace                 -- { }
+  | SymComma | SymSemi | SymColon         -- , ; :
+  | SymDot                                -- .
+  | SymBang                               -- !
+  | SymEq                                 -- =
+  | SymPlus | SymMinus | SymStar | SymSlash | SymPercent -- + - * / %
+  | SymPlusEq | SymMinusEq | SymStarEq | SymSlashEq | SymPercentEq
+  | SymWalrusEq                           --  :=
+  | SymGt | SymGe | SymLt | SymLe         -- >, >=, <, <=
+  | SymEqEq | SymNotEq                    -- ==, !=
+  | SymAndAnd | SymOrOr                   -- && and ||
+  | SymDotDot | SymDotDotEq               -- .. and ..=
+  | SymDoubleColon                        -- ::
+  | SymPipe | SymCaret                    -- | and ^
+  | SymArrow                              -- ->
+  | SymFatArrow                           -- =>  (match arm separator)
+  | SymShl | SymShlEq | SymShr | SymShrEq -- <<, <<=, >>, >>=
+  | SymAndEq | SymOrEq | SymCaretEq       -- "&=", "|=", "^="
+
+%runElab derive "Symbol" [Eq, Finite]
 
 public export
 showSymbolLeaf : Symbol -> String
@@ -532,52 +366,97 @@ showSymbolLeaf sym =
     SymBang        => "!"
 
 public export
-showTypPrimLeaf : TypPrimName -> String
-showTypPrimLeaf ty =
-  case ty of
-    TypPrimAngle32  => "angle32"
-    TypPrimAngle64  => "angle64"
-    TypPrimBit      => "bit"
-    TypPrimBool     => "bool"
-    TypPrimF32      => "f32"
-    TypPrimF64      => "f64"
-    TypPrimI8       => "i8"
-    TypPrimI16      => "i16"
-    TypPrimI32      => "i32"
-    TypPrimI64      => "i64"
-    TypPrimI128     => "i128"
-    TypPrimParam    => "param"
-    TypPrimU8       => "u8"
-    TypPrimU16      => "u16"
-    TypPrimU32      => "u32"
-    TypPrimU64      => "u64"
-    TypPrimU128     => "u128"
-    TypPrimQubit    => "qubit"
-    TypPrimQState   => "qstate"
-
-public export
-implementation Show Keyword where
-  show = showKeywordLeaf
-
-public export
-implementation Show Builtin where
-  show = showBuiltinLeaf
-
-public export
 implementation Show Symbol where
   show = showSymbolLeaf
 
+----------------------------------------------------------------------------------------------------------
+-- The symbol table the lexer builds its rules from, derived from `showSymbolLeaf` plus every `Symbol`
+-- value (via `Finite`) so there is exactly one hand-written spelling per symbol, not two. Table order
+-- does not affect lexing: symbol matching is longest-match-first by construction (the lexer merges every
+-- entry into one DFA), not by list order.
+----------------------------------------------------------------------------------------------------------
 public export
-implementation Show BasisStateName where
-  show = showStateBasisLeaf
+symbolTable : List (String, Symbol)
+symbolTable = map (\sym => (showSymbolLeaf sym, sym)) values
 
+----------------------------------------------------------------------
+-- Token:
+--   TokIdent "x"
+--   TokIntLitRaw "123"
+--   TokFloatLitRaw "3.14"
+--   TokByteLitRaw "b'a'"
+--   TokByteStringLitRaw "b\"hello\""
+--   TokBasisStringLitRaw "bs\"01+-iI\""
+--   TokStringLitRaw "\"Hello\""
+--   TokOuterDoc "/// docs for following item"
+--   TokInnerDoc "//! docs for enclosing item"
+--   TokBoolLit True
+--   TokStateLit StateZero
+--   TokKw KwLet
+--   TokTypPrim TypPrimI32
+--   TokSym SymPlusEq
+--   TokBuiltin BuiltinMeasr
+--   TokUnderscore
+--   TokEOF
+----------------------------------------------------------------------
 public export
-implementation Show TypPrimName where
-  show = showTypPrimLeaf
+data Token
+  = TokIdent             String
+  | TokIntLitRaw         String
+  | TokFloatLitRaw       String
+  | TokByteLitRaw        String
+  | TokByteStringLitRaw  String
+  | TokBasisStringLitRaw String
+  | TokStringLitRaw      String
+  | TokOuterDoc          String   -- /// line  or  /** … */ block: documents the item that FOLLOWS
+  | TokInnerDoc          String   -- //! line  or  /*! … */ block: documents the ENCLOSING item
+  | TokBoolLit           Bool
+  | TokStateLit          BasisStateName
+  | TokKw                Keyword
+  | TokTypPrim           TypPrimName
+  | TokSym               Symbol
+  | TokBuiltin           Builtin
+  | TokUnderscore
+  | TokEOF
 
-%runElab derive "TypPrimName" [Eq]
-%runElab derive "BasisStateName" [Eq]
-%runElab derive "Builtin" [Eq]
-%runElab derive "Keyword" [Eq]
-%runElab derive "Symbol" [Eq]
 %runElab derive "Token" [Show, Eq]
+
+----------------------------------------------------------------------
+-- Boolean literals. Only two spellings, spelled out directly rather than
+-- routed through `findByShow`: Leaf's `true`/`false` spelling differs from
+-- Idris's own `Show Bool` (`True`/`False`), so reusing that mechanism here
+-- would need its own `showBoolLiteral` anyway, for no less code overall.
+----------------------------------------------------------------------
+public export
+boolFromString : String -> Maybe Bool
+boolFromString s =
+  case s of
+    "true"  => Just True
+    "false" => Just False
+    _       => Nothing
+
+---------------------------------------------------------------------
+-- single authoritative classification order for identifier-like text:
+-- bools, keywords, types, state basis, builtins, identifiers
+---------------------------------------------------------------------
+public export
+tokenFromIdentLike : String -> Token
+tokenFromIdentLike s =
+  case s of
+    "_" => TokUnderscore
+    _ =>
+      case boolFromString s of
+        Just b => TokBoolLit b
+        Nothing =>
+          case keywordFromString s of
+            Just kw => TokKw kw
+            Nothing =>
+              case typeFromString s of
+                Just ty => TokTypPrim ty
+                Nothing =>
+                  case stateBasisFromString s of
+                    Just st => TokStateLit st
+                    Nothing =>
+                      case builtinFromString s of
+                        Just bi => TokBuiltin bi
+                        Nothing => TokIdent s

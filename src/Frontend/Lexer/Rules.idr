@@ -26,13 +26,50 @@ import Frontend.Lexer.Regex
 %hide Prelude.not
 
 --------------------------------------------------------------------------------
+-- A known limitation of this pinned ilex version, worked around three times
+-- below. If you hit a fourth case, it's likely the same thing -- read this
+-- first rather than re-deriving it from scratch (or, worse, "simplifying"
+-- away one of the workarounds below because it looks redundant; that's
+-- exactly what almost happened to the block-comment-opener rules).
+--
+-- (a) Backtrack memory is lost across a node that is extensible but not
+--     itself an accept. Concretely: if the lexer has already matched a
+--     shorter valid token, then continues into a longer candidate that turns
+--     out not to be a real accept anywhere along the way, it hard-fails
+--     instead of falling back to the shorter match -- but *only* if some byte
+--     in between led to a state with further transitions and no accept of
+--     its own. A shorter match followed immediately by a dead end backtracks
+--     fine; a shorter match, then one or more such "extend-only" bytes, then
+--     a dead end, does not.
+--       - `digitsThenDotOperatorCandidate` / `emitDigitsThenDotOperator`
+--         (this file and `Regex.idr`): without it, `1..2` hard-fails instead
+--         of lexing as `1`, `..`, `2`, because the node reached after `1.`
+--         extends (a digit could follow) but isn't itself an accept.
+--       - `emptyOuterBlockComment` / `starOnlyOuterBlockComment` (`Regex.idr`,
+--         wired into `initialRules` below): without them, `/**/` and `/***/`
+--         hard-fail instead of lexing as ordinary (non-doc) comments, for the
+--         same reason -- the node after `/**` extends toward a doc comment's
+--         first body character but isn't an accept there.
+--     If you add a new rule whose prefix overlaps an existing shorter rule
+--     with a possible dead end in between, test that overlap directly; don't
+--     assume maximal munch alone covers it.
+--
+-- (b) At true end-of-input, ilex's own `endPos` can report a byte position
+--     past the end of the input, inside a custom multi-state lexer like this
+--     one. Worked around by `unterminatedCommentBounds` below, whose result
+--     gets clamped to the input's actual length in
+--     `Frontend.Lexer.Lexer.lexProgram` (`clampByteBounded`) before being
+--     converted to a line/column position.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
 -- Lexer states.
 --
 -- The prompt requires exactly two states:
 --   * Initial        ordinary Leaf source text
 --   * InBlockComment counting state for nested block comments
 --
--- Arbitrary nesting is represented by `commentDepth`, not by adding more states.
+-- Arbitrary nesting is represented in the stack, not by adding more states.
 --------------------------------------------------------------------------------
 %runElab deriveParserState "LeafSz" "LeafState" ["Initial", "InBlockComment"]
 
@@ -40,10 +77,9 @@ import Frontend.Lexer.Regex
 -- Documentation-comment mode.
 --
 -- This mode is chosen by the outermost block-comment opener. Nested block
--- comments only affect `commentDepth`; they never change the doc/non-doc mode
+-- comments only affect the extra nesting depth; they never change the doc/non-doc mode
 -- of the outer comment.
 --------------------------------------------------------------------------------
-public export
 data CommentMode
   = NormalBlockComment
   | OuterBlockDocComment
@@ -61,6 +97,12 @@ commentModeToToken NormalBlockComment _ = Nothing
 commentModeToToken OuterBlockDocComment rawText = Just (TokOuterDoc rawText)
 commentModeToToken InnerBlockDocComment rawText = Just (TokInnerDoc rawText)
 
+data BlockCommentState
+  = NoOpenBlockComment
+  | OpenBlockComment Nat CommentMode
+
+%runElab derive "BlockCommentState" [Show, Eq]
+
 --------------------------------------------------------------------------------
 -- Mutable ilex stack.
 --
@@ -68,26 +110,23 @@ commentModeToToken InnerBlockDocComment rawText = Just (TokInnerDoc rawText)
 -- HasStringLits, HasBBErr, and HasStack instances (it derives them via
 -- `%runElab derive "Stack" [FullStack]`). `LeafStack` only has to carry what
 -- that generic record does not already provide: the emitted token buffer and
--- the block-comment depth/mode counters.
+-- the active block-comment state. In `OpenBlockComment extraDepth mode`,
+-- `extraDepth` counts nested comments beyond the outermost one.
 --------------------------------------------------------------------------------
-public export
 record LeafStack where
   constructor MkLeafStack
   outputTokens : SnocList (ByteBounded Token)
-  commentDepth : Nat
-  commentMode  : CommentMode
+  blockComment : BlockCommentState
 
-public export
 0 LeafLexerStack : Type -> Type
 LeafLexerStack = Stack LexerError LeafStack LeafSz
 
 initLeafStack : LeafStack
-initLeafStack = MkLeafStack [<] Z NormalBlockComment
+initLeafStack = MkLeafStack [<] NoOpenBlockComment
 
 --------------------------------------------------------------------------------
 -- Local rule alias.
 --------------------------------------------------------------------------------
-public export
 0 LeafRule : Type -> Type
 LeafRule q = (RExp True, Step q LeafSz LeafLexerStack)
 
@@ -106,12 +145,18 @@ oldestOpenPosition (olderPositions :< openPosition) =
     _ =>
       oldestOpenPosition olderPositions
 
+-- At true end-of-input ilex's own `endPos` can report a byte position past
+-- the end of the input (a known quirk of this ilex version's EOI bookkeeping
+-- inside a custom multi-state lexer). That overshoot is harmless here: it
+-- gets clamped to the input's actual length in `Frontend.Lexer.Lexer.lexProgram`
+-- before being converted to a line/column position, so there's no need to
+-- special-case or pre-validate the bound this function returns.
 unterminatedCommentBounds :
-     (sk : LeafLexerStack q)
-  => F1 q ByteBounds
-unterminatedCommentBounds = T1.do
+     LeafLexerStack q
+  -> F1 q ByteBounds
+unterminatedCommentBounds stackValue = T1.do
   endPosition <- endPos
-  openPositions <- read1 (positions sk)
+  openPositions <- read1 (positions stackValue)
   case oldestOpenPosition openPositions of
     Just openPosition =>
       pure (BB openPosition endPosition)
@@ -120,104 +165,10 @@ unterminatedCommentBounds = T1.do
       pure NoBB
 
 --------------------------------------------------------------------------------
--- General character helpers used by literal validators.
+-- Suffix-stripping helper, used by `classifyDotOperatorSuffix` below to split
+-- the `.`/`..`/`..=` operator off the trailing end of a matched
+-- `digitsThenDotOperatorCandidate`.
 --------------------------------------------------------------------------------
-charBetween : Char -> Char -> Char -> Bool
-charBetween lower upper value =
-  lower <= value && value <= upper
-
-isAsciiDigitChar : Char -> Bool
-isAsciiDigitChar value = charBetween '0' '9' value
-
-isAsciiLetterChar : Char -> Bool
-isAsciiLetterChar value =
-  charBetween 'a' 'z' value || charBetween 'A' 'Z' value
-
-isAsciiAlphaNumUnderscoreChar : Char -> Bool
-isAsciiAlphaNumUnderscoreChar value =
-  isAsciiLetterChar value || isAsciiDigitChar value || value == '_'
-
-isBinaryDigitChar : Char -> Bool
-isBinaryDigitChar value = value == '0' || value == '1'
-
-isOctalDigitChar : Char -> Bool
-isOctalDigitChar value = charBetween '0' '7' value
-
-isHexDigitChar : Char -> Bool
-isHexDigitChar value =
-     charBetween '0' '9' value
-  || charBetween 'a' 'f' value
-  || charBetween 'A' 'F' value
-
-isBasisStringChar : Char -> Bool
-isBasisStringChar value =
-     value == '0'
-  || value == '1'
-  || value == '+'
-  || value == '-'
-  || value == 'i'
-  || value == 'I'
-
-isPlainByteLiteralChar : Char -> Bool
-isPlainByteLiteralChar value =
-     charBetween ' ' '~' value
-  && value /= '\\'
-  && value /= '\''
-
-isPlainByteStringChar : Char -> Bool
-isPlainByteStringChar value =
-     charBetween ' ' '~' value
-  && value /= '\\'
-  && value /= '"'
-
-isSimpleByteEscapeChar : Char -> Bool
-isSimpleByteEscapeChar value =
-     value == 'n'
-  || value == 'r'
-  || value == 't'
-  || value == '0'
-  || value == '\\'
-  || value == '\''
-  || value == '"'
-
-allChars : (Char -> Bool) -> List Char -> Bool
-allChars predicate [] = True
-allChars predicate (value :: rest) =
-  case predicate value of
-    True  => allChars predicate rest
-    False => False
-
-anyChar : (Char -> Bool) -> List Char -> Bool
-anyChar predicate [] = False
-anyChar predicate (value :: rest) =
-  case predicate value of
-    True  => True
-    False => anyChar predicate rest
-
-lastCharSatisfies : (Char -> Bool) -> List Char -> Bool
-lastCharSatisfies predicate [] = False
-lastCharSatisfies predicate (value :: []) = predicate value
-lastCharSatisfies predicate (_ :: rest) = lastCharSatisfies predicate rest
-
---------------------------------------------------------------------------------
--- List/string prefix and suffix helpers.
---------------------------------------------------------------------------------
-splitLast : List a -> Maybe (List a, a)
-splitLast [] = Nothing
-splitLast (value :: []) = Just ([], value)
-splitLast (value :: rest) =
-  case splitLast rest of
-    Nothing => Nothing
-    Just (initialValues, lastValue) => Just (value :: initialValues, lastValue)
-
-dropPrefixChars : List Char -> List Char -> Maybe (List Char)
-dropPrefixChars [] remainingChars = Just remainingChars
-dropPrefixChars (prefixChar :: prefixRest) (valueChar :: valueRest) =
-  case prefixChar == valueChar of
-    True  => dropPrefixChars prefixRest valueRest
-    False => Nothing
-dropPrefixChars _ _ = Nothing
-
 stripReversedSuffix : List Char -> List Char -> Maybe (List Char)
 stripReversedSuffix [] remainingReversedChars =
   Just (reverse remainingReversedChars)
@@ -231,276 +182,75 @@ stripSuffixChars : List Char -> List Char -> Maybe (List Char)
 stripSuffixChars suffixChars valueChars =
   stripReversedSuffix (reverse suffixChars) (reverse valueChars)
 
-stripFirstMatchingSuffix : List (List Char) -> List Char -> Maybe (List Char)
-stripFirstMatchingSuffix [] valueChars = Nothing
-stripFirstMatchingSuffix (suffixChars :: remainingSuffixes) valueChars =
-  case stripSuffixChars suffixChars valueChars of
-    Just strippedValue => Just strippedValue
-    Nothing => stripFirstMatchingSuffix remainingSuffixes valueChars
-
-payloadBetweenQuotes : List Char -> Maybe (List Char)
-payloadBetweenQuotes ('"' :: rest) =
-  case splitLast rest of
-    Just (payload, '"') => Just payload
-    _ => Nothing
-payloadBetweenQuotes _ = Nothing
-
-payloadAfterPrefixAndQuotes : List Char -> List Char -> Maybe (List Char)
-payloadAfterPrefixAndQuotes prefixChars valueChars =
-  case dropPrefixChars prefixChars valueChars of
-    Just remainingChars => payloadBetweenQuotes remainingChars
-    Nothing => Nothing
-
-payloadBetweenApostrophes : List Char -> Maybe (List Char)
-payloadBetweenApostrophes ('\'' :: rest) =
-  case splitLast rest of
-    Just (payload, '\'') => Just payload
-    _ => Nothing
-payloadBetweenApostrophes _ = Nothing
-
-byteLiteralPayload : String -> Maybe (List Char)
-byteLiteralPayload rawText =
-  case dropPrefixChars ['b'] (unpack rawText) of
-    Just remainingChars => payloadBetweenApostrophes remainingChars
-    Nothing => Nothing
-
 --------------------------------------------------------------------------------
--- Literal validators.
---------------------------------------------------------------------------------
-validByteEscapePayload : List Char -> Bool
-validByteEscapePayload ('\\' :: 'x' :: firstHex :: secondHex :: []) =
-  isHexDigitChar firstHex && isHexDigitChar secondHex
-validByteEscapePayload ('\\' :: escapedChar :: []) =
-  isSimpleByteEscapeChar escapedChar
-validByteEscapePayload _ = False
-
-validByteLiteralPayload : List Char -> Bool
-validByteLiteralPayload (value :: []) = isPlainByteLiteralChar value
-validByteLiteralPayload payload = validByteEscapePayload payload
-
-validByteStringPayload : List Char -> Bool
-validByteStringPayload [] = True
-validByteStringPayload ('\\' :: 'x' :: firstHex :: secondHex :: rest) =
-  case isHexDigitChar firstHex && isHexDigitChar secondHex of
-    True  => validByteStringPayload rest
-    False => False
-validByteStringPayload ('\\' :: escapedChar :: rest) =
-  case isSimpleByteEscapeChar escapedChar of
-    True  => validByteStringPayload rest
-    False => False
-validByteStringPayload (value :: rest) =
-  case isPlainByteStringChar value of
-    True  => validByteStringPayload rest
-    False => False
-
-validNormalStringLiteral : String -> Bool
-validNormalStringLiteral rawText =
-  case payloadBetweenQuotes (unpack rawText) of
-    Just payload => allChars isAsciiAlphaNumUnderscoreChar payload
-    Nothing => False
-
-validBasisStringLiteral : String -> Bool
-validBasisStringLiteral rawText =
-  case payloadAfterPrefixAndQuotes ['b', 's'] (unpack rawText) of
-    Just payload => allChars isBasisStringChar payload
-    Nothing => False
-
-validByteLiteral : String -> Bool
-validByteLiteral rawText =
-  case byteLiteralPayload rawText of
-    Just payload => validByteLiteralPayload payload
-    Nothing => False
-
-validByteStringLiteral : String -> Bool
-validByteStringLiteral rawText =
-  case payloadAfterPrefixAndQuotes ['b'] (unpack rawText) of
-    Just payload => validByteStringPayload payload
-    Nothing => False
-
---------------------------------------------------------------------------------
--- Numeric literal validation.
+-- Literal validation.
 --
--- The lexer preserves raw spelling. These checks validate only lexical shape:
--- base prefix, digit alphabet, underscore placement, exponent syntax, and suffix
--- spelling. They do not check integer bounds or floating-point precision.
+-- Rather than re-parsing the already-matched raw text by hand, run it back
+-- through the *strict* regexes from `Frontend.Lexer.Regex` (`integerLiteral`,
+-- `floatLiteral`, `normalStringLiteralStrict`, ...) via `Text.ILex.Stack.value`,
+-- ilex's own primitive for classifying a whole string against a set of regex
+-- alternatives. Its "done" state has an empty DFA for anything but `Ignore`
+-- alternatives, so any leftover unconsumed input after the first match fails
+-- outright -- this rejects partial/prefix matches for free, with no
+-- hand-rolled slicing, and keeps the strict regexes as the single source of
+-- truth for what counts as a well-formed literal instead of a second,
+-- independently-maintained copy of the same grammar.
 --------------------------------------------------------------------------------
-public export
+runValueMatch : Parser1 (BBErr Void) a -> String -> Maybe a
+runValueMatch parser text =
+  case runString parser text of
+    Right result => Just result
+    Left _        => Nothing
+
+matchesLiteral : Parser1 (BBErr Void) () -> String -> Bool
+matchesLiteral parser text =
+  case runValueMatch parser text of
+    Just () => True
+    Nothing => False
+
 data NumberLiteralKind
   = IntegerNumberLiteral
   | FloatingNumberLiteral
 
 %runElab derive "NumberLiteralKind" [Show, Eq]
 
-integerSuffixes : List (List Char)
-integerSuffixes =
-  [ unpack "_i128", unpack "_u128"
-  , unpack "_i64",  unpack "_u64"
-  , unpack "_i32",  unpack "_u32"
-  , unpack "_i16",  unpack "_u16"
-  , unpack "_i8",   unpack "_u8"
-  , unpack "i128",  unpack "u128"
-  , unpack "i64",   unpack "u64"
-  , unpack "i32",   unpack "u32"
-  , unpack "i16",   unpack "u16"
-  , unpack "i8",    unpack "u8"
-  ]
-
-floatSuffixes : List (List Char)
-floatSuffixes =
-  [ unpack "_f64", unpack "_f32", unpack "f64", unpack "f32" ]
-
-stripKnownIntegerSuffix : List Char -> (List Char, Bool)
-stripKnownIntegerSuffix chars =
-  case stripFirstMatchingSuffix integerSuffixes chars of
-    Just body => (body, True)
-    Nothing => (chars, False)
-
-stripKnownFloatSuffix : List Char -> (List Char, Bool)
-stripKnownFloatSuffix chars =
-  case stripFirstMatchingSuffix floatSuffixes chars of
-    Just body => (body, True)
-    Nothing => (chars, False)
-
-validDigitSequence : Bool -> (Char -> Bool) -> List Char -> Bool
-validDigitSequence allowLeadingUnderscore digitPredicate chars =
-  case chars of
-    [] => False
-    firstChar :: _ =>
-      case allowLeadingUnderscore || firstChar /= '_' of
-        False => False
-        True =>
-             allChars (\value => digitPredicate value || value == '_') chars
-          && anyChar digitPredicate chars
-          && lastCharSatisfies digitPredicate chars
-
-validDecimalDigitSequence : List Char -> Bool
-validDecimalDigitSequence = validDigitSequence False isAsciiDigitChar
-
-validRadixDigitSequence : (Char -> Bool) -> List Char -> Bool
-validRadixDigitSequence digitPredicate chars =
-  validDigitSequence True digitPredicate chars
-
-stripRadixPrefix : List Char -> Maybe (Char, List Char)
-stripRadixPrefix ('0' :: 'b' :: rest) = Just ('b', rest)
-stripRadixPrefix ('0' :: 'B' :: rest) = Just ('b', rest)
-stripRadixPrefix ('0' :: 'o' :: rest) = Just ('o', rest)
-stripRadixPrefix ('0' :: 'O' :: rest) = Just ('o', rest)
-stripRadixPrefix ('0' :: 'x' :: rest) = Just ('x', rest)
-stripRadixPrefix ('0' :: 'X' :: rest) = Just ('x', rest)
-stripRadixPrefix _ = Nothing
-
-validRadixIntegerLiteral : List Char -> Bool
-validRadixIntegerLiteral chars =
-  case stripRadixPrefix chars of
-    Just ('b', rest) =>
-      let (digitChars, _) = stripKnownIntegerSuffix rest in
-        validRadixDigitSequence isBinaryDigitChar digitChars
-
-    Just ('o', rest) =>
-      let (digitChars, _) = stripKnownIntegerSuffix rest in
-        validRadixDigitSequence isOctalDigitChar digitChars
-
-    Just ('x', rest) =>
-      let (digitChars, _) = stripKnownIntegerSuffix rest in
-        validRadixDigitSequence isHexDigitChar digitChars
-
-    _ => False
-
-validDecimalIntegerLiteral : List Char -> Bool
-validDecimalIntegerLiteral chars =
-  case stripRadixPrefix chars of
-    Just _ => False
-    Nothing =>
-      let (digitChars, _) = stripKnownIntegerSuffix chars in
-        validDecimalDigitSequence digitChars
-
-validIntegerLiteral : String -> Bool
-validIntegerLiteral rawText =
-  let chars = unpack rawText in
-    validRadixIntegerLiteral chars || validDecimalIntegerLiteral chars
-
-splitAtFirstGo :
-     (Char -> Bool)
-  -> List Char
-  -> List Char
-  -> Maybe (List Char, List Char)
-splitAtFirstGo predicate reversedPrefix [] = Nothing
-splitAtFirstGo predicate reversedPrefix (value :: rest) =
-  case predicate value of
-    True => Just (reverse reversedPrefix, rest)
-    False => splitAtFirstGo predicate (value :: reversedPrefix) rest
-
-splitAtFirst : (Char -> Bool) -> List Char -> Maybe (List Char, List Char)
-splitAtFirst predicate chars =
-  splitAtFirstGo predicate [] chars
-
-containsCharWhere : (Char -> Bool) -> List Char -> Bool
-containsCharWhere = anyChar
-
-isExponentMarker : Char -> Bool
-isExponentMarker value = value == 'e' || value == 'E'
-
-isDotChar : Char -> Bool
-isDotChar value = value == '.'
-
-splitExponent : List Char -> Maybe (List Char, List Char)
-splitExponent chars =
-  case splitAtFirst isExponentMarker chars of
-    Just (mantissaChars, exponentChars) =>
-      case containsCharWhere isExponentMarker exponentChars of
-        True => Nothing
-        False => Just (mantissaChars, exponentChars)
-    Nothing => Nothing
-
-validExponentPayload : List Char -> Bool
-validExponentPayload ('+' :: rest) = validDecimalDigitSequence rest
-validExponentPayload ('-' :: rest) = validDecimalDigitSequence rest
-validExponentPayload rest = validDecimalDigitSequence rest
-
-validDottedFloatBody : List Char -> List Char -> Bool
-validDottedFloatBody beforeDot afterDotAndMaybeExponent =
-  case validDecimalDigitSequence beforeDot of
-    False => False
-    True =>
-      case splitExponent afterDotAndMaybeExponent of
-        Just (afterDot, exponentPayload) =>
-             validDecimalDigitSequence afterDot
-          && validExponentPayload exponentPayload
-
-        Nothing =>
-          validDecimalDigitSequence afterDotAndMaybeExponent
-
-validExponentFloatBody : List Char -> Bool
-validExponentFloatBody chars =
-  case splitExponent chars of
-    Just (mantissaChars, exponentPayload) =>
-         validDecimalDigitSequence mantissaChars
-      && validExponentPayload exponentPayload
-    Nothing => False
-
-validFloatLiteral : String -> Bool
-validFloatLiteral rawText =
-  let (bodyChars, hadFloatSuffix) = stripKnownFloatSuffix (unpack rawText) in
-    case splitAtFirst isDotChar bodyChars of
-      Just (beforeDot, afterDotAndMaybeExponent) =>
-        validDottedFloatBody beforeDot afterDotAndMaybeExponent
-
-      Nothing =>
-        case splitExponent bodyChars of
-          Just _ => validExponentFloatBody bodyChars
-          Nothing =>
-            case hadFloatSuffix of
-              True => validDecimalDigitSequence bodyChars
-              False => False
+numberClassifier : PVal1 q Void NumberLiteralKind
+numberClassifier =
+  value Nothing
+    [ (integerLiteral, const IntegerNumberLiteral)
+    , (floatLiteral,   const FloatingNumberLiteral)
+    ]
 
 classifyNumberLiteral : String -> Maybe NumberLiteralKind
-classifyNumberLiteral rawText =
-  case validFloatLiteral rawText of
-    True => Just FloatingNumberLiteral
-    False =>
-      case validIntegerLiteral rawText of
-        True => Just IntegerNumberLiteral
-        False => Nothing
+classifyNumberLiteral = runValueMatch numberClassifier
+
+normalStringValidator : PVal1 q Void ()
+normalStringValidator =
+  value Nothing [(normalStringLiteralStrict, const ())]
+
+validNormalStringLiteral : String -> Bool
+validNormalStringLiteral = matchesLiteral normalStringValidator
+
+basisStringValidator : PVal1 q Void ()
+basisStringValidator =
+  value Nothing [(basisStringLiteralStrict, const ())]
+
+validBasisStringLiteral : String -> Bool
+validBasisStringLiteral = matchesLiteral basisStringValidator
+
+byteLiteralValidator : PVal1 q Void ()
+byteLiteralValidator =
+  value Nothing [(byteLiteralStrict, const ())]
+
+validByteLiteral : String -> Bool
+validByteLiteral = matchesLiteral byteLiteralValidator
+
+byteStringValidator : PVal1 q Void ()
+byteStringValidator =
+  value Nothing [(byteStringLiteralStrict, const ())]
+
+validByteStringLiteral : String -> Bool
+validByteStringLiteral = matchesLiteral byteStringValidator
 
 --------------------------------------------------------------------------------
 -- Splits the dot-operator suffix matched by `digitsThenDotOperatorCandidate`
@@ -621,12 +371,18 @@ emitDigitsThenDotOperator :
   -> F1 q LeafState
 emitDigitsThenDotOperator rawText = T1.do
   let (digitChars, dotSymbol) = classifyDotOperatorSuffix (unpack rawText)
-  let digitsLength = length digitChars
-  tokenStart <- startPos
-  tokenEnd <- endPos
-  let digitsEnd = incLen digitsLength tokenStart
-  _ <- emitBoundedToken (B (TokIntLitRaw (pack digitChars)) (BB tokenStart digitsEnd))
-  emitBoundedToken (B (TokSym dotSymbol) (BB (incLen (S digitsLength) tokenStart) tokenEnd))
+  let digitText = pack digitChars
+  case classifyNumberLiteral digitText of
+    Just IntegerNumberLiteral => T1.do
+      let digitsLength = length digitChars
+      tokenStart <- startPos
+      tokenEnd <- endPos
+      let digitsEnd = incLen digitsLength tokenStart
+      _ <- emitBoundedToken (B (TokIntLitRaw digitText) (BB tokenStart digitsEnd))
+      emitBoundedToken (B (TokSym dotSymbol) (BB digitsEnd tokenEnd))
+
+    _ =>
+      rememberFatalError (LexInvalidNumberLiteral digitText)
 
 emitUnterminatedStringLiteral :
      (sk : LeafLexerStack q)
@@ -666,7 +422,7 @@ emitOrdinaryCharLiteralError _ =
 --------------------------------------------------------------------------------
 -- Block-comment actions.
 --
--- `commentDepth`/`commentMode` live on `LeafStack`; doc-comment text pieces are
+-- `blockComment` lives on `LeafStack`; doc-comment text pieces are
 -- accumulated using the built-in string-literal accumulator
 -- (`pushStr'`/`getStr`) instead of a hand-rolled SnocList field.
 --------------------------------------------------------------------------------
@@ -686,7 +442,12 @@ appendCurrentTextIfDoc :
   -> F1' q
 appendCurrentTextIfDoc rawText = T1.do
   st <- getStack
-  appendTextIfDoc st.commentMode rawText
+  case st.blockComment of
+    NoOpenBlockComment =>
+      pure ()
+
+    OpenBlockComment _ mode =>
+      appendTextIfDoc mode rawText
 
 beginBlockComment :
      (sk : LeafLexerStack q)
@@ -696,7 +457,7 @@ beginBlockComment :
 beginBlockComment mode rawText = T1.do
   pushPosition
   st <- getStack
-  putStack ({ commentDepth := 1, commentMode := mode } st)
+  putStack ({ blockComment := OpenBlockComment Z mode } st)
   appendTextIfDoc mode rawText
   pure InBlockComment
 
@@ -705,11 +466,17 @@ beginNestedBlockComment :
   => String
   -> F1 q LeafState
 beginNestedBlockComment rawText = T1.do
-  pushPosition
   st <- getStack
-  putStack ({ commentDepth $= S } st)
-  appendCurrentTextIfDoc rawText
-  pure InBlockComment
+  case st.blockComment of
+    NoOpenBlockComment =>
+      rememberFatalError
+        (LexInternalLexerError "Nested block comment opened with no active block comment")
+
+    OpenBlockComment extraDepth mode => T1.do
+      pushPosition
+      putStack ({ blockComment := OpenBlockComment (S extraDepth) mode } st)
+      appendTextIfDoc mode rawText
+      pure InBlockComment
 
 finishOutermostBlockComment :
      (sk : LeafLexerStack q)
@@ -728,22 +495,23 @@ closeBlockComment :
   => String
   -> F1 q LeafState
 closeBlockComment rawText = T1.do
-  appendCurrentTextIfDoc rawText
   st <- getStack
-  case st.commentDepth of
-    Z =>
-      rememberFatalError LexUnterminatedBlockComment
+  case st.blockComment of
+    NoOpenBlockComment =>
+      rememberFatalError
+        (LexInternalLexerError "Block comment closed with no active block comment")
 
-    S remainingDepth =>
-      case remainingDepth of
+    OpenBlockComment extraDepth mode => T1.do
+      appendTextIfDoc mode rawText
+      case extraDepth of
         Z => T1.do
           fullCommentBounds <- closeBounds
-          putStack ({ commentDepth := Z } st)
-          finishOutermostBlockComment st.commentMode fullCommentBounds
+          putStack ({ blockComment := NoOpenBlockComment } st)
+          finishOutermostBlockComment mode fullCommentBounds
 
-        S _ => T1.do
+        S remainingExtraDepth => T1.do
           popPosition
-          putStack ({ commentDepth := remainingDepth } st)
+          putStack ({ blockComment := OpenBlockComment remainingExtraDepth mode } st)
           pure InBlockComment
 
 consumeBlockCommentText :
@@ -766,7 +534,6 @@ symbolRuleFromTableEntry (symbolText, symbol) =
     symbolChars@(_ :: _) =>
       Just (string (chars symbolChars) (\_ => emitToken (TokSym symbol)))
 
-public export
 symbolRules : List (LeafRule q)
 symbolRules =
   mapMaybe symbolRuleFromTableEntry symbolTable
@@ -781,12 +548,13 @@ symbolRules =
 --   4. single identifier rule through `tokenFromIdentLike`
 --   5. generated symbol rules from `symbolTable`
 --------------------------------------------------------------------------------
-public export
 initialRules : List (LeafRule q)
 initialRules =
   [ string outerDocLineComment (\rawText => emitToken (TokOuterDoc rawText))
   , string innerDocLineComment (\rawText => emitToken (TokInnerDoc rawText))
 
+  , ignore' emptyOuterBlockComment
+  , ignore' starOnlyOuterBlockComment
   , string outerBlockDocOpen (beginBlockComment OuterBlockDocComment)
   , string innerBlockDocOpen (beginBlockComment InnerBlockDocComment)
   , ignore' normalLineComment
@@ -818,7 +586,6 @@ initialRules =
 -- Active only in `InBlockComment`. `/*` increments depth, `*/` decrements depth,
 -- and only the outermost close returns to Initial.
 --------------------------------------------------------------------------------
-public export
 blockCommentRules : List (LeafRule q)
 blockCommentRules =
   [ string normalBlockCommentOpen beginNestedBlockComment
@@ -832,7 +599,6 @@ blockCommentRules =
 --------------------------------------------------------------------------------
 -- DFAs, error handlers, and final P1 lexer.
 --------------------------------------------------------------------------------
-public export
 leafLexerSteps : Lex1 q LeafSz LeafLexerStack
 leafLexerSteps =
   lex1
@@ -840,7 +606,13 @@ leafLexerSteps =
     , E InBlockComment (dfa blockCommentRules)
     ]
 
-public export
+makeUnterminatedBlockCommentError :
+     LeafLexerStack q
+  -> F1 q (BBErr LexerError)
+makeUnterminatedBlockCommentError stackValue = T1.do
+  unclosedBounds <- unterminatedCommentBounds stackValue
+  pure (B (Custom LexUnterminatedBlockComment) unclosedBounds)
+
 unterminatedBlockCommentError :
      LeafLexerStack q
   -> F1 q (BBErr LexerError)
@@ -850,17 +622,13 @@ unterminatedBlockCommentError stackValue = T1.do
     Just existingError =>
       pure existingError
 
-    Nothing => T1.do
-      unclosedBounds <- unterminatedCommentBounds
-      pure (B (Custom LexUnterminatedBlockComment) unclosedBounds)
+    Nothing => makeUnterminatedBlockCommentError stackValue
 
-public export
 leafLexerErrors :
   Arr32 LeafSz (LeafLexerStack q -> F1 q (BBErr LexerError))
 leafLexerErrors =
   errs [E InBlockComment unterminatedBlockCommentError]
 
-public export
 leafLexerEOI :
      LeafState
   -> LeafLexerStack q
@@ -873,15 +641,15 @@ leafLexerEOI _ stackValue = T1.do
 
     Nothing => T1.do
       st <- read1 (stack stackValue)
-      case st.commentDepth of
-        S _ => T1.do
-          unclosedBounds <- unterminatedCommentBounds
-          pure (Left (B (Custom LexUnterminatedBlockComment) unclosedBounds))
+      case st.blockComment of
+        OpenBlockComment _ _ =>
+          Left <$> makeUnterminatedBlockCommentError stackValue
 
-        Z =>
-          pure (Right (st.outputTokens <>> [B TokEOF NoBB]))
+        NoOpenBlockComment => T1.do
+          eofPosition <- endPos
+          pure (Right (st.outputTokens <>> [B TokEOF (BB eofPosition eofPosition)]))
 
-public export
+export
 leafLexer : Lexer LexerError Token
 leafLexer =
   P Initial

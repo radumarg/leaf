@@ -2,6 +2,7 @@ package leaf
 
 sourcedir = "src"
 depends = elab-util,
+          finite,
           ilex,
           parser
 

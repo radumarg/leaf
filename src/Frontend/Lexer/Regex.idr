@@ -11,24 +11,21 @@ import Text.ILex
 --
 -- The prompt explicitly asks us to skip CRLF, LF, CR, tab, and spaces.
 --------------------------------------------------------------------------------
-public export
 lineBreak : RExp True
 lineBreak =
       "\r\n"
   <|> '\n'
   <|> '\r'
 
-public export
 horizontalWhitespace : RExp True
 horizontalWhitespace =
   oneof [' ', '\t']
 
-public export
+export
 leafWhitespace : RExp True
 leafWhitespace =
   plus (horizontalWhitespace <|> lineBreak)
 
-public export
 notLineBreakChar : RExp True
 notLineBreakChar =
   dot && not '\n' && not '\r'
@@ -36,23 +33,18 @@ notLineBreakChar =
 --------------------------------------------------------------------------------
 -- ASCII helpers used by string and number candidates.
 --------------------------------------------------------------------------------
-public export
 asciiLower : RExp True
 asciiLower = range 'a' 'z'
 
-public export
 asciiUpper : RExp True
 asciiUpper = range 'A' 'Z'
 
-public export
 asciiLetter : RExp True
 asciiLetter = asciiLower <|> asciiUpper
 
-public export
 asciiAlphaNum : RExp True
 asciiAlphaNum = asciiLetter <|> digit
 
-public export
 asciiAlphaNumUnderscore : RExp True
 asciiAlphaNumUnderscore = asciiAlphaNum <|> '_'
 
@@ -70,15 +62,13 @@ asciiAlphaNumUnderscore = asciiAlphaNum <|> '_'
 -- Therefore `foo'` is a single identifier and `fn'` is not split into `fn` plus
 -- an apostrophe.
 --------------------------------------------------------------------------------
-public export
 identifierStart : RExp True
 identifierStart = alpha <|> '_'
 
-public export
 identifierRest : RExp True
 identifierRest = alphaNum <|> '_' <|> '\''
 
-public export
+export
 identifierLike : RExp True
 identifierLike = identifierStart >> star identifierRest
 
@@ -88,23 +78,50 @@ identifierLike = identifierStart >> star identifierRest
 -- Unary minus is deliberately not included here.  `-7` is lexed as the symbol
 -- `-` followed by `TokIntLitRaw "7"`.
 --------------------------------------------------------------------------------
-public export
 decimalDigits : RExp True
 decimalDigits = digit >> star (digit <|> '_')
 
-public export
 binaryDigits : RExp True
 binaryDigits = bindigit >> star (bindigit <|> '_')
 
-public export
 octalDigits : RExp True
 octalDigits = octdigit >> star (octdigit <|> '_')
 
-public export
 hexDigits : RExp True
 hexDigits = hexdigit >> star (hexdigit <|> '_')
 
-public export
+--------------------------------------------------------------------------------
+-- Strict digit runs, used only for validating an already-matched literal (see
+-- `Rules.idr`'s `numberClassifier`), never for the broad candidates above.
+--
+-- Interior `_` is freely placed (including consecutive underscores), but a
+-- decimal digit run may not start or end with `_`, while a radix digit run
+-- (used after `0b`/`0o`/`0x`) may start with `_` (Rust-style `0x_FF`) but still
+-- may not end with one. The permissive `decimalDigits`/`binaryDigits`/etc.
+-- above must stay permissive so malformed spellings are swallowed into one
+-- token instead of being split, so these are separate definitions rather than
+-- a tightened version of them.
+--------------------------------------------------------------------------------
+strictDigitRun : RExp True -> RExp True
+strictDigitRun singleDigit =
+  singleDigit >> opt (star (singleDigit <|> '_') >> singleDigit)
+
+strictRadixDigitRun : RExp True -> RExp True
+strictRadixDigitRun singleDigit =
+  star (singleDigit <|> '_') >> singleDigit
+
+strictDecimalDigits : RExp True
+strictDecimalDigits = strictDigitRun digit
+
+strictBinaryDigits : RExp True
+strictBinaryDigits = strictRadixDigitRun bindigit
+
+strictOctalDigits : RExp True
+strictOctalDigits = strictRadixDigitRun octdigit
+
+strictHexDigits : RExp True
+strictHexDigits = strictRadixDigitRun hexdigit
+
 signedIntegerTypeSuffix : RExp True
 signedIntegerTypeSuffix =
       "i8"
@@ -113,7 +130,6 @@ signedIntegerTypeSuffix =
   <|> "i64"
   <|> "i128"
 
-public export
 unsignedIntegerTypeSuffix : RExp True
 unsignedIntegerTypeSuffix =
       "u8"
@@ -122,54 +138,47 @@ unsignedIntegerTypeSuffix =
   <|> "u64"
   <|> "u128"
 
-public export
 integerTypeSuffix : RExp True
 integerTypeSuffix = signedIntegerTypeSuffix <|> unsignedIntegerTypeSuffix
 
-public export
 integerSuffix : RExp True
 integerSuffix = opt '_' >> integerTypeSuffix
 
-public export
 floatTypeSuffix : RExp True
 floatTypeSuffix = "f32" <|> "f64"
 
-public export
 floatSuffix : RExp True
 floatSuffix = opt '_' >> floatTypeSuffix
 
-public export
 exponentPart : RExp True
 exponentPart =
-  oneof ['e', 'E'] >> opt (oneof ['+', '-']) >> decimalDigits
+  oneof ['e', 'E'] >> opt (oneof ['+', '-']) >> strictDecimalDigits
 
 --------------------------------------------------------------------------------
 -- Valid numeric regexes.
 --
--- These are used by the broad numeric candidate and documented separately so the
--- intended accepted forms remain visible.
+-- These are the actual source of truth for what counts as a well-formed
+-- integer/float literal: `Rules.idr`'s `numberClassifier` runs the already
+-- broadly-matched raw text back through these via `Text.ILex.Stack.value`,
+-- rather than re-validating it with hand-written `List Char` recursion.
 --------------------------------------------------------------------------------
-public export
 binaryIntegerLiteral : RExp True
 binaryIntegerLiteral =
-  ("0b" <|> "0B") >> binaryDigits >> opt integerSuffix
+  ("0b" <|> "0B") >> strictBinaryDigits >> opt integerSuffix
 
-public export
 octalIntegerLiteral : RExp True
 octalIntegerLiteral =
-  ("0o" <|> "0O") >> octalDigits >> opt integerSuffix
+  ("0o" <|> "0O") >> strictOctalDigits >> opt integerSuffix
 
-public export
 hexIntegerLiteral : RExp True
 hexIntegerLiteral =
-  ("0x" <|> "0X") >> hexDigits >> opt integerSuffix
+  ("0x" <|> "0X") >> strictHexDigits >> opt integerSuffix
 
-public export
 decimalIntegerLiteral : RExp True
 decimalIntegerLiteral =
-  decimalDigits >> opt integerSuffix
+  strictDecimalDigits >> opt integerSuffix
 
-public export
+export
 integerLiteral : RExp True
 integerLiteral =
       binaryIntegerLiteral
@@ -187,12 +196,12 @@ integerLiteral =
 -- The rule does not admit trailing-dot floats.  This also preserves the required
 -- tokenization of `1..2` as integer, range operator, integer.
 --------------------------------------------------------------------------------
-public export
+export
 floatLiteral : RExp True
 floatLiteral =
-      (decimalDigits >> '.' >> decimalDigits >> opt exponentPart >> opt floatSuffix)
-  <|> (decimalDigits >> exponentPart >> opt floatSuffix)
-  <|> (decimalDigits >> floatSuffix)
+      (strictDecimalDigits >> '.' >> strictDecimalDigits >> opt exponentPart >> opt floatSuffix)
+  <|> (strictDecimalDigits >> exponentPart >> opt floatSuffix)
+  <|> (strictDecimalDigits >> floatSuffix)
 
 --------------------------------------------------------------------------------
 -- Broad numeric candidates.
@@ -206,42 +215,35 @@ floatLiteral =
 -- correct and leaves `1.` as `1` followed by `.`, which the parser can reject if
 -- it appears in a context where a member-access dot is not meaningful.
 --------------------------------------------------------------------------------
-public export
 radixNumberCandidate : RExp True
 radixNumberCandidate =
       (("0b" <|> "0B") >> star (asciiAlphaNum <|> '_'))
   <|> (("0o" <|> "0O") >> star (asciiAlphaNum <|> '_'))
   <|> (("0x" <|> "0X") >> star (asciiAlphaNum <|> '_'))
 
-public export
 looseExponentPart : RExp True
 looseExponentPart =
   oneof ['e', 'E'] >> opt (oneof ['+', '-']) >> star (asciiAlphaNum <|> '_')
 
-public export
 dottedDecimalNumberCandidate : RExp True
 dottedDecimalNumberCandidate =
   decimalDigits >> '.' >> decimalDigits >> opt looseExponentPart >> star (asciiAlphaNum <|> '_')
 
-public export
 exponentNumberCandidate : RExp True
 exponentNumberCandidate =
   decimalDigits >> looseExponentPart >> star (asciiAlphaNum <|> '_')
 
-public export
 suffixedDecimalNumberCandidate : RExp True
 suffixedDecimalNumberCandidate =
   decimalDigits >> (asciiLetter <|> '_') >> star (asciiAlphaNum <|> '_')
 
-public export
 plainDecimalNumberCandidate : RExp True
 plainDecimalNumberCandidate = decimalDigits
 
-public export
+export
 numberCandidate : RExp True
 numberCandidate =
       dottedDecimalNumberCandidate
-  <|> floatLiteral
   <|> radixNumberCandidate
   <|> exponentNumberCandidate
   <|> suffixedDecimalNumberCandidate
@@ -257,7 +259,7 @@ numberCandidate =
 -- followed by one or two dots (optionally `..=`) with no digit after the dot,
 -- so `1..2` still lexes as `1`, `..`, `2` and `1.` still lexes as `1`, `.`.
 --------------------------------------------------------------------------------
-public export
+export
 digitsThenDotOperatorCandidate : RExp True
 digitsThenDotOperatorCandidate =
   decimalDigits >> ('.' >> opt ('.' >> opt '='))
@@ -269,68 +271,108 @@ digitsThenDotOperatorCandidate =
 -- Rules.idr validates the raw spelling and raises a structured error instead of
 -- letting bad literals split into unrelated tokens.
 --------------------------------------------------------------------------------
-public export
 normalStringBodyCandidate : RExp True
 normalStringBodyCandidate =
       ('\\' >> dot)
   <|> (dot && not '"' && not '\n' && not '\r')
 
-public export
+export
 normalStringCandidate : RExp True
 normalStringCandidate =
   '"' >> star normalStringBodyCandidate >> '"'
 
-public export
+export
 unterminatedNormalStringCandidate : RExp True
 unterminatedNormalStringCandidate =
   '"' >> star normalStringBodyCandidate
 
-public export
+export
 basisStringCandidate : RExp True
 basisStringCandidate =
   'b' >> 's' >> '"' >> star (dot && not '"' && not '\n' && not '\r') >> '"'
 
-public export
+export
 unterminatedBasisStringCandidate : RExp True
 unterminatedBasisStringCandidate =
   'b' >> 's' >> '"' >> star (dot && not '"' && not '\n' && not '\r')
 
-public export
+-- Byte strings allow the same body characters as normal strings (anything
+-- but '"', a line break, or a bare backslash); the two candidates share one
+-- definition so they can't silently drift apart.
 byteStringBodyCandidate : RExp True
-byteStringBodyCandidate =
-      ('\\' >> dot)
-  <|> (dot && not '"' && not '\n' && not '\r')
+byteStringBodyCandidate = normalStringBodyCandidate
 
-public export
+export
 byteStringCandidate : RExp True
 byteStringCandidate =
   'b' >> '"' >> star byteStringBodyCandidate >> '"'
 
-public export
+export
 unterminatedByteStringCandidate : RExp True
 unterminatedByteStringCandidate =
   'b' >> '"' >> star byteStringBodyCandidate
 
-public export
 byteLiteralBodyCandidate : RExp True
 byteLiteralBodyCandidate =
       ('\\' >> dot)
   <|> (dot && not '\'' && not '\n' && not '\r')
 
-public export
+export
 byteLiteralCandidate : RExp True
 byteLiteralCandidate =
   'b' >> '\'' >> star byteLiteralBodyCandidate >> '\''
 
-public export
+export
 unterminatedByteLiteralCandidate : RExp True
 unterminatedByteLiteralCandidate =
   'b' >> '\'' >> star byteLiteralBodyCandidate
 
-public export
+export
 ordinaryCharLiteralCandidate : RExp True
 ordinaryCharLiteralCandidate =
   '\'' >> star byteLiteralBodyCandidate >> '\''
+
+--------------------------------------------------------------------------------
+-- Strict string/byte-literal regexes, used only for validating the raw text
+-- already matched by the broad candidates above (see `Rules.idr`'s
+-- `normalStringValidator`/`basisStringValidator`/`byteLiteralValidator`/
+-- `byteStringValidator`), never for matching directly.
+--------------------------------------------------------------------------------
+export
+normalStringLiteralStrict : RExp True
+normalStringLiteralStrict =
+  '"' >> star asciiAlphaNumUnderscore >> '"'
+
+basisStringChar : RExp True
+basisStringChar =
+  oneof ['0', '1', '+', '-', 'i', 'I']
+
+export
+basisStringLiteralStrict : RExp True
+basisStringLiteralStrict =
+  'b' >> 's' >> '"' >> star basisStringChar >> '"'
+
+simpleByteEscape : RExp True
+simpleByteEscape =
+  '\\' >> oneof ['n', 'r', 't', '0', '\\', '\'', '"']
+
+hexByteEscape : RExp True
+hexByteEscape =
+  "\\x" >> hexdigit >> hexdigit
+
+export
+byteLiteralStrict : RExp True
+byteLiteralStrict =
+  'b' >> '\'' >>
+    ((range32 0x20 0x7e && not '\\' && not '\'') <|> simpleByteEscape <|> hexByteEscape) >>
+    '\''
+
+export
+byteStringLiteralStrict : RExp True
+byteStringLiteralStrict =
+  'b' >> '"' >>
+    star ((range32 0x20 0x7e && not '\\' && not '"') <|> simpleByteEscape <|> hexByteEscape) >>
+    '"'
 
 --------------------------------------------------------------------------------
 -- Comments and documentation comments.
@@ -343,29 +385,37 @@ ordinaryCharLiteralCandidate =
 -- Maximal munch makes `////` a normal comment because the normal-comment rule
 -- consumes the whole line while the outer-doc rule can only consume `///`.
 --------------------------------------------------------------------------------
-public export
 lineCommentTail : RExp False
 lineCommentTail = star notLineBreakChar
 
-public export
 outerDocLineBody : RExp False
 outerDocLineBody =
   opt ((dot && not '/' && not '\n' && not '\r') >> lineCommentTail)
 
-public export
+export
 outerDocLineComment : RExp True
 outerDocLineComment =
   '/' >> '/' >> '/' >> outerDocLineBody
 
-public export
+export
 innerDocLineComment : RExp True
 innerDocLineComment =
   '/' >> '/' >> '!' >> lineCommentTail
 
-public export
+export
 normalLineComment : RExp True
 normalLineComment =
   '/' >> '/' >> lineCommentTail
+
+export
+emptyOuterBlockComment : RExp True
+emptyOuterBlockComment =
+  '/' >> '*' >> '*' >> '/'
+
+export
+starOnlyOuterBlockComment : RExp True
+starOnlyOuterBlockComment =
+  '/' >> '*' >> '*' >> '*' >> '/'
 
 --------------------------------------------------------------------------------
 -- Block comments.
@@ -375,45 +425,44 @@ normalLineComment =
 -- first body character that must be neither `*` nor `/`.  Inner block docs may
 -- be empty, so `/*!*/` is a valid inner doc comment.
 --------------------------------------------------------------------------------
-public export
 outerBlockDocFirstBodyChar : RExp True
 outerBlockDocFirstBodyChar =
       (dot && not '*' && not '/' && not '\n' && not '\r')
   <|> lineBreak
 
-public export
+export
 outerBlockDocOpen : RExp True
 outerBlockDocOpen =
   '/' >> '*' >> '*' >> outerBlockDocFirstBodyChar
 
-public export
+export
 innerBlockDocOpen : RExp True
 innerBlockDocOpen =
   '/' >> '*' >> '!'
 
-public export
+export
 normalBlockCommentOpen : RExp True
 normalBlockCommentOpen =
   '/' >> '*'
 
-public export
+export
 blockCommentClose : RExp True
 blockCommentClose =
   '*' >> '/'
 
-public export
+export
 blockCommentBodyChunk : RExp True
 blockCommentBodyChunk =
   plus (dot && not '*' && not '/' && not '\n' && not '\r')
 
-public export
+export
 blockCommentLineBreak : RExp True
 blockCommentLineBreak = lineBreak
 
-public export
+export
 blockCommentSingleStar : RExp True
 blockCommentSingleStar = '*'
 
-public export
+export
 blockCommentSingleSlash : RExp True
 blockCommentSingleSlash = '/'

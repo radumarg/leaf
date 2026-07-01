@@ -43,16 +43,50 @@ translateInnerLexerError InvalidEscape =
 translateInnerLexerError (OutOfBounds rawText) =
   LexInternalLexerError ("Out-of-bounds value reported by ilex: " ++ rawText)
 
+-- Leaf never calls ilex's own `unclosed`/`unclosedIfEOI`/`unclosedIfNLorEOI`
+-- helpers (block comments are tracked entirely through `Rules.idr`'s own
+-- depth-counting state machine and EOI handler instead), so this native
+-- `Unclosed` error is never actually produced by `leafLexer`. It still has to
+-- be translated to satisfy totality over `InnerError`'s constructors; this is
+-- a generic, faithful mapping rather than a guess at Leaf-specific meaning.
 translateInnerLexerError (Unclosed delimiterText) =
-  case delimiterText == "block comment" of
-    True => LexUnterminatedBlockComment
-    False => LexUnclosedDelimiter delimiterText
+  LexUnclosedDelimiter delimiterText
 
 translateInnerLexerError (Unknown actualText) =
   LexUnexpectedInput [] actualText
 
 translateInnerLexerError (InvalidByte byteValue) =
   LexInvalidUtf8Byte byteValue
+
+--------------------------------------------------------------------------------
+-- Clamping byte positions to the input.
+--
+-- At true end-of-input, ilex's runner can report a `ByteBounds` end position
+-- past the end of the byte stream (observed for unterminated block comments,
+-- the one Leaf construct whose error is only ever detected via the EOI
+-- handler rather than via a greedy "unterminated ..." regex match). Such an
+-- out-of-range position makes `toBounds` fail its position-map lookup and
+-- silently collapse the whole span to `NoBounds`, discarding an otherwise
+-- correct start position along with it.
+--
+-- A position past the end of the input is never meaningful, so clamping
+-- every reported position to the input's length is always safe, and for an
+-- "unterminated" error it is exactly the correct end position by
+-- construction (the span runs to the end of the input).
+--------------------------------------------------------------------------------
+clampBytePos : Nat -> BytePos -> BytePos
+clampBytePos inputByteLength (BP pos) =
+  BP (min pos inputByteLength)
+
+clampByteBounds : Nat -> ByteBounds -> ByteBounds
+clampByteBounds inputByteLength NoBB =
+  NoBB
+clampByteBounds inputByteLength (BB start end) =
+  BB (clampBytePos inputByteLength start) (clampBytePos inputByteLength end)
+
+clampByteBounded : Nat -> ByteBounded a -> ByteBounded a
+clampByteBounded inputByteLength (B val bounds) =
+  B val (clampByteBounds inputByteLength bounds)
 
 --------------------------------------------------------------------------------
 -- Main entry point: lexProgram
@@ -66,10 +100,13 @@ translateInnerLexerError (InvalidByte byteValue) =
 public export
 lexProgram : String -> Either (Bounded LexerError) (List (Bounded Token))
 lexProgram inputString =
-  let pm := stringPositionMap inputString in
-  case runString leafLexer inputString of
+  let pm := stringPositionMap inputString
+      inputByteLength := pred pm.size
+  in case runString leafLexer inputString of
     Left byteBoundedError =>
-      Left (toBounded (map translateInnerLexerError byteBoundedError))
+      Left
+        (toBounded
+          (clampByteBounded inputByteLength (map translateInnerLexerError byteBoundedError)))
 
     Right byteBoundedTokens =>
-      Right (map toBounded byteBoundedTokens)
+      Right (map (toBounded . clampByteBounded inputByteLength) byteBoundedTokens)
