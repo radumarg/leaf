@@ -19,10 +19,8 @@ import Text.ParseError
 --------------------------------------------------------------------------------
 public export
 data LexerError
-  = LexUnexpectedEndOfInput
-  | LexUnexpectedInput (List String) String
+  = LexUnexpectedInput (List String) String
   | LexInvalidUtf8Byte Bits8
-  | LexUnclosedDelimiter String
   | LexUnterminatedBlockComment
   | LexInvalidBasisStringLiteral String
   | LexInvalidByteLiteral String
@@ -40,9 +38,6 @@ data LexerError
 --------------------------------------------------------------------------------
 export
 Interpolation LexerError where
-  interpolate LexUnexpectedEndOfInput =
-    "Unexpected end of input"
-
   interpolate (LexUnexpectedInput expected actual) =
     case expected of
       [] =>
@@ -54,9 +49,6 @@ Interpolation LexerError where
 
   interpolate (LexInvalidUtf8Byte byteValue) =
     "Invalid UTF-8 byte in Leaf source: " ++ show byteValue
-
-  interpolate (LexUnclosedDelimiter delimiterText) =
-    "Unclosed delimiter " ++ delimiterText
 
   interpolate LexUnterminatedBlockComment =
     "Unterminated block comment"

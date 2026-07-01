@@ -1,6 +1,5 @@
 module Frontend.Lexer.Rules
 
-import Data.ByteString
 import Data.List
 import Data.Linear.Ref1
 import Data.String
@@ -26,11 +25,12 @@ import Frontend.Lexer.Regex
 %hide Prelude.not
 
 --------------------------------------------------------------------------------
--- A known limitation of this pinned ilex version, worked around three times
--- below. If you hit a fourth case, it's likely the same thing -- read this
--- first rather than re-deriving it from scratch (or, worse, "simplifying"
--- away one of the workarounds below because it looks redundant; that's
--- exactly what almost happened to the block-comment-opener rules).
+-- A known limitation of this pinned ilex version, worked around below for
+-- three distinct grammar shapes. If you hit a case that doesn't fit any of
+-- these, it's likely the same underlying bug -- read this first rather than
+-- re-deriving it from scratch (or, worse, "simplifying" away one of the
+-- workarounds below because it looks redundant; that's exactly what almost
+-- happened to the block-comment-opener rules).
 --
 -- (a) Backtrack memory is lost across a node that is extensible but not
 --     itself an accept. Concretely: if the lexer has already matched a
@@ -45,11 +45,23 @@ import Frontend.Lexer.Regex
 --         (this file and `Regex.idr`): without it, `1..2` hard-fails instead
 --         of lexing as `1`, `..`, `2`, because the node reached after `1.`
 --         extends (a digit could follow) but isn't itself an accept.
---       - `emptyOuterBlockComment` / `starOnlyOuterBlockComment` (`Regex.idr`,
---         wired into `initialRules` below): without them, `/**/` and `/***/`
---         hard-fail instead of lexing as ordinary (non-doc) comments, for the
---         same reason -- the node after `/**` extends toward a doc comment's
---         first body character but isn't an accept there.
+--       - `allStarsOuterBlockComment` (`Regex.idr`, wired into `initialRules`
+--         below): without it, `/**/`, `/***/`, `/****/`, and so on hard-fail
+--         instead of lexing as ordinary (non-doc) comments, for the same
+--         reason -- the node after a run of `*` extends toward a doc
+--         comment's first body character but isn't an accept there. This
+--         used to be two rules fixed at exactly two and three total stars
+--         (`emptyOuterBlockComment` / `starOnlyOuterBlockComment`); a real
+--         `/***`-style banner comment opener (any run of two or more stars
+--         not immediately followed by a closing `/`) hit the exact same dead
+--         end, so the rule is now generalized to any run length via
+--         `outerDocStarRun` instead of special-cased per exact length.
+--       - `bareOuterBlockCommentOpen` (`Regex.idr`, wired into `initialRules`
+--         below): the sub-case of the same dead end where the star run is
+--         cut off by true end of input, with nothing left to say whether it
+--         would have closed or become a doc comment -- e.g. a file truncated
+--         right after `/***`. Falls back to an (eventually unterminated)
+--         plain block comment, same as a bare `/*` at true end of input.
 --     If you add a new rule whose prefix overlaps an existing shorter rule
 --     with a possible dead end in between, test that overlap directly; don't
 --     assume maximal munch alone covers it.
@@ -553,10 +565,10 @@ initialRules =
   [ string outerDocLineComment (\rawText => emitToken (TokOuterDoc rawText))
   , string innerDocLineComment (\rawText => emitToken (TokInnerDoc rawText))
 
-  , ignore' emptyOuterBlockComment
-  , ignore' starOnlyOuterBlockComment
+  , ignore' allStarsOuterBlockComment
   , string outerBlockDocOpen (beginBlockComment OuterBlockDocComment)
   , string innerBlockDocOpen (beginBlockComment InnerBlockDocComment)
+  , string bareOuterBlockCommentOpen (beginBlockComment NormalBlockComment)
   , ignore' normalLineComment
   , string normalBlockCommentOpen (beginBlockComment NormalBlockComment)
   , ignore' leafWhitespace

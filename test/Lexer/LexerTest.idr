@@ -156,6 +156,21 @@ runLexerTests = runTests $ Test.do
   test "slash-star-star-star-slash block comment is skipped" $
     lexTokenValues "/***/fn" `shouldBe` Right [TokKw KwFn, TokEOF]
 
+  test "four-star block comment is skipped regardless of star-run length" $
+    lexTokenValues "/****/fn" `shouldBe` Right [TokKw KwFn, TokEOF]
+
+  test "three stars followed by real content is still an outer block doc" $
+    lexTokenValues "/*** docs */fn" `shouldBe`
+      Right [TokOuterDoc "/*** docs */", TokKw KwFn, TokEOF]
+
+  test "four stars followed by real content is still an outer block doc" $
+    lexTokenValues "/**** docs */fn" `shouldBe`
+      Right [TokOuterDoc "/**** docs */", TokKw KwFn, TokEOF]
+
+  test "banner-style outer block doc opener with an embedded newline" $
+    lexTokenValues "/***\n * banner\n */fn" `shouldBe`
+      Right [TokOuterDoc "/***\n * banner\n */", TokKw KwFn, TokEOF]
+
   test "inner block doc can be empty" $
     lexTokenValues "/*!*/fn" `shouldBe`
       Right [TokInnerDoc "/*!*/", TokKw KwFn, TokEOF]
@@ -174,6 +189,15 @@ runLexerTests = runTests $ Test.do
 
   test "unterminated outer block doc comment is a lexer error" $
     lexTokenValues "/** unterminated" `shouldBe` Left LexUnterminatedBlockComment
+
+  test "block comment truncated right after two stars is unterminated" $
+    lexTokenValues "/**" `shouldBe` Left LexUnterminatedBlockComment
+
+  test "block comment truncated right after three stars is unterminated" $
+    lexTokenValues "/***" `shouldBe` Left LexUnterminatedBlockComment
+
+  test "block comment truncated right after four stars is unterminated" $
+    lexTokenValues "/****" `shouldBe` Left LexUnterminatedBlockComment
 
   ------------------------------------------------------------
   -- Identifiers and reserved words.

@@ -81,15 +81,6 @@ identifierLike = identifierStart >> star identifierRest
 decimalDigits : RExp True
 decimalDigits = digit >> star (digit <|> '_')
 
-binaryDigits : RExp True
-binaryDigits = bindigit >> star (bindigit <|> '_')
-
-octalDigits : RExp True
-octalDigits = octdigit >> star (octdigit <|> '_')
-
-hexDigits : RExp True
-hexDigits = hexdigit >> star (hexdigit <|> '_')
-
 --------------------------------------------------------------------------------
 -- Strict digit runs, used only for validating an already-matched literal (see
 -- `Rules.idr`'s `numberClassifier`), never for the broad candidates above.
@@ -97,10 +88,14 @@ hexDigits = hexdigit >> star (hexdigit <|> '_')
 -- Interior `_` is freely placed (including consecutive underscores), but a
 -- decimal digit run may not start or end with `_`, while a radix digit run
 -- (used after `0b`/`0o`/`0x`) may start with `_` (Rust-style `0x_FF`) but still
--- may not end with one. The permissive `decimalDigits`/`binaryDigits`/etc.
--- above must stay permissive so malformed spellings are swallowed into one
--- token instead of being split, so these are separate definitions rather than
--- a tightened version of them.
+-- may not end with one. The permissive `decimalDigits` above must stay
+-- permissive so malformed spellings are swallowed into one token instead of
+-- being split, so this is a separate definition rather than a tightened
+-- version of it. Radix candidates (`radixNumberCandidate` below) don't have an
+-- equivalent permissive per-radix helper: they swallow any alphanumeric run
+-- after the `0b`/`0o`/`0x` prefix directly, so an out-of-range digit like the
+-- `2` in `0b102` still ends up in one malformed-literal token instead of
+-- being split off.
 --------------------------------------------------------------------------------
 strictDigitRun : RExp True -> RExp True
 strictDigitRun singleDigit =
@@ -407,33 +402,48 @@ normalLineComment : RExp True
 normalLineComment =
   '/' >> '/' >> lineCommentTail
 
-export
-emptyOuterBlockComment : RExp True
-emptyOuterBlockComment =
-  '/' >> '*' >> '*' >> '/'
-
-export
-starOnlyOuterBlockComment : RExp True
-starOnlyOuterBlockComment =
-  '/' >> '*' >> '*' >> '*' >> '/'
-
 --------------------------------------------------------------------------------
 -- Block comments.
 --
--- Outer block docs are classified by the opening delimiter.  `/**/` and
--- `/***/` are normal comments, not docs, so the outer-doc opener consumes one
--- first body character that must be neither `*` nor `/`.  Inner block docs may
--- be empty, so `/*!*/` is a valid inner doc comment.
+-- Outer block docs are classified by the opening delimiter.  A run of two or
+-- more `*` right after `/*` is a *candidate* outer doc opener: it becomes a
+-- doc comment if real content (or a line break) follows the star run, and an
+-- ordinary comment if the star run is immediately closed instead -- so
+-- `/**/`, `/***/`, `/****/`, and so on are all ordinary comments regardless of
+-- how many stars, not docs.  Inner block docs may be empty, so `/*!*/` is a
+-- valid inner doc comment.
 --------------------------------------------------------------------------------
 outerBlockDocFirstBodyChar : RExp True
 outerBlockDocFirstBodyChar =
       (dot && not '*' && not '/' && not '\n' && not '\r')
   <|> lineBreak
 
+-- One or more stars beyond the single mandatory `*` in `/*`: what turns a
+-- plain `/*` into a candidate outer doc opener.
+outerDocStarRun : RExp True
+outerDocStarRun = plus '*'
+
+export
+allStarsOuterBlockComment : RExp True
+allStarsOuterBlockComment =
+  '/' >> '*' >> outerDocStarRun >> '/'
+
 export
 outerBlockDocOpen : RExp True
 outerBlockDocOpen =
-  '/' >> '*' >> '*' >> outerBlockDocFirstBodyChar
+  '/' >> '*' >> outerDocStarRun >> outerBlockDocFirstBodyChar
+
+-- Covers a star run that is cut off by true end of input before anything
+-- disambiguates it as closed (`allStarsOuterBlockComment`) or as a doc
+-- comment (`outerBlockDocOpen`) -- e.g. a file truncated right after `/***`.
+-- Without this, that dead end hard-fails instead of falling back to an
+-- (eventually unterminated) plain block comment, the same class of bug as
+-- workaround (a) at the top of `Rules.idr`, just for a star run of any
+-- length instead of the two fixed lengths it used to special-case.
+export
+bareOuterBlockCommentOpen : RExp True
+bareOuterBlockCommentOpen =
+  '/' >> '*' >> outerDocStarRun
 
 export
 innerBlockDocOpen : RExp True
