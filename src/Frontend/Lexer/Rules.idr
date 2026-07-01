@@ -3,8 +3,6 @@ module Frontend.Lexer.Rules
 import Data.List
 import Data.Linear.Ref1
 import Data.String
-import Derive.Prelude
-import Language.Reflection
 import Syntax.T1
 import Text.ILex
 import Text.ILex.Derive
@@ -94,8 +92,6 @@ data CommentMode
   = NormalBlockComment
   | OuterBlockDocComment
   | InnerBlockDocComment
-
-%runElab derive "CommentMode" [Show, Eq]
 
 isDocCommentMode : CommentMode -> Bool
 isDocCommentMode NormalBlockComment = False
@@ -216,8 +212,6 @@ matchesLiteral parser text =
 data NumberLiteralKind
   = IntegerNumberLiteral
   | FloatingNumberLiteral
-
-%runElab derive "NumberLiteralKind" [Show, Eq]
 
 numberClassifier : PVal1 q Void NumberLiteralKind
 numberClassifier =
@@ -441,14 +435,6 @@ appendTextIfDoc mode rawText =
     False => pure ()
     True => pushStr' rawText
 
-appendCurrentTextIfDoc :
-     (sk : LeafLexerStack q)
-  => String
-  -> F1' q
-appendCurrentTextIfDoc rawText = T1.do
-  st <- getStack
-  appendTextIfDoc st.commentMode rawText
-
 beginBlockComment :
      (sk : LeafLexerStack q)
   => CommentMode
@@ -469,7 +455,7 @@ beginNestedBlockComment rawText = T1.do
   pushPosition
   st <- getStack
   putStack ({ commentDepth $= S } st)
-  appendCurrentTextIfDoc rawText
+  appendTextIfDoc st.commentMode rawText
   pure InBlockComment
 
 finishOutermostBlockComment :
@@ -489,12 +475,11 @@ closeBlockComment :
   => String
   -> F1 q LeafState
 closeBlockComment rawText = T1.do
-  appendCurrentTextIfDoc rawText
   st <- getStack
+  appendTextIfDoc st.commentMode rawText
   case st.commentDepth of
     Z => T1.do
       fullCommentBounds <- closeBounds
-      putStack ({ commentDepth := Z } st)
       finishOutermostBlockComment st.commentMode fullCommentBounds
 
     S remainingDepth => T1.do
@@ -507,7 +492,8 @@ consumeBlockCommentText :
   => String
   -> F1 q LeafState
 consumeBlockCommentText rawText = T1.do
-  appendCurrentTextIfDoc rawText
+  st <- getStack
+  appendTextIfDoc st.commentMode rawText
   pure InBlockComment
 
 --------------------------------------------------------------------------------
@@ -601,22 +587,6 @@ makeUnterminatedBlockCommentError stackValue = T1.do
   unclosedBounds <- unterminatedCommentBounds stackValue
   pure (B (Custom LexUnterminatedBlockComment) unclosedBounds)
 
-unterminatedBlockCommentError :
-     LeafLexerStack q
-  -> F1 q (BBErr LexerError)
-unterminatedBlockCommentError stackValue = T1.do
-  storedError <- read1 (error stackValue)
-  case storedError of
-    Just existingError =>
-      pure existingError
-
-    Nothing => makeUnterminatedBlockCommentError stackValue
-
-leafLexerErrors :
-  Arr32 LeafSz (LeafLexerStack q -> F1 q (BBErr LexerError))
-leafLexerErrors =
-  errs [E InBlockComment unterminatedBlockCommentError]
-
 leafLexerEOI :
      LeafState
   -> LeafLexerStack q
@@ -645,5 +615,5 @@ leafLexer =
     (init initLeafStack)
     leafLexerSteps
     noChunk
-    leafLexerErrors
+    (errs [])
     leafLexerEOI
