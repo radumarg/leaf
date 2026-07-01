@@ -332,7 +332,7 @@ let angles: [angle64; 2] = [3.14, 1.57];
 let units: [(); 5] = [(), (), (), (), ()];
 let params: [param; 2] = [Param("theta"), Param("phi")];
 
-// arrays can be declared with [T; N] where N is must be const expression:
+// arrays can be declared with [T; N] where N must be a const expression:
 let a: [i32; 4];          // integer literal, inferred as usize
 let b: [i32; 2 + 2];      // constant expression
 const N: i64 = 4;
