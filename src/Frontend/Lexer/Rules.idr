@@ -49,9 +49,7 @@ import Frontend.Lexer.Regex
 --         below): without it, `/**/`, `/***/`, `/****/`, and so on hard-fail
 --         instead of lexing as ordinary (non-doc) comments, for the same
 --         reason -- the node after a run of `*` extends toward a doc
---         comment's first body character but isn't an accept there. This
---         used to be two rules fixed at exactly two and three total stars
---         (`emptyOuterBlockComment` / `starOnlyOuterBlockComment`); a real
+--         comment's first body character but isn't an accept there. A real
 --         `/***`-style banner comment opener (any run of two or more stars
 --         not immediately followed by a closing `/`) hit the exact same dead
 --         end, so the rule is now generalized to any run length via
@@ -81,7 +79,7 @@ import Frontend.Lexer.Regex
 --   * Initial        ordinary Leaf source text
 --   * InBlockComment counting state for nested block comments
 --
--- Arbitrary nesting is represented in the stack, not by adding more states.
+-- Arbitrary nesting is represented by `commentDepth`, not by adding more states.
 --------------------------------------------------------------------------------
 %runElab deriveParserState "LeafSz" "LeafState" ["Initial", "InBlockComment"]
 
@@ -109,12 +107,6 @@ commentModeToToken NormalBlockComment _ = Nothing
 commentModeToToken OuterBlockDocComment rawText = Just (TokOuterDoc rawText)
 commentModeToToken InnerBlockDocComment rawText = Just (TokInnerDoc rawText)
 
-data BlockCommentState
-  = NoOpenBlockComment
-  | OpenBlockComment Nat CommentMode
-
-%runElab derive "BlockCommentState" [Show, Eq]
-
 --------------------------------------------------------------------------------
 -- Mutable ilex stack.
 --
@@ -122,19 +114,20 @@ data BlockCommentState
 -- HasStringLits, HasBBErr, and HasStack instances (it derives them via
 -- `%runElab derive "Stack" [FullStack]`). `LeafStack` only has to carry what
 -- that generic record does not already provide: the emitted token buffer and
--- the active block-comment state. In `OpenBlockComment extraDepth mode`,
--- `extraDepth` counts nested comments beyond the outermost one.
+-- block-comment depth/mode counters. `commentDepth` counts nested comments
+-- beyond the outermost block comment while in `InBlockComment`.
 --------------------------------------------------------------------------------
 record LeafStack where
   constructor MkLeafStack
   outputTokens : SnocList (ByteBounded Token)
-  blockComment : BlockCommentState
+  commentDepth : Nat
+  commentMode  : CommentMode
 
 0 LeafLexerStack : Type -> Type
 LeafLexerStack = Stack LexerError LeafStack LeafSz
 
 initLeafStack : LeafStack
-initLeafStack = MkLeafStack [<] NoOpenBlockComment
+initLeafStack = MkLeafStack [<] Z NormalBlockComment
 
 --------------------------------------------------------------------------------
 -- Local rule alias.
@@ -454,12 +447,7 @@ appendCurrentTextIfDoc :
   -> F1' q
 appendCurrentTextIfDoc rawText = T1.do
   st <- getStack
-  case st.blockComment of
-    NoOpenBlockComment =>
-      pure ()
-
-    OpenBlockComment _ mode =>
-      appendTextIfDoc mode rawText
+  appendTextIfDoc st.commentMode rawText
 
 beginBlockComment :
      (sk : LeafLexerStack q)
@@ -469,7 +457,7 @@ beginBlockComment :
 beginBlockComment mode rawText = T1.do
   pushPosition
   st <- getStack
-  putStack ({ blockComment := OpenBlockComment Z mode } st)
+  putStack ({ commentDepth := Z, commentMode := mode } st)
   appendTextIfDoc mode rawText
   pure InBlockComment
 
@@ -478,17 +466,11 @@ beginNestedBlockComment :
   => String
   -> F1 q LeafState
 beginNestedBlockComment rawText = T1.do
+  pushPosition
   st <- getStack
-  case st.blockComment of
-    NoOpenBlockComment =>
-      rememberFatalError
-        (LexInternalLexerError "Nested block comment opened with no active block comment")
-
-    OpenBlockComment extraDepth mode => T1.do
-      pushPosition
-      putStack ({ blockComment := OpenBlockComment (S extraDepth) mode } st)
-      appendTextIfDoc mode rawText
-      pure InBlockComment
+  putStack ({ commentDepth $= S } st)
+  appendCurrentTextIfDoc rawText
+  pure InBlockComment
 
 finishOutermostBlockComment :
      (sk : LeafLexerStack q)
@@ -507,24 +489,18 @@ closeBlockComment :
   => String
   -> F1 q LeafState
 closeBlockComment rawText = T1.do
+  appendCurrentTextIfDoc rawText
   st <- getStack
-  case st.blockComment of
-    NoOpenBlockComment =>
-      rememberFatalError
-        (LexInternalLexerError "Block comment closed with no active block comment")
+  case st.commentDepth of
+    Z => T1.do
+      fullCommentBounds <- closeBounds
+      putStack ({ commentDepth := Z } st)
+      finishOutermostBlockComment st.commentMode fullCommentBounds
 
-    OpenBlockComment extraDepth mode => T1.do
-      appendTextIfDoc mode rawText
-      case extraDepth of
-        Z => T1.do
-          fullCommentBounds <- closeBounds
-          putStack ({ blockComment := NoOpenBlockComment } st)
-          finishOutermostBlockComment mode fullCommentBounds
-
-        S remainingExtraDepth => T1.do
-          popPosition
-          putStack ({ blockComment := OpenBlockComment remainingExtraDepth mode } st)
-          pure InBlockComment
+    S remainingDepth => T1.do
+      popPosition
+      putStack ({ commentDepth := remainingDepth } st)
+      pure InBlockComment
 
 consumeBlockCommentText :
      (sk : LeafLexerStack q)
@@ -652,12 +628,13 @@ leafLexerEOI _ stackValue = T1.do
       pure (Left existingError)
 
     Nothing => T1.do
+      openPositions <- read1 (positions stackValue)
       st <- read1 (stack stackValue)
-      case st.blockComment of
-        OpenBlockComment _ _ =>
+      case oldestOpenPosition openPositions of
+        Just _ =>
           Left <$> makeUnterminatedBlockCommentError stackValue
 
-        NoOpenBlockComment => T1.do
+        Nothing => T1.do
           eofPosition <- endPos
           pure (Right (st.outputTokens <>> [B TokEOF (BB eofPosition eofPosition)]))
 

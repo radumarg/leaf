@@ -22,15 +22,6 @@ translateInnerLexerError : InnerError LexerError -> LexerError
 translateInnerLexerError (Custom lexerError) =
   lexerError
 
--- `unexpected`'s own `EOI` case only fires when a dead end is hit with zero
--- bytes read for the current token attempt -- i.e. genuinely nothing left to
--- read at a token boundary. `leafLexerEOI` (`Rules.idr`) always intercepts
--- that condition itself before the generic per-state error path ever runs,
--- so this native `EOI` is never actually produced by `leafLexer`; see the
--- `Unclosed` case below for the same kind of never-actually-raised mapping.
-translateInnerLexerError EOI =
-  LexInternalLexerError "Unexpected end of input reported by ilex"
-
 translateInnerLexerError (Expected expectedTokens actualText) =
   LexUnexpectedInput expectedTokens actualText
 
@@ -49,22 +40,14 @@ translateInnerLexerError InvalidEscape =
 translateInnerLexerError (OutOfBounds rawText) =
   LexInternalLexerError ("Out-of-bounds value reported by ilex: " ++ rawText)
 
--- Leaf never calls ilex's own `unclosed`/`unclosedIfEOI`/`unclosedIfNLorEOI`
--- helpers (block comments are tracked entirely through `Rules.idr`'s own
--- depth-counting state machine and EOI handler instead), so this native
--- `Unclosed` error is never actually produced by `leafLexer`. It still has to
--- be translated to satisfy totality over `InnerError`'s constructors, so it
--- folds into the same internal-error bucket as the other cases above that
--- ilex's DFA-based lexer engine never actually raises, rather than getting
--- its own dedicated (equally unreachable) `LexerError` constructor.
-translateInnerLexerError (Unclosed delimiterText) =
-  LexInternalLexerError ("Unclosed delimiter reported by ilex: " ++ delimiterText)
-
 translateInnerLexerError (Unknown actualText) =
   LexUnexpectedInput [] actualText
 
 translateInnerLexerError (InvalidByte byteValue) =
   LexInvalidUtf8Byte byteValue
+
+translateInnerLexerError _ =
+  LexInternalLexerError "Unexpected ilex internal error"
 
 --------------------------------------------------------------------------------
 -- Clamping byte positions to the input.
