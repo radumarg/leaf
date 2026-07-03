@@ -16,9 +16,5 @@ record SourceSpan where
   start : SourcePos  -- position of first character in the token
   end   : SourcePos  -- position immediately after last character
 
-public export
-record Located a where
-  constructor MkLocated
-  span  : SourceSpan
-  value : a
+
 

@@ -1,8 +1,29 @@
 module Frontend.Syntax.Name
 
-import Frontend.Source
+import Frontend.AST
+import Frontend.Syntax.Common
 
 %default total
+
+public export
+interface HasNodeValue (wrapper : Type -> Type) where
+  getNodeValue : wrapper a -> a
+
+public export
+HasNodeValue SurfaceAstNode where
+  getNodeValue (MkSurfaceAstNode _ value) = value
+
+public export
+HasNodeValue CanonicalAstNode where
+  getNodeValue (MkCanonicalAstNode _ _ value) = value
+
+public export
+HasNodeValue ResolvedAstNode where
+  getNodeValue (MkResolvedAstNode _ _ value) = value
+
+public export
+HasNodeValue TypedAstNode where
+  getNodeValue (MkTypedAstNode _ _ value) = value
 
 --------------------------------------------------------------------------------
 -- Names in the surface AST
@@ -31,19 +52,42 @@ import Frontend.Source
 -- syntax can later decide how to represent builtin callees.
 --------------------------------------------------------------------------------
 
-
 --------------------------------------------------------------------------------
--- Simple textual names
+-- Simple unresolved names
 --------------------------------------------------------------------------------
 
 public export
-data NameNode
-  = MkNameNode String
+record NameNode where
+  constructor MkNameNode
+  nameNodeText : String
 
 public export
-Name : Type
-Name = Located NameNode
+SurfaceName : Type
+SurfaceName = SurfaceAstNode NameNode
 
+public export
+CanonicalName : Type
+CanonicalName = CanonicalAstNode NameNode
+
+--------------------------------------------------------------------------------
+-- Simple resolved names
+--
+-- The SymbolId tells which binding/program entity this name denotes.
+--------------------------------------------------------------------------------
+
+public export
+record ResolvedNameNode where
+  constructor MkResolvedNameNode
+  resolvedNameNodeText     : String
+  resolvedNameNodeSymbolId : SymbolId
+
+public export
+ResolvedName : Type
+ResolvedName = ResolvedAstNode ResolvedNameNode
+
+public export
+TypedName : Type
+TypedName = TypedAstNode ResolvedNameNode
 
 --------------------------------------------------------------------------------
 -- Path segments
@@ -64,14 +108,23 @@ Name = Located NameNode
 -- not an ordinary identifier, so it gets its own segment constructor.
 --------------------------------------------------------------------------------
 
+
+--------------------------------------------------------------------------------
+-- Unresolved path segments
+--------------------------------------------------------------------------------
+
 public export
 data PathSegmentNode
   = PathSegmentName String
   | PathSegmentSelf
 
 public export
-PathSegment : Type
-PathSegment = Located PathSegmentNode
+SurfacePathSegment : Type
+SurfacePathSegment = SurfaceAstNode PathSegmentNode
+
+public export
+CanonicalPathSegment : Type
+CanonicalPathSegment = CanonicalAstNode PathSegmentNode
 
 
 --------------------------------------------------------------------------------
@@ -92,16 +145,58 @@ PathSegment = Located PathSegmentNode
 -- but local binders and declarations should usually use `Name` directly.
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- Unresolved paths
+--------------------------------------------------------------------------------
+
 public export
-record PathNode where
+record PathNode segment where
   constructor MkPathNode
-  firstSegment      : PathSegment
-  remainingSegments : List PathSegment
+  firstSegment      : segment
+  remainingSegments : List segment
 
 public export
-Path : Type
-Path = Located PathNode
+SurfacePath : Type
+SurfacePath = SurfaceAstNode (PathNode SurfacePathSegment)
 
+public export
+CanonicalPath : Type
+CanonicalPath = CanonicalAstNode (PathNode CanonicalPathSegment)
+
+
+--------------------------------------------------------------------------------
+-- Resolved paths
+--------------------------------------------------------------------------------
+-- Keep resolved paths intentionally simple.
+--
+-- The resolver preserves the written path as text and records the final symbol
+-- the whole path resolved to.
+--
+-- Example:
+--
+--   Data::Left
+--
+-- becomes something like:
+--
+--   firstPathSegmentText      = "Data"
+--   remainingPathSegmentTexts = ["Left"]
+--   resolvedPathTargetSymbolId = SymbolId for Left
+--------------------------------------------------------------------------------
+
+public export
+record ResolvedPathNode where
+  constructor MkResolvedPathNode
+  firstPathSegmentText       : String
+  remainingPathSegmentTexts  : List String
+  resolvedPathTargetSymbolId : SymbolId
+
+public export
+ResolvedPath : Type
+ResolvedPath = ResolvedAstNode ResolvedPathNode
+
+public export
+TypedPath : Type
+TypedPath = TypedAstNode ResolvedPathNode
 
 --------------------------------------------------------------------------------
 -- Qualified names
@@ -132,68 +227,27 @@ Path = Located PathNode
 --------------------------------------------------------------------------------
 
 public export
-record QualifiedNameNode where
+record QualifiedNameNode path name where
   constructor MkQualifiedNameNode
-  qualifierPath : Maybe Path
-  finalSegment  : PathSegment
+  qualifierPath : Maybe path
+  finalName     : name
 
 public export
-QualifiedName : Type
-QualifiedName = Located QualifiedNameNode
-
-
---------------------------------------------------------------------------------
--- Small query helpers
---------------------------------------------------------------------------------
--- These helpers are intentionally simple. They are useful in tests, parser code,
--- diagnostics, pretty-printers, and later compiler passes.
---------------------------------------------------------------------------------
+SurfaceQualifiedName : Type
+SurfaceQualifiedName =
+  SurfaceAstNode (QualifiedNameNode SurfacePath SurfaceName)
 
 public export
-nameText : Name -> String
-nameText locatedName =
-  case value locatedName of
-    MkNameNode text => text
-
+CanonicalQualifiedName : Type
+CanonicalQualifiedName =
+  CanonicalAstNode (QualifiedNameNode CanonicalPath CanonicalName)
 
 public export
-pathSegmentText : PathSegment -> String
-pathSegmentText locatedSegment =
-  case value locatedSegment of
-    PathSegmentName text => text
-    PathSegmentSelf      => "self"
-
+ResolvedQualifiedName : Type
+ResolvedQualifiedName =
+  ResolvedAstNode (QualifiedNameNode ResolvedPath ResolvedName)
 
 public export
-pathSegments : Path -> List PathSegment
-pathSegments locatedPath =
-  let node = value locatedPath in
-    firstSegment node :: remainingSegments node
-
-
-public export
-qualifiedNameSegments : QualifiedName -> List PathSegment
-qualifiedNameSegments locatedQualifiedName =
-  let node = value locatedQualifiedName in
-    case qualifierPath node of
-      Nothing =>
-        [finalSegment node]
-
-      Just qualifier =>
-        pathSegments qualifier ++ [finalSegment node]
-
-
-public export
-isSingleSegmentPath : Path -> Bool
-isSingleSegmentPath locatedPath =
-  case remainingSegments (value locatedPath) of
-    [] => True
-    _  => False
-
-
-public export
-isUnqualifiedName : QualifiedName -> Bool
-isUnqualifiedName locatedQualifiedName =
-  case qualifierPath (value locatedQualifiedName) of
-    Nothing => True
-    Just _  => False
+TypedQualifiedName : Type
+TypedQualifiedName =
+  TypedAstNode (QualifiedNameNode TypedPath TypedName)
