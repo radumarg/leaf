@@ -1,6 +1,6 @@
 module Frontend.Syntax.Name
 
-import Frontend.AST
+import Frontend.Syntax.AST
 import Frontend.Syntax.Common
 
 %default total

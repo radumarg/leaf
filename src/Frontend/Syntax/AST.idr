@@ -8,12 +8,14 @@ import Frontend.Syntax.Common
 -- Phase-specific AST wrappers
 --------------------------------------------------------------------------------
 
+-- parser output
 public export
 record SurfaceAstNode a where
   constructor MkSurfaceAstNode
   astInfo : AstInfo
   value   : a
 
+-- desugaring output
 public export
 record CanonicalAstNode a where
   constructor MkCanonicalAstNode
@@ -21,6 +23,7 @@ record CanonicalAstNode a where
   origin  : NodeOrigin
   value   : a
 
+-- name resolution output
 public export
 record ResolvedAstNode a where
   constructor MkResolvedAstNode
@@ -28,6 +31,7 @@ record ResolvedAstNode a where
   origin  : NodeOrigin
   value   : a
 
+-- type checking output
 public export
 record TypedAstNode a where
   constructor MkTypedAstNode
@@ -36,6 +40,10 @@ record TypedAstNode a where
   value   : a
   -- add type information here
 
+
+-- SymbolId = what binding/name?
+-- ScopeId  = where is the binding visible?
+-- NodeId   = which AST node?
 
 
 -- Scopes are introduced by:
@@ -118,3 +126,41 @@ record TypedAstNode a where
 --   builds NodeId → Span map
 --   builds NodeId → enclosing function map
 --   builds NodeId → enclosing scope map
+
+
+-- Attach SymbolId only to AST places that are about name binding or name reference.
+
+-- So:
+
+-- function declaration     → has SymbolId
+-- parameter declaration    → has SymbolId
+-- let-bound variable       → has SymbolId
+-- variable use             → has SymbolId
+-- function call callee     → usually has SymbolId if it is a named function
+-- type name use            → has SymbolId
+-- module/import name       → may have SymbolId
+-- literal                  → no SymbolId
+-- binary expression        → no SymbolId, unless operators are resolved as symbols
+-- if expression            → no SymbolId
+-- block                    → no SymbolId, but may have ScopeId
+-- return statement         → no SymbolId
+
+-- Use SymbolId here:
+
+-- ResolvedFnDecl.symbolId
+-- ResolvedParam.symbolId
+-- ResolvedLetBinding.symbolId
+-- ResolvedName.symbolId
+-- ResolvedTypeName.symbolId
+
+-- Use ScopeId here:
+
+-- ResolvedProgram.scopeId
+-- ResolvedModule.scopeId
+-- ResolvedFnDecl.body.scopeId
+-- ResolvedBlock.scopeId
+
+-- NodeId     → every AST node
+-- SymbolId   → declarations and resolved name uses
+-- ScopeId    → nodes that introduce scopes
+-- Type       → expressions in the typed AST
