@@ -1,29 +1,9 @@
 module Frontend.Syntax.Name
 
-import Frontend.Syntax.AST
-import Frontend.Syntax.Common
+import Frontend.ASTPhases
+import Frontend.ASTData
 
 %default total
-
-public export
-interface HasNodeValue (wrapper : Type -> Type) where
-  getNodeValue : wrapper a -> a
-
-public export
-HasNodeValue SurfaceAstNode where
-  getNodeValue (MkSurfaceAstNode _ value) = value
-
-public export
-HasNodeValue CanonicalAstNode where
-  getNodeValue (MkCanonicalAstNode _ _ value) = value
-
-public export
-HasNodeValue ResolvedAstNode where
-  getNodeValue (MkResolvedAstNode _ _ value) = value
-
-public export
-HasNodeValue TypedAstNode where
-  getNodeValue (MkTypedAstNode _ _ value) = value
 
 --------------------------------------------------------------------------------
 -- Names in the surface AST
@@ -48,8 +28,7 @@ HasNodeValue TypedAstNode where
 --   Person::new
 --
 -- Builtins such as qalloc, measr, reset, ctrl, apply, etc. are not modeled here
--- as ordinary names if the lexer classifies them as TokBuiltin. Expression/callee
--- syntax can later decide how to represent builtin callees.
+-- as ordinary names if the lexer classifies them as TokBuiltin.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -70,9 +49,7 @@ CanonicalName : Type
 CanonicalName = CanonicalAstNode NameNode
 
 --------------------------------------------------------------------------------
--- Simple resolved names
---
--- The SymbolId tells which binding/program entity this name denotes.
+-- Simple resolved names: SymbolId tells which binding/program entity this name denotes.
 --------------------------------------------------------------------------------
 
 public export
@@ -150,7 +127,7 @@ CanonicalPathSegment = CanonicalAstNode PathSegmentNode
 --------------------------------------------------------------------------------
 
 public export
-record PathNode segment where
+record PathNode (segment : Type) where
   constructor MkPathNode
   firstSegment      : segment
   remainingSegments : List segment
@@ -227,7 +204,7 @@ TypedPath = TypedAstNode ResolvedPathNode
 --------------------------------------------------------------------------------
 
 public export
-record QualifiedNameNode path name where
+record QualifiedNameNode (path : Type) (name : Type) where
   constructor MkQualifiedNameNode
   qualifierPath : Maybe path
   finalName     : name

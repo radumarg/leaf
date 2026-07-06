@@ -1569,6 +1569,8 @@ isolated([q1, q2])
 // stabilized, takes as second argument as a list signed Pauli strings representing stabilizers, where each element in the list is a stabilizer and the contract expresses an exact stabilizer state for the qubits in the first argument:
 stabilized(qs, [ +ZI, -ZZ ])
 
+// only X/Y/Z/I gates can appear in stabilizer expressions, and the sign of each stabilizer is important, as it represents the eigenvalue of the stabilizer operator for the qubits in the first argument.
+
 // product takes multiple arguments which are either qubits or arrays of qubits:
 product(q1, q2, qs)
 
