@@ -15,7 +15,7 @@ main = do
   -- case fileResult of
   --   Left fileErr => putStrLn $ "Failed to read program.rs: " ++ show fileErr
   --   Right sampleProgram =>
-  --     case lexProgram sampleProgram of
+  --     case lexModule sampleProgram of
   --       Left err => putStrLn $ "Lexer error: " ++ show err
   --       Right tokens => do
   --         putStrLn $ "Tokens: " ++ show tokens

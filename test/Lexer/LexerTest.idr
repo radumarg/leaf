@@ -4,7 +4,7 @@ import Text.Bounds
 import Test.Simple
 
 import Frontend.Token
-import Frontend.Lexer.Errors
+import Frontend.Lexer.Error
 import Frontend.Lexer.Lexer
 
 %default total
@@ -17,11 +17,11 @@ tokenValues (Right boundedTokens) =
 
 lexTokenValues : String -> Either LexerError (List Token)
 lexTokenValues input =
-  tokenValues (lexProgram input)
+  tokenValues (lexModule input)
 
 lexErrorHasBounds : String -> Maybe Bool
 lexErrorHasBounds input =
-  case lexProgram input of
+  case lexModule input of
     Left boundedError =>
       case boundedError.bounds of
         NoBounds => Just False
@@ -32,7 +32,7 @@ lexErrorHasBounds input =
 
 finalEofHasZeroWidthBounds : String -> Maybe Bool
 finalEofHasZeroWidthBounds input =
-  case lexProgram input of
+  case lexModule input of
     Left _ =>
       Nothing
 

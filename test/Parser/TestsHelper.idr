@@ -16,7 +16,7 @@ runParseOkTest fileName laxParseExpression strictParseExpression {debug} = do
   case fileResult of
     Left fileErr => putStrLn $ "Failed to read " ++ fileName ++ ": " ++ show fileErr
     Right testProgram =>
-      case lexProgram testProgram of
+      case lexModule testProgram of
         Left err => putStrLn $ "Lexer error in " ++ fileName ++ ": " ++ show err
         Right tokens =>
           case parseProgramAll tokens of
@@ -48,7 +48,7 @@ runParseShouldFailTest fileName {debug} = do
   case fileResult of
     Left fileErr => putStrLn $ "Failed to read " ++ fileName ++ ": " ++ show fileErr
     Right testProgram =>
-      case lexProgram testProgram of
+      case lexModule testProgram of
         Left err =>
           case debug of
             True => putStrLn $ "Expected lexer failure in " ++ fileName ++ ": " ++ show err

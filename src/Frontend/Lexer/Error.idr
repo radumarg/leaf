@@ -1,4 +1,4 @@
-module Frontend.Lexer.Errors
+module Frontend.Lexer.Error
 
 import Data.Bits
 import Derive.Prelude
@@ -15,7 +15,7 @@ import Text.ParseError
 -- still uses `InnerError LexerError` internally, because native ilex failures
 -- such as unexpected input and invalid UTF-8 bytes are represented by
 -- `InnerError`.  `Frontend.Lexer.Lexer` translates those native failures into
--- the constructors below so `lexProgram` exposes exactly `Bounded LexerError`.
+-- the constructors below so `lexModule` exposes exactly `Bounded LexerError`.
 --------------------------------------------------------------------------------
 public export
 data LexerError

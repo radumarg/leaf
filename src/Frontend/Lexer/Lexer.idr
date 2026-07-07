@@ -5,7 +5,7 @@ import Text.ILex
 import Text.ParseError
 
 import Frontend.Token
-import Frontend.Lexer.Errors
+import Frontend.Lexer.Error
 import Frontend.Lexer.Rules
 
 %default total
@@ -14,7 +14,7 @@ import Frontend.Lexer.Rules
 -- Translating ilex native errors into Leaf's public LexerError.
 --
 -- Latest idris2-ilex exposes `BoundedErr e`, i.e. a `Bounded (InnerError e)`.
--- The prompt asks `lexProgram` to expose only `Bounded LexerError`, so this
+-- The prompt asks `lexModule` to expose only `Bounded LexerError`, so this
 -- module is the single place where native ilex failures are translated.
 --------------------------------------------------------------------------------
 public export
@@ -80,7 +80,7 @@ clampByteBounded inputByteLength (B val bounds) =
   B val (clampByteBounds inputByteLength bounds)
 
 --------------------------------------------------------------------------------
--- Main entry point: lexProgram
+-- Main entry point: lexModule
 --
 -- The installed ilex tracks positions as raw byte offsets while lexing and only
 -- exposes `Bounded` (line/column) values via a position map built from the whole
@@ -89,8 +89,8 @@ clampByteBounded inputByteLength (B val bounds) =
 -- native ilex failures are translated into Leaf's public `LexerError`.
 --------------------------------------------------------------------------------
 public export
-lexProgram : String -> Either (Bounded LexerError) (List (Bounded Token))
-lexProgram inputString =
+lexModule : String -> Either (Bounded LexerError) (List (Bounded Token))
+lexModule inputString =
   let pm := stringPositionMap inputString
       inputByteLength := pred pm.size
   in case runString leafLexer inputString of

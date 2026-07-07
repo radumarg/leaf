@@ -11,7 +11,7 @@ import Text.ILex.Stack
 import Text.ParseError
 
 import Frontend.Token
-import Frontend.Lexer.Errors
+import Frontend.Lexer.Error
 import Frontend.Lexer.Regex
 
 %default total
@@ -66,7 +66,7 @@ import Frontend.Lexer.Regex
 --     past the end of the input, inside a custom multi-state lexer like this
 --     one. Worked around by `unterminatedCommentBounds` below, whose result
 --     gets clamped to the input's actual length in
---     `Frontend.Lexer.Lexer.lexProgram` (`clampByteBounded`) before being
+--     `Frontend.Lexer.Lexer.lexModule` (`clampByteBounded`) before being
 --     converted to a line/column position.
 --------------------------------------------------------------------------------
 
@@ -149,7 +149,7 @@ oldestOpenPosition (olderPositions :< openPosition) =
 -- At true end-of-input ilex's own `endPos` can report a byte position past
 -- the end of the input (a known quirk of this ilex version's EOI bookkeeping
 -- inside a custom multi-state lexer). That overshoot is harmless here: it
--- gets clamped to the input's actual length in `Frontend.Lexer.Lexer.lexProgram`
+-- gets clamped to the input's actual length in `Frontend.Lexer.Lexer.lexModule`
 -- before being converted to a line/column position, so there's no need to
 -- special-case or pre-validate the bound this function returns.
 unterminatedCommentBounds :
