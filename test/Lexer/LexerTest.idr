@@ -17,11 +17,11 @@ tokenValues (Right boundedTokens) =
 
 lexTokenValues : String -> Either LexerError (List Token)
 lexTokenValues input =
-  tokenValues (lexModule input)
+  tokenValues (lexFile input)
 
 lexErrorHasBounds : String -> Maybe Bool
 lexErrorHasBounds input =
-  case lexModule input of
+  case lexFile input of
     Left boundedError =>
       case boundedError.bounds of
         NoBounds => Just False
@@ -32,7 +32,7 @@ lexErrorHasBounds input =
 
 finalEofHasZeroWidthBounds : String -> Maybe Bool
 finalEofHasZeroWidthBounds input =
-  case lexModule input of
+  case lexFile input of
     Left _ =>
       Nothing
 

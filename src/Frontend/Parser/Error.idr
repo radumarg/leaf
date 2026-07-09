@@ -7,13 +7,13 @@ import Language.Reflection
 %language ElabReflection
 
 --------------------------------------------------------------------------------
--- ParseError
+-- ParserError
 --
 -- This is the public, user-facing Leaf parser error type.
 --------------------------------------------------------------------------------
 public export
-data ParseError
-  = MkParseError
+data ParserError
+  = MkParserError
 
-%runElab derive "ParseError" [Show, Eq]
+%runElab derive "ParserError" [Show, Eq]
 

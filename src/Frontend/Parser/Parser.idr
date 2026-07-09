@@ -3,7 +3,7 @@ module Frontend.Parser.Parser
 import Text.Bounds
 
 import Frontend.Token
-import Frontend.Syntax.Module
+import Frontend.Syntax.AST
 import Frontend.Parser.Error
 
 %default total
@@ -12,5 +12,5 @@ import Frontend.Parser.Error
 -- Main entry point: parseFile
 --------------------------------------------------------------------------------
 public export
-parseModule : List (Bounded Token) -> Either (Bounded ParseError) Module
-parseModule tokens = ?parseModule_rhs
+parseFile : List (Bounded Token) -> Either (Bounded ParserError) SurfaceSourceFile
+parseFile tokens = ?parseFile_rhs

@@ -106,3 +106,30 @@ HasNodeValue ResolvedAstNode where
 public export
 HasNodeValue TypedAstNode where
   getNodeValue (MkTypedAstNode _ _ value) = value
+
+--------------------------------------------------------------------------------
+-- Show instances: print the payload only, never the bookkeeping
+--------------------------------------------------------------------------------
+-- A pretty-printer wants source-shaped output, not node ids and spans, so
+-- these instances unconditionally skip AstInfo (and NodeOrigin, on the later
+-- phases) and defer to `Show` on the wrapped value alone. Every node family
+-- that wants to be `Show` therefore only needs a `Show` instance on its own
+-- (un-located) payload type -- see Frontend.Syntax.AstNodePrettyPrinter for
+-- the surface AST's payload instances.
+--------------------------------------------------------------------------------
+
+public export
+Show a => Show (SurfaceAstNode a) where
+  show (MkSurfaceAstNode _ v) = show v
+
+public export
+Show a => Show (CanonicalAstNode a) where
+  show (MkCanonicalAstNode _ _ v) = show v
+
+public export
+Show a => Show (ResolvedAstNode a) where
+  show (MkResolvedAstNode _ _ v) = show v
+
+public export
+Show a => Show (TypedAstNode a) where
+  show (MkTypedAstNode _ _ v) = show v
