@@ -2,7 +2,8 @@ package leaf-tests
 
 sourcedir = "."
 
-depends = elab-util,
+depends = leaf,
+          elab-util,
           finite,
           ilex,
           parser,

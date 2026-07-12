@@ -61,9 +61,9 @@ parseSourceFile tokens acc =
                     (MkSourceFileNode [] items))
                 remaining
 
---------------------------------------------------------------------------------
--- Main entry point: parseFile, using the idris2-parser library's machinery.
---------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+-- Main entry point: parseFile, using the idris2-parser library's machinery from Text.Parse.Manual.
+-----------------------------------------------------------------------------------------------------
 public export
 parseFile : List (Bounded Token) -> Either (Bounded ParseError) SurfaceSourceFile
 parseFile tokens =
