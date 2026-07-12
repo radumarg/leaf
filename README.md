@@ -28,7 +28,7 @@
 
 WIP
 
-## TODO
+## Todo
 
 [Implementation Pending](docs/todo.md)
 
