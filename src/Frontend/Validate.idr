@@ -234,14 +234,14 @@ validateQualifierList = go []
       -> List (SurfaceAstNode QuantumStorageQualifier)
       -> List ValidationError
     go seen [] = []
-    go seen (MkSurfaceAstNode info q :: rest) =
+    go seen (MkAstNode info _ q :: rest) =
       let dupErrors =
             if elem q seen
-              then [DuplicateStorageQualifier (astInfoSpan info) q]
+              then [DuplicateStorageQualifier info.span q]
               else []
           conflictErrors =
             case find (\prev => conflictsWith prev q) seen of
-              Just prev => [ConflictingStorageQualifiers (astInfoSpan info) prev q]
+              Just prev => [ConflictingStorageQualifiers info.span prev q]
               Nothing   => []
       in dupErrors ++ conflictErrors ++ go (q :: seen) rest
 
@@ -255,10 +255,10 @@ validateContractOrdering = go False
       -> List SurfaceContractClause
       -> List ValidationError
     go seenEnsures [] = []
-    go seenEnsures (MkSurfaceAstNode info clause :: rest) =
+    go seenEnsures (MkAstNode info _ clause :: rest) =
       case clause of
         RequiresClause _ =>
-          (if seenEnsures then [RequiresAfterEnsures (astInfoSpan info)] else [])
+          (if seenEnsures then [RequiresAfterEnsures info.span] else [])
             ++ go seenEnsures rest
         EnsuresClause _ =>
           go True rest
@@ -266,16 +266,16 @@ validateContractOrdering = go False
 -- Known attributes: no argument list, or exactly one string literal.
 -- `#[name()]` is rejected outright. Unknown attributes are errors for now.
 validateAttribute : SurfaceAttribute -> List ValidationError
-validateAttribute (MkSurfaceAstNode attrInfo (MkAttributeNode nameNode maybeArgs)) =
-  let MkSurfaceAstNode _ (MkNameNode nameText) = nameNode
+validateAttribute (MkAstNode attrInfo _ (MkAttributeNode nameNode maybeArgs)) =
+  let MkAstNode _ _ (MkNameNode nameText) = nameNode
   in case recognizeKnownAttribute nameText of
-       Nothing => [UnknownAttribute (astInfoSpan attrInfo) nameText]
+       Nothing => [UnknownAttribute attrInfo.span nameText]
        Just kind =>
          case maybeArgs of
            Nothing => []
-           Just [] => [EmptyAttributeArgumentList (astInfoSpan attrInfo)]
-           Just [MkSurfaceAstNode _ (AttributeArgumentStringLit _)] => []
-           Just _  => [MalformedKnownAttributeArguments (astInfoSpan attrInfo) kind]
+           Just [] => [EmptyAttributeArgumentList attrInfo.span]
+           Just [MkAstNode _ _ (AttributeArgumentStringLit _)] => []
+           Just _  => [MalformedKnownAttributeArguments attrInfo.span kind]
 
 validateAttributeList : List SurfaceAttribute -> List ValidationError
 validateAttributeList [] = []
@@ -292,8 +292,8 @@ validateSupportClause = go []
       -> List (SurfaceAstNode SupportKind)
       -> List ValidationError
     go seen [] = []
-    go seen (MkSurfaceAstNode info k :: rest) =
-      (if elem k seen then [DuplicateSupportKind (astInfoSpan info) k] else [])
+    go seen (MkAstNode info _ k :: rest) =
+      (if elem k seen then [DuplicateSupportKind info.span k] else [])
         ++ go (k :: seen) rest
 
 -- Homogeneity of qmatch/smatch pattern kinds: all-integer or all-basis
@@ -316,15 +316,15 @@ validateQuantumArmHomogeneity = go Nothing
       -> List ValidationError
     go committed [] = []
     go committed
-       (MkSurfaceAstNode _
-          (MkQuantumMatchArmNode (MkSurfaceAstNode patInfo pat) _) :: rest) =
+       (MkAstNode _ _
+          (MkQuantumMatchArmNode (MkAstNode patInfo _ pat) _) :: rest) =
       case (committed, patternKind pat) of
         (Nothing, k)      => go k rest
         (Just _, Nothing) => go committed rest
         (Just c, Just k)  =>
           if c == k
             then go committed rest
-            else MixedQuantumMatchPatternKinds (astInfoSpan patInfo)
+            else MixedQuantumMatchPatternKinds patInfo.span
                    :: go committed rest
 
 -- Is this type SYNTACTICALLY a qubit-carrying type? Only the cases visible
@@ -334,10 +334,10 @@ isSyntacticallyQubitTy : TyNode SurfaceExpr -> Bool
 isSyntacticallyQubitTy ty =
   case ty of
     TyPrimitive TypPrimQubit                        => True
-    TyParenthesized (MkSurfaceAstNode _ inner)      => isSyntacticallyQubitTy inner
-    TyQualified _ (MkSurfaceAstNode _ inner)        => isSyntacticallyQubitTy inner
-    TySlice (MkSurfaceAstNode _ element)            => isSyntacticallyQubitTy element
-    TyArray (MkSurfaceAstNode _ element) _          => isSyntacticallyQubitTy element
+    TyParenthesized (MkAstNode _ _ inner)      => isSyntacticallyQubitTy inner
+    TyQualified _ (MkAstNode _ _ inner)        => isSyntacticallyQubitTy inner
+    TySlice (MkAstNode _ _ element)            => isSyntacticallyQubitTy element
+    TyArray (MkAstNode _ _ element) _          => isSyntacticallyQubitTy element
     _                                               => False
 
 --------------------------------------------------------------------------------
@@ -353,7 +353,7 @@ mutual
   -- Entry point: validate one parsed source file.
   public export
   validateSourceFile : SurfaceSourceFile -> List ValidationError
-  validateSourceFile (MkSurfaceAstNode _ (MkSourceFileNode _ items)) =
+  validateSourceFile (MkAstNode _ _ (MkSourceFileNode _ items)) =
     validateItemList items
 
   ------------------------------------------------------------------
@@ -365,7 +365,7 @@ mutual
   validateItemList (i :: rest) = validateItem i ++ validateItemList rest
 
   validateItem : SurfaceItem -> List ValidationError
-  validateItem (MkSurfaceAstNode _ item) =
+  validateItem (MkAstNode _ _ item) =
     case item of
       ItemFunction fd => validateFunctionDecl fd
       ItemStruct sd   => validateStructDecl sd
@@ -393,7 +393,7 @@ mutual
        List (SurfaceAstNode FunctionParameterNode)
     -> List ValidationError
   validateParameterList [] = []
-  validateParameterList (MkSurfaceAstNode _ p :: rest) =
+  validateParameterList (MkAstNode _ _ p :: rest) =
     (case p of
        NormalParameter _ _ _ ty  => validateTy topLevelContext ty
        ReceiverParameter _ _     => [])
@@ -409,7 +409,7 @@ mutual
     -> List ValidationError
   validateStructFieldList [] = []
   validateStructFieldList
-    (MkSurfaceAstNode _ (MkStructFieldNode _ _ fieldTy) :: rest) =
+    (MkAstNode _ _ (MkStructFieldNode _ _ fieldTy) :: rest) =
     validateTy topLevelContext fieldTy ++ validateStructFieldList rest
 
   validateEnumDecl : EnumDeclarationNode -> List ValidationError
@@ -422,7 +422,7 @@ mutual
     -> List ValidationError
   validateEnumVariantList [] = []
   validateEnumVariantList
-    (MkSurfaceAstNode _ (MkEnumVariantNode _ _ body) :: rest) =
+    (MkAstNode _ _ (MkEnumVariantNode _ _ body) :: rest) =
     (case body of
        VariantUnit            => []
        VariantTuple tys       => validateTyList1 topLevelContext tys
@@ -439,7 +439,7 @@ mutual
     -> List ValidationError
   validateQEnumVariantList [] = []
   validateQEnumVariantList
-    (MkSurfaceAstNode _ (MkQEnumVariantNode _ _ payloadTys) :: rest) =
+    (MkAstNode _ _ (MkQEnumVariantNode _ _ payloadTys) :: rest) =
     validateTyList1 topLevelContext payloadTys
       ++ validateQEnumVariantList rest
 
@@ -451,7 +451,7 @@ mutual
        List (SurfaceAstNode FunctionDeclarationNode)
     -> List ValidationError
   validateImplFunctionList [] = []
-  validateImplFunctionList (MkSurfaceAstNode _ fd :: rest) =
+  validateImplFunctionList (MkAstNode _ _ fd :: rest) =
     validateFunctionDecl fd ++ validateImplFunctionList rest
 
   -- Const initializers are NOT function bodies: `return` inside one is an
@@ -476,7 +476,7 @@ mutual
        List SurfaceContractClause
     -> List ValidationError
   validateContractClauseList [] = []
-  validateContractClauseList (MkSurfaceAstNode _ clause :: rest) =
+  validateContractClauseList (MkAstNode _ _ clause :: rest) =
     (case clause of
        RequiresClause p => validateContractPredicate p
        EnsuresClause p  => validateContractPredicate p)
@@ -485,7 +485,7 @@ mutual
   validateContractPredicate :
        SurfaceAstNode (ContractPredicateNode SurfaceExpr)
     -> List ValidationError
-  validateContractPredicate (MkSurfaceAstNode _ predicate) =
+  validateContractPredicate (MkAstNode _ _ predicate) =
     case predicate of
       ContractClean e          => validateExpr topLevelContext e
       ContractBasis e _        => validateExpr topLevelContext e
@@ -502,7 +502,7 @@ mutual
   ------------------------------------------------------------------
 
   validateBlock : ValidationContext -> SurfaceBlock -> List ValidationError
-  validateBlock ctx (MkSurfaceAstNode _ (MkBlockNode _ stmts finalE)) =
+  validateBlock ctx (MkAstNode _ _ (MkBlockNode _ stmts finalE)) =
        validateStatementList ctx stmts
     ++ validateMaybeExpr ctx finalE
 
@@ -518,7 +518,7 @@ mutual
        ValidationContext
     -> SurfaceStatement
     -> List ValidationError
-  validateStatement ctx (MkSurfaceAstNode _ stmt) =
+  validateStatement ctx (MkAstNode _ _ stmt) =
     case stmt of
       StatementLet (MkLetBindingNode quals _ tyAnn maybeInit) =>
            validateQualifierList quals
@@ -537,7 +537,7 @@ mutual
        ValidationContext
     -> SurfaceAstNode AssignmentTargetNode
     -> List ValidationError
-  validateAssignmentTarget ctx (MkSurfaceAstNode _ target) =
+  validateAssignmentTarget ctx (MkAstNode _ _ target) =
     case target of
       AssignTargetName _             => []
       AssignTargetIndex obj idx      =>
@@ -566,7 +566,7 @@ mutual
   validateMaybeExpr ctx (Just e) = validateExpr ctx e
 
   validateExpr : ValidationContext -> SurfaceExpr -> List ValidationError
-  validateExpr ctx (MkSurfaceAstNode info expr) =
+  validateExpr ctx (MkAstNode info _ expr) =
     case expr of
       ExprLiteral _  => []
       ExprName _     => []
@@ -632,12 +632,12 @@ mutual
         ++ validateBlock (MkValidationContext True ctx.insideFunctionBody) body
 
       ExprBreak breakValue =>
-        (if ctx.insideLoop then [] else [BreakOutsideLoop (astInfoSpan info)])
+        (if ctx.insideLoop then [] else [BreakOutsideLoop info.span])
           ++ validateMaybeExpr ctx breakValue
       ExprContinue =>
-        if ctx.insideLoop then [] else [ContinueOutsideLoop (astInfoSpan info)]
+        if ctx.insideLoop then [] else [ContinueOutsideLoop info.span]
       ExprReturn returnValue =>
-        (if ctx.insideFunctionBody then [] else [ReturnOutsideFunction (astInfoSpan info)])
+        (if ctx.insideFunctionBody then [] else [ReturnOutsideFunction info.span])
           ++ validateMaybeExpr ctx returnValue
 
       ExprCtrl c    => validateControlExpr ctx c
@@ -648,7 +648,7 @@ mutual
     -> List (SurfaceAstNode FieldInitializerNode)
     -> List ValidationError
   validateFieldInitList ctx [] = []
-  validateFieldInitList ctx (MkSurfaceAstNode _ f :: rest) =
+  validateFieldInitList ctx (MkAstNode _ _ f :: rest) =
     (case f of
        FieldInitShorthand _   => []
        FieldInitExplicit _ e  => validateExpr ctx e)
@@ -662,7 +662,7 @@ mutual
     ++ (case elseBranch of
           Nothing                => []
           Just (ElseBlock b)     => validateBlock ctx b
-          Just (ElseChainedIf (MkSurfaceAstNode _ chained)) =>
+          Just (ElseChainedIf (MkAstNode _ _ chained)) =>
             validateClassicalIf ctx chained)
 
   validateQuantumBranch :
@@ -678,7 +678,7 @@ mutual
     -> List ValidationError
   validateClassicalArmList ctx [] = []
   validateClassicalArmList ctx
-    (MkSurfaceAstNode _ (MkClassicalMatchArmNode _ guard armBody) :: rest) =
+    (MkAstNode _ _ (MkClassicalMatchArmNode _ guard armBody) :: rest) =
        validateMaybeExpr ctx guard
     ++ validateExpr ctx armBody
     ++ validateClassicalArmList ctx rest
@@ -689,7 +689,7 @@ mutual
     -> List ValidationError
   validateQuantumArmBodies ctx [] = []
   validateQuantumArmBodies ctx
-    (MkSurfaceAstNode _ (MkQuantumMatchArmNode _ armBody) :: rest) =
+    (MkAstNode _ _ (MkQuantumMatchArmNode _ armBody) :: rest) =
     validateExpr ctx armBody ++ validateQuantumArmBodies ctx rest
 
   validateControlExpr :
@@ -730,7 +730,7 @@ mutual
   validateMaybeTy ctx (Just t) = validateTy ctx t
 
   validateTy : ValidationContext -> SurfaceTy -> List ValidationError
-  validateTy ctx (MkSurfaceAstNode _ ty) =
+  validateTy ctx (MkAstNode _ _ ty) =
     case ty of
       TyPrimitive _        => []
       TyPath _             => []
@@ -740,12 +740,12 @@ mutual
       TyArray element size =>
         validateTy ctx element ++ validateExpr ctx size
       TySlice element      => validateTy ctx element
-      TyReference (MkSurfaceAstNode borrowInfo borrow)
-                  innerNode@(MkSurfaceAstNode _ innerTy) =>
+      TyReference (MkAstNode borrowInfo _ borrow)
+                  innerNode@(MkAstNode _ _ innerTy) =>
         (case borrow of
            MutableBorrow =>
              if isSyntacticallyQubitTy innerTy
-               then [MutableBorrowOfQubit (astInfoSpan borrowInfo)]
+               then [MutableBorrowOfQubit borrowInfo.span]
                else []
            SharedBorrow  => [])
           ++ validateTy ctx innerNode
@@ -762,5 +762,5 @@ mutual
     -> List ValidationError
   validateFunctionTypeParams ctx [] = []
   validateFunctionTypeParams ctx
-    (MkSurfaceAstNode _ (MkFunctionTypeParameterNode _ paramTy) :: rest) =
+    (MkAstNode _ _ (MkFunctionTypeParameterNode _ paramTy) :: rest) =
     validateTy ctx paramTy ++ validateFunctionTypeParams ctx rest

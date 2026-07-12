@@ -317,8 +317,8 @@ public export
 showSymbolLeaf : Symbol -> String
 showSymbolLeaf sym =
   case sym of
-    SymAmp         => "&"
     SymHash        => "#"
+    SymAmp         => "&"
     SymLParen      => "("
     SymRParen      => ")"
     SymLBracket    => "["
@@ -329,6 +329,7 @@ showSymbolLeaf sym =
     SymSemi        => ";"
     SymColon       => ":"
     SymDot         => "."
+    SymBang        => "!"
     SymEq          => "="
     SymPlus        => "+"
     SymMinus       => "-"
@@ -345,10 +346,6 @@ showSymbolLeaf sym =
     SymGe          => ">="
     SymLt          => "<"
     SymLe          => "<="
-    SymShl         => "<<"
-    SymShlEq       => "<<="
-    SymShr         => ">>"
-    SymShrEq       => ">>="
     SymEqEq        => "=="
     SymNotEq       => "!="
     SymAndAnd      => "&&"
@@ -360,10 +357,13 @@ showSymbolLeaf sym =
     SymCaret       => "^"
     SymArrow       => "->"
     SymFatArrow    => "=>"
+    SymShl         => "<<"
+    SymShlEq       => "<<="
+    SymShr         => ">>"
+    SymShrEq       => ">>="
     SymAndEq       => "&="
     SymOrEq        => "|="
     SymCaretEq     => "^="
-    SymBang        => "!"
 
 public export
 implementation Show Symbol where
@@ -396,7 +396,7 @@ symbolTable = map (\sym => (showSymbolLeaf sym, sym)) values
 --   TokTypPrim TypPrimI32
 --   TokSym SymPlusEq
 --   TokBuiltin BuiltinMeasr
---   TokUnderscore
+--   TokUnderscore "_"
 --   TokEOF
 ----------------------------------------------------------------------
 public export
@@ -420,6 +420,29 @@ data Token
   | TokEOF
 
 %runElab derive "Token" [Show, Eq]
+
+public export
+Interpolation Token where
+  interpolate token =
+    case token of
+      TokIdent rawText             => rawText
+      TokIntLitRaw rawText         => rawText
+      TokFloatLitRaw rawText       => rawText
+      TokByteLitRaw rawText        => rawText
+      TokByteStringLitRaw rawText  => rawText
+      TokBasisStringLitRaw rawText => rawText
+      TokStringLitRaw rawText      => rawText
+      TokOuterDoc rawText          => rawText
+      TokInnerDoc rawText          => rawText
+      TokBoolLit True              => "true"
+      TokBoolLit False             => "false"
+      TokStateLit state            => showStateBasisLeaf state
+      TokKw keyword                => showKeywordLeaf keyword
+      TokTypPrim typ               => showTypPrimLeaf typ
+      TokSym symbol                => showSymbolLeaf symbol
+      TokBuiltin builtin           => showBuiltinLeaf builtin
+      TokUnderscore                => "_"
+      TokEOF                       => "end of input"
 
 ----------------------------------------------------------------------
 -- Boolean literals. Only two spellings, spelled out directly rather than

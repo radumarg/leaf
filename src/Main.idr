@@ -24,5 +24,5 @@ main = do
         Right tokens => do
           putStrLn $ "Tokens: " ++ show tokens
           case parseFile tokens of
-            Left err => putStrLn $ "Parse error: " ++ show err
+            Left err => putStrLn $ "Parse error at: " ++ show err.bounds ++ ", " ++ renderParseError err.val
             Right program => putStrLn $ "Parsed program:\n" ++ showSourceFileLax program

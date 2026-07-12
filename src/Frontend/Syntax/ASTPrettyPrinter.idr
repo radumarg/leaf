@@ -120,16 +120,16 @@ showTupleLike xs  = "(" ++ joinWith ", " xs ++ ")"
 --------------------------------------------------------------------------------
 
 showName : SurfaceName -> String
-showName (MkSurfaceAstNode _ (MkNameNode text)) = text
+showName (MkAstNode _ _ (MkNameNode text)) = text
 
 showPathSegment : SurfacePathSegment -> String
-showPathSegment (MkSurfaceAstNode _ seg) =
+showPathSegment (MkAstNode _ _ seg) =
   case seg of
     PathSegmentName s => s
     PathSegmentSelf   => "self"
 
 showPath : SurfacePath -> String
-showPath (MkSurfaceAstNode _ (MkPathNode first rest)) =
+showPath (MkAstNode _ _ (MkPathNode first rest)) =
   joinWith "::" (showPathSegment first :: map showPathSegment rest)
 
 --------------------------------------------------------------------------------
@@ -139,7 +139,7 @@ showPath (MkSurfaceAstNode _ (MkPathNode first rest)) =
 --------------------------------------------------------------------------------
 
 showLiteral : SurfaceLiteral -> String
-showLiteral (MkSurfaceAstNode _ lit) =
+showLiteral (MkAstNode _ _ lit) =
   case lit of
     LiteralIntegerRaw s     => s
     LiteralFloatRaw s       => s
@@ -157,7 +157,7 @@ showLiteral (MkSurfaceAstNode _ lit) =
 --------------------------------------------------------------------------------
 
 showDocComment : SurfaceDocComment -> String
-showDocComment (MkSurfaceAstNode _ (MkDocCommentNode _ _ rawText)) = rawText
+showDocComment (MkAstNode _ _ (MkDocCommentNode _ _ rawText)) = rawText
 
 -- A block of doc comments, one per line, immediately preceding whatever
 -- follows -- "" when there are none.
@@ -169,14 +169,14 @@ docsPrefix docs = concatMap (\d => showDocComment d ++ "\n") docs
 --------------------------------------------------------------------------------
 
 showAttributeArgument : SurfaceAttributeArgument -> String
-showAttributeArgument (MkSurfaceAstNode _ arg) =
+showAttributeArgument (MkAstNode _ _ arg) =
   case arg of
     AttributeArgumentName s      => s
     AttributeArgumentStringLit s => s
     AttributeArgumentIntLit s    => s
 
 showAttribute : SurfaceAttribute -> String
-showAttribute (MkSurfaceAstNode _ (MkAttributeNode nm margs)) =
+showAttribute (MkAstNode _ _ (MkAttributeNode nm margs)) =
   "#[" ++ showName nm ++
     (case margs of
        Nothing   => ""
@@ -197,15 +197,15 @@ visPrefix v = prefixSpace (show v)
 showQualifiersPrefix : List (SurfaceAstNode QuantumStorageQualifier) -> String
 showQualifiersPrefix []    = ""
 showQualifiersPrefix quals =
-  joinWith " " (map (\(MkSurfaceAstNode _ q) => show q) quals) ++ " "
+  joinWith " " (map (\(MkAstNode _ _ q) => show q) quals) ++ " "
 
 showOnBasis : Maybe (SurfaceAstNode String) -> String
 showOnBasis Nothing                    = ""
-showOnBasis (Just (MkSurfaceAstNode _ raw)) = ".on(" ++ raw ++ ")"
+showOnBasis (Just (MkAstNode _ _ raw)) = ".on(" ++ raw ++ ")"
 
 showQualifiersPrefix1 : List1 (SurfaceAstNode QuantumStorageQualifier) -> String
 showQualifiersPrefix1 quals =
-  joinWith " " (map (\(MkSurfaceAstNode _ q) => show q) (forget quals)) ++ " "
+  joinWith " " (map (\(MkAstNode _ _ q) => show q) (forget quals)) ++ " "
 
 --------------------------------------------------------------------------------
 -- Patterns (Frontend.Syntax.Pattern) -- self-recursive, but independent of
@@ -216,7 +216,7 @@ mutual
 
   public export
   showPattern : SurfacePattern -> String
-  showPattern (MkSurfaceAstNode _ pat) = showPatternNode pat
+  showPattern (MkAstNode _ _ pat) = showPatternNode pat
 
   showPatternNode : PatternNode -> String
   showPatternNode pat =
@@ -241,7 +241,7 @@ mutual
   showPatternList1 (p ::: ps) = showPattern p :: showPatternList ps
 
   showStructPatternField : SurfaceStructPatternField -> String
-  showStructPatternField (MkSurfaceAstNode _ f) =
+  showStructPatternField (MkAstNode _ _ f) =
     case f of
       StructPatternFieldShorthand mutability nm =>
         prefixSpace (show mutability) ++ showName nm
@@ -256,7 +256,7 @@ mutual
 -- Quantum match patterns: flat, not self-recursive.
 public export
 showQuantumMatchPattern : SurfaceQuantumMatchPattern -> String
-showQuantumMatchPattern (MkSurfaceAstNode _ pat) =
+showQuantumMatchPattern (MkAstNode _ _ pat) =
   case pat of
     QuantumPatternBasisStringRaw s => s
     QuantumPatternIntegerRaw s     => s
@@ -270,7 +270,7 @@ showQuantumMatchPattern (MkSurfaceAstNode _ pat) =
 --------------------------------------------------------------------------------
 
 showPauliString : SurfacePauliString -> String
-showPauliString (MkSurfaceAstNode _ (MkPauliStringNode ops)) =
+showPauliString (MkAstNode _ _ (MkPauliStringNode ops)) =
   joinWith "" (map show (forget ops))
 
 showStabilizerSign : StabilizerSign -> String
@@ -278,7 +278,7 @@ showStabilizerSign StabilizerPlus  = "+"
 showStabilizerSign StabilizerMinus = "-"
 
 showSignedPauliTerm : SurfaceSignedPauliTerm -> String
-showSignedPauliTerm (MkSurfaceAstNode _ (MkSignedPauliTermNode sign pauli)) =
+showSignedPauliTerm (MkAstNode _ _ (MkSignedPauliTermNode sign pauli)) =
   showStabilizerSign sign ++ showPauliString pauli
 
 --------------------------------------------------------------------------------
@@ -358,7 +358,7 @@ exprOwnPrecedence e =
     ExprIndex _ _                             => precPostfix
     ExprUnary _ _                               => precUnary
     ExprCast _ _                                  => precCast
-    ExprBinary (MkSurfaceAstNode _ op) _ _          => binaryOperatorPrecedence op
+    ExprBinary (MkAstNode _ _ op) _ _               => binaryOperatorPrecedence op
     ExprRange _ _ _                                   => precRange
     ExprBlock _                                         => precLowest
     ExprIf _                                              => precLowest
@@ -409,14 +409,14 @@ mutual
       TyArray elemTy sizeE           =>
         brackets (showTy style elemTy ++ "; " ++ showExprAt style 0 sizeE)
       TySlice elemTy                   => brackets (showTy style elemTy)
-      TyReference (MkSurfaceAstNode _ borrow) innerTy =>
+      TyReference (MkAstNode _ _ borrow) innerTy =>
         showBorrowPrefixed borrow (showTy style innerTy)
       TyQualified quals innerTy =>
         showQualifiersPrefix1 quals ++ showTy style innerTy
       TyFunction effect params retTy =>
         (case effect of
            Nothing                     => ""
-           Just (MkSurfaceAstNode _ eff) => show eff ++ " ") ++
+           Just (MkAstNode _ _ eff) => show eff ++ " ") ++
         "fn(" ++ joinWith ", " (showFunctionTypeParameterList style params) ++ ")" ++
         (case retTy of
            Nothing => ""
@@ -424,7 +424,7 @@ mutual
 
   public export
   showTy : PrettyStyle -> SurfaceTy -> String
-  showTy style (MkSurfaceAstNode _ ty) = showTyNode style ty
+  showTy style (MkAstNode _ _ ty) = showTyNode style ty
 
   showTyList : PrettyStyle -> List SurfaceTy -> List String
   showTyList style []        = []
@@ -438,7 +438,7 @@ mutual
     -> List (SurfaceAstNode (FunctionTypeParameterNode SurfaceExpr))
     -> List String
   showFunctionTypeParameterList style [] = []
-  showFunctionTypeParameterList style (MkSurfaceAstNode _ (MkFunctionTypeParameterNode nm ty) :: rest) =
+  showFunctionTypeParameterList style (MkAstNode _ _ (MkFunctionTypeParameterNode nm ty) :: rest) =
     (showName nm ++ ": " ++ showTy style ty) :: showFunctionTypeParameterList style rest
 
   ------------------------------------------------------------------
@@ -451,7 +451,7 @@ mutual
   -- precedence; `showExpr` below is the common case (no ambient requirement).
   public export
   showExprAt : PrettyStyle -> Nat -> SurfaceExpr -> String
-  showExprAt style outerReq (MkSurfaceAstNode _ value) = wrapExpr style outerReq value
+  showExprAt style outerReq (MkAstNode _ _ value) = wrapExpr style outerReq value
 
   public export
   showExpr : PrettyStyle -> SurfaceExpr -> String
@@ -500,18 +500,18 @@ mutual
       ExprIndex obj idx      =>
         showExprAt style precPostfix obj ++ "[" ++ showExprAt style 0 idx ++ "]"
 
-      ExprUnary (MkSurfaceAstNode _ op) operand =>
+      ExprUnary (MkAstNode _ _ op) operand =>
         let operandStr = showExprAt style precUnary operand in
         case op of
           UnaryNegate     => "-" ++ operandStr
           UnaryLogicalNot => "!" ++ operandStr
           UnaryBorrow b   => showBorrowPrefixed b operandStr
 
-      ExprBinary (MkSurfaceAstNode _ op) lhs rhs =>
+      ExprBinary (MkAstNode _ _ op) lhs rhs =>
         let p = binaryOperatorPrecedence op in
         showExprAt style p lhs ++ " " ++ show op ++ " " ++ showExprAt style (S p) rhs
 
-      ExprRange start (MkSurfaceAstNode _ op) end =>
+      ExprRange start (MkAstNode _ _ op) end =>
         (case start of
            Nothing => ""
            Just s  => showExprAt style (S precRange) s) ++
@@ -576,7 +576,7 @@ mutual
   showExprList1 style (e ::: es) = showExprAt style 0 e :: showExprList style es
 
   showFieldInit : PrettyStyle -> SurfaceAstNode FieldInitializerNode -> String
-  showFieldInit style (MkSurfaceAstNode _ f) =
+  showFieldInit style (MkAstNode _ _ f) =
     case f of
       FieldInitShorthand nm => showName nm
       FieldInitExplicit nm e => showName nm ++ ": " ++ showExprAt style 0 e
@@ -596,7 +596,7 @@ mutual
       (case elseBranch of
          Nothing                                          => ""
          Just (ElseBlock b)                                => " else " ++ showBlock style b
-         Just (ElseChainedIf (MkSurfaceAstNode _ chained)) =>
+         Just (ElseChainedIf (MkAstNode _ _ chained)) =>
            " else " ++ showClassicalIfNode style chained)
 
   showQuantumBranch : PrettyStyle -> QuantumBranchNode -> String
@@ -619,7 +619,7 @@ mutual
 
   public export
   showClassicalMatchArm : PrettyStyle -> SurfaceAstNode ClassicalMatchArmNode -> String
-  showClassicalMatchArm style (MkSurfaceAstNode _ arm) = showClassicalMatchArmNode style arm
+  showClassicalMatchArm style (MkAstNode _ _ arm) = showClassicalMatchArmNode style arm
 
   showClassicalMatchArmList :
        PrettyStyle -> List (SurfaceAstNode ClassicalMatchArmNode) -> List String
@@ -633,7 +633,7 @@ mutual
 
   public export
   showQuantumMatchArm : PrettyStyle -> SurfaceAstNode QuantumMatchArmNode -> String
-  showQuantumMatchArm style (MkSurfaceAstNode _ arm) = showQuantumMatchArmNode style arm
+  showQuantumMatchArm style (MkAstNode _ _ arm) = showQuantumMatchArmNode style arm
 
   showQuantumMatchArmList :
        PrettyStyle -> List (SurfaceAstNode QuantumMatchArmNode) -> List String
@@ -679,7 +679,7 @@ mutual
 
   public export
   showBlock : PrettyStyle -> SurfaceBlock -> String
-  showBlock style (MkSurfaceAstNode _ blk) = showBlockNode style blk
+  showBlock style (MkAstNode _ _ blk) = showBlockNode style blk
 
   showStatementNode : PrettyStyle -> StatementNode -> String
   showStatementNode style stmt =
@@ -691,7 +691,7 @@ mutual
 
   public export
   showStatement : PrettyStyle -> SurfaceStatement -> String
-  showStatement style (MkSurfaceAstNode _ stmt) = showStatementNode style stmt
+  showStatement style (MkAstNode _ _ stmt) = showStatementNode style stmt
 
   showStatementList : PrettyStyle -> List SurfaceStatement -> List String
   showStatementList style []        = []
@@ -705,15 +705,15 @@ mutual
          Just t  => ": " ++ showTy style t) ++
       (case maybeInit of
          Nothing                                       => ""
-         Just (MkLetInitializerNode (MkSurfaceAstNode _ marker) val) =>
+         Just (MkLetInitializerNode (MkAstNode _ _ marker) val) =>
            " " ++ show marker ++ " " ++ showExprAt style 0 val)
 
   public export
   showLetBinding : PrettyStyle -> SurfaceLetBinding -> String
-  showLetBinding style (MkSurfaceAstNode _ lb) = showLetBindingNode style lb
+  showLetBinding style (MkAstNode _ _ lb) = showLetBindingNode style lb
 
   showAssignmentNode : PrettyStyle -> AssignmentNode -> String
-  showAssignmentNode style (MkAssignmentNode (MkSurfaceAstNode _ target) (MkSurfaceAstNode _ op) val) =
+  showAssignmentNode style (MkAssignmentNode (MkAstNode _ _ target) (MkAstNode _ _ op) val) =
     showAssignmentTargetNode style target ++ " " ++ show op ++ " " ++ showExprAt style 0 val
 
   showAssignmentTargetNode : PrettyStyle -> AssignmentTargetNode -> String
@@ -727,7 +727,7 @@ mutual
 
   public export
   showAssignmentTarget : PrettyStyle -> SurfaceAssignmentTarget -> String
-  showAssignmentTarget style (MkSurfaceAstNode _ t) = showAssignmentTargetNode style t
+  showAssignmentTarget style (MkAstNode _ _ t) = showAssignmentTargetNode style t
 
   ------------------------------------------------------------------
   -- Contracts: requires/ensures clauses and their predicates
@@ -751,7 +751,7 @@ mutual
 
   public export
   showContractPredicate : PrettyStyle -> SurfaceContractPredicate -> String
-  showContractPredicate style (MkSurfaceAstNode _ p) = showContractPredicateNode style p
+  showContractPredicate style (MkAstNode _ _ p) = showContractPredicateNode style p
 
   showContractClauseNode : PrettyStyle -> ContractClauseNode SurfaceExpr -> String
   showContractClauseNode style clause =
@@ -761,7 +761,7 @@ mutual
 
   public export
   showContractClause : PrettyStyle -> SurfaceContractClause -> String
-  showContractClause style (MkSurfaceAstNode _ c) = showContractClauseNode style c
+  showContractClause style (MkAstNode _ _ c) = showContractClauseNode style c
 
   showContractClauseList : PrettyStyle -> List SurfaceContractClause -> List String
   showContractClauseList style []        = []
@@ -778,7 +778,7 @@ mutual
       NormalParameter docs mutability nm ty =>
         docsPrefix docs ++ prefixSpace (show mutability) ++ showName nm ++ ": " ++ showTy style ty
       ReceiverParameter docs Nothing => docsPrefix docs ++ "self"
-      ReceiverParameter docs (Just (MkSurfaceAstNode _ borrow)) =>
+      ReceiverParameter docs (Just (MkAstNode _ _ borrow)) =>
         docsPrefix docs ++
           (case borrow of
              SharedBorrow  => "&self"
@@ -786,7 +786,7 @@ mutual
 
   public export
   showFunctionParameter : PrettyStyle -> SurfaceFunctionParameter -> String
-  showFunctionParameter style (MkSurfaceAstNode _ p) = showFunctionParameterNode style p
+  showFunctionParameter style (MkAstNode _ _ p) = showFunctionParameterNode style p
 
   showFunctionParameterList : PrettyStyle -> List SurfaceFunctionParameter -> List String
   showFunctionParameterList style []        = []
@@ -798,7 +798,7 @@ mutual
     (MkFunctionDeclarationNode docs attrs vis isConst effect nm params retTy supports contracts body) =
     let effectStr = case effect of
                       Nothing                        => ""
-                      Just (MkSurfaceAstNode _ eff)  => show eff ++ " "
+                      Just (MkAstNode _ _ eff)  => show eff ++ " "
         constStr    = if isConst then "const " else ""
         paramsStr   = joinWith ", " (showFunctionParameterList style params)
         retStr      = case retTy of
@@ -807,7 +807,7 @@ mutual
         supportsStr = case supports of
                         [] => ""
                         _  => " supports " ++
-                              joinWith ", " (map (\(MkSurfaceAstNode _ k) => show k) supports)
+                              joinWith ", " (map (\(MkAstNode _ _ k) => show k) supports)
         contractsStr = concatMap (\c => " " ++ c) (showContractClauseList style contracts)
     in docsPrefix docs ++ attrsPrefix attrs ++ visPrefix vis ++ constStr ++ effectStr ++
        "fn " ++ showName nm ++ "(" ++ paramsStr ++ ")" ++ retStr ++ supportsStr ++
@@ -815,12 +815,12 @@ mutual
 
   public export
   showFunctionDeclaration : PrettyStyle -> SurfaceFunctionDeclaration -> String
-  showFunctionDeclaration style (MkSurfaceAstNode _ fd) = showFunctionDeclarationNode style fd
+  showFunctionDeclaration style (MkAstNode _ _ fd) = showFunctionDeclarationNode style fd
 
   showImplFunctionList :
        PrettyStyle -> List (SurfaceAstNode FunctionDeclarationNode) -> List String
   showImplFunctionList style []        = []
-  showImplFunctionList style (MkSurfaceAstNode _ fd :: rest) =
+  showImplFunctionList style (MkAstNode _ _ fd :: rest) =
     showFunctionDeclarationNode style fd :: showImplFunctionList style rest
 
   ------------------------------------------------------------------
@@ -828,7 +828,7 @@ mutual
   ------------------------------------------------------------------
 
   showStructField : PrettyStyle -> SurfaceAstNode StructFieldNode -> String
-  showStructField style (MkSurfaceAstNode _ (MkStructFieldNode docs nm ty)) =
+  showStructField style (MkAstNode _ _ (MkStructFieldNode docs nm ty)) =
     docsPrefix docs ++ showName nm ++ ": " ++ showTy style ty
 
   showStructFieldList : PrettyStyle -> List (SurfaceAstNode StructFieldNode) -> List String
@@ -842,7 +842,7 @@ mutual
 
   public export
   showStructDeclaration : PrettyStyle -> SurfaceStructDeclaration -> String
-  showStructDeclaration style (MkSurfaceAstNode _ sd) = showStructDeclarationNode style sd
+  showStructDeclaration style (MkAstNode _ _ sd) = showStructDeclarationNode style sd
 
   showEnumVariantBody : PrettyStyle -> EnumVariantBody -> String
   showEnumVariantBody style body =
@@ -852,7 +852,7 @@ mutual
       VariantStruct fields   => " " ++ braces (joinWith ", " (showStructFieldList style fields))
 
   showEnumVariant : PrettyStyle -> SurfaceAstNode EnumVariantNode -> String
-  showEnumVariant style (MkSurfaceAstNode _ (MkEnumVariantNode docs nm body)) =
+  showEnumVariant style (MkAstNode _ _ (MkEnumVariantNode docs nm body)) =
     docsPrefix docs ++ showName nm ++ showEnumVariantBody style body
 
   showEnumVariantList : PrettyStyle -> List (SurfaceAstNode EnumVariantNode) -> List String
@@ -866,10 +866,10 @@ mutual
 
   public export
   showEnumDeclaration : PrettyStyle -> SurfaceEnumDeclaration -> String
-  showEnumDeclaration style (MkSurfaceAstNode _ ed) = showEnumDeclarationNode style ed
+  showEnumDeclaration style (MkAstNode _ _ ed) = showEnumDeclarationNode style ed
 
   showQEnumVariant : PrettyStyle -> SurfaceAstNode QEnumVariantNode -> String
-  showQEnumVariant style (MkSurfaceAstNode _ (MkQEnumVariantNode docs nm payloadTys)) =
+  showQEnumVariant style (MkAstNode _ _ (MkQEnumVariantNode docs nm payloadTys)) =
     docsPrefix docs ++ showName nm ++ parens (joinWith ", " (showTyList1 style payloadTys))
 
   showQEnumVariantList : PrettyStyle -> List (SurfaceAstNode QEnumVariantNode) -> List String
@@ -883,7 +883,7 @@ mutual
 
   public export
   showQEnumDeclaration : PrettyStyle -> SurfaceQEnumDeclaration -> String
-  showQEnumDeclaration style (MkSurfaceAstNode _ qd) = showQEnumDeclarationNode style qd
+  showQEnumDeclaration style (MkAstNode _ _ qd) = showQEnumDeclarationNode style qd
 
   ------------------------------------------------------------------
   -- impl / const / use / mod declarations
@@ -896,7 +896,7 @@ mutual
 
   public export
   showImplDeclaration : PrettyStyle -> SurfaceImplDeclaration -> String
-  showImplDeclaration style (MkSurfaceAstNode _ impl) = showImplDeclarationNode style impl
+  showImplDeclaration style (MkAstNode _ _ impl) = showImplDeclarationNode style impl
 
   showConstDeclarationNode : PrettyStyle -> ConstDeclarationNode -> String
   showConstDeclarationNode style (MkConstDeclarationNode docs vis nm ty val) =
@@ -905,7 +905,7 @@ mutual
 
   public export
   showConstDeclaration : PrettyStyle -> SurfaceConstDeclaration -> String
-  showConstDeclaration style (MkSurfaceAstNode _ cd) = showConstDeclarationNode style cd
+  showConstDeclaration style (MkAstNode _ _ cd) = showConstDeclarationNode style cd
 
   showUseDeclarationNode : PrettyStyle -> UseDeclarationNode -> String
   showUseDeclarationNode style (MkUseDeclarationNode docs vis path) =
@@ -913,7 +913,7 @@ mutual
 
   public export
   showUseDeclaration : PrettyStyle -> SurfaceUseDeclaration -> String
-  showUseDeclaration style (MkSurfaceAstNode _ ud) = showUseDeclarationNode style ud
+  showUseDeclaration style (MkAstNode _ _ ud) = showUseDeclarationNode style ud
 
   showModuleDeclarationNode : PrettyStyle -> ModuleDeclarationNode -> String
   showModuleDeclarationNode style (MkModuleDeclarationNode docs vis nm body) =
@@ -928,7 +928,7 @@ mutual
 
   public export
   showModuleDeclaration : PrettyStyle -> SurfaceModuleDeclaration -> String
-  showModuleDeclaration style (MkSurfaceAstNode _ md) = showModuleDeclarationNode style md
+  showModuleDeclaration style (MkAstNode _ _ md) = showModuleDeclarationNode style md
 
   ------------------------------------------------------------------
   -- Items and the source file
@@ -948,7 +948,7 @@ mutual
 
   public export
   showItem : PrettyStyle -> SurfaceItem -> String
-  showItem style (MkSurfaceAstNode _ item) = showItemNode style item
+  showItem style (MkAstNode _ _ item) = showItemNode style item
 
   showItemList : PrettyStyle -> List SurfaceItem -> List String
   showItemList style []        = []
@@ -960,7 +960,7 @@ mutual
 
   public export
   showSourceFile : PrettyStyle -> SurfaceSourceFile -> String
-  showSourceFile style (MkSurfaceAstNode _ sf) = showSourceFileNode style sf
+  showSourceFile style (MkAstNode _ _ sf) = showSourceFileNode style sf
 
 --------------------------------------------------------------------------------
 -- Public convenience wrappers
