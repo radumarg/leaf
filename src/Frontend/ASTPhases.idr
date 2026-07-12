@@ -10,7 +10,7 @@ import Frontend.Type
 -- Phase-specific AST wrappers
 --------------------------------------------------------------------------------
 
-data AstPhase     -- The four phases of the AST, each with its own metadata.
+data AstPhase     -- The four phases of processing the AST, each with its own metadata.
   = Surface       -- parser output
   | Canonical     -- desugaring output
   | Resolved      -- name and scope resolution output

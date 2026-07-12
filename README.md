@@ -28,13 +28,8 @@
 
 WIP
 
-<!-- Language:
-- Frontend - wip
-- High level IR
-- Idris2 DSL 90%
+## TODO
 
-Code generator:
-- Type checker
-- First compiler pass (surface syntax ->  high level IR)
-- Second compiler pass (high level IR -> Idris2 DSL).
-- Third compiler pass (serialization to OpenQasm3) -->
+[Features Pending Implementation](docs/todo.md)
+
+
