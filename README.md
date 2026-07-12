@@ -14,8 +14,9 @@
 
 
 [![Issues](https://img.shields.io/github/issues/radumarg/leaf-qpl)](https://github.com/radumarg/leaf-qpl/issues)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/radumarg/leaf-qpl/blob/main/LICENSE)
+[![Tests](https://github.com/radumarg/leaf-qpl/actions/workflows/test.yml/badge.svg)](https://github.com/radumarg/leaf-qpl/actions/workflows/test.yml)
 ![Status](https://img.shields.io/badge/status-WIP-orange)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/radumarg/leaf-qpl/blob/main/LICENSE)
 [![Idris 2](https://img.shields.io/badge/Idris%202-v0.8.0-blue.svg)](https://github.com/idris-lang/Idris2/releases/tag/v0.8.0)
 ![Lean4](https://img.shields.io/badge/Lean4-theorem%20proving-6f42c1)
 <!-- [![Supported By Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.foundation/) -->
@@ -31,5 +32,4 @@ WIP
 ## Todo
 
 [Pending Features](docs/todo.md)
-
 
