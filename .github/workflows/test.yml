@@ -1,0 +1,37 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Chez Scheme
+        run: sudo apt-get update && sudo apt-get install -y chezscheme
+
+      - name: Cache Pack and Idris 2
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/state/pack
+            ~/.local/bin
+            ~/.cache/pack
+            ~/.config/pack
+          key: pack-${{ runner.os }}-${{ hashFiles('pack.toml', '*.ipkg', 'test/*.ipkg') }}
+
+      - name: Install Pack
+        run: |
+          if ! test -x "$HOME/.local/bin/pack"; then
+            printf '\n' | bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
+          fi
+
+      - name: Run tests
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          pack test leaf
