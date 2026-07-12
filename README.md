@@ -30,6 +30,6 @@ WIP
 
 ## TODO
 
-[Features Pending Implementation](docs/todo.md)
+[Implementation Pending](docs/todo.md)
 
 
