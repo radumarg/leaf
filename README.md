@@ -14,6 +14,7 @@
 
 
 ![Status](https://img.shields.io/badge/status-WIP-orange)
+<!-- ![Development status: Alpha](https://img.shields.io/badge/development%20status-alpha-orange) -->
 [![Tests](https://github.com/radumarg/leaf-qpl/actions/workflows/test.yml/badge.svg)](https://github.com/radumarg/leaf-qpl/actions/workflows/test.yml)
 [![Issues](https://img.shields.io/github/issues/radumarg/leaf-qpl)](https://github.com/radumarg/leaf-qpl/issues)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/radumarg/leaf-qpl/blob/main/LICENSE)
