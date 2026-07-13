@@ -33,7 +33,7 @@
 * Practical by construction: compiles to OpenQASM 3, with QIR support planned.
 * Built for the fault-tolerant quantum computing era.
 
-Simple code example:
+Code example:
 
 ```leaf
 general fn coin_flip() -> bit {
