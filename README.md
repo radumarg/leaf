@@ -27,7 +27,7 @@
 * A statically typed quantum programming language with Rust-like syntax and conservative quantum extensions that preserve the look and feel of Rust.
 * Linear qubit ownership and mutable borrowing: no-cloning and qubit-use discipline are enforced statically by the type checker.
 * Safe ancilla management, with support for automatic uncomputation.
-* Lightweight quantum contracts (`requires`, `ensures`) for tracking properties of entanglement for program qubits at compile time.
+* Lightweight quantum contracts for tracking properties of entanglement for program qubits at compile time.
 * Designed for formal verification, with program properties proved in Lean 4 against a type-safe intermediate representation.
 * Detailed diagnostics designed for both human developers and AI-assisted code generation.
 * Practical by construction: compiles to OpenQASM 3, with QIR support planned.
