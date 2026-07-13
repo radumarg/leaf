@@ -10,68 +10,114 @@ import Frontend.Token
 import Frontend.Syntax.AST
 import Frontend.Syntax.Doc
 import Frontend.Parser.Error
+import Frontend.Parser.Helper
 
 %default total
 
 0 Rule : Bool -> Type -> Type
 Rule strict result =
-    (tokens : List (Bounded Token))
+     (nextNodeId : Nat)
+  -> (tokens : List (Bounded Token))
   -> (0 acc : SuffixAcc tokens)
-  -> Res strict Token tokens Void result
+  -> Res strict Token tokens Void (result, Nat)
 
 parseItem : Rule True SurfaceItem
-parseItem tokens acc = ?parseItem_rhs
+parseItem nodeId [] acc =
+    Fail0 (B EOI NoBounds)
+parseItem nodeId tokens@((B token bounds) :: remaining) acc =
+    let itemId = MkNodeId nodeId
+        nextNodeId = S nodeId
+     in case token of
+            TokKw KwFn =>
+                ?parse_function_item
+
+            TokKw KwStruct =>
+                ?parse_struct_item
+
+            TokKw KwEnum =>
+                ?parse_enum_item
+
+            TokKw KwQenum =>
+                ?parse_qenum_item
+
+            TokKw KwImpl =>
+                ?parse_impl_item
+
+            -- This may begin either a const declaration or `const fn`.
+            TokKw KwConst =>
+                ?parse_const_item
+
+            TokKw KwUse =>
+                ?parse_use_item
+
+            TokKw KwMod =>
+                ?parse_module_item
+
+            -- Visibility, documentation, attributes, and function effects
+            -- precede the keyword that determines the ItemNode constructor.
+            TokKw KwPub =>
+                ?parse_public_item
+
+            TokOuterDoc _ =>
+                ?parse_documented_item
+
+            TokSym _ =>
+                ?parse_possibly_attributed_item
+
+            TokKw KwUnitary =>
+                ?parse_unitary_function_item
+
+            TokKw KwClassical =>
+                ?parse_classical_function_item
+
+            TokKw KwGeneral =>
+                ?parse_general_function_item
+
+            _ =>
+                ?parse_unexpected_item
 
 parseItems : SnocList SurfaceItem -> Rule False (List SurfaceItem)
-parseItems items [] _ =
-    Succ0 (items <>> []) []
-parseItems items tokens acc@(SA recur) =
-    case parseItem tokens acc of
+parseItems items nextNodeId [] _ =
+    Fail0 (B EOI NoBounds)  -- every valid token stream must contain TokEOF
+parseItems items nextNodeId
+           ((B TokEOF _) :: remaining)
+           (SA recur) =
+    Succ0 (items <>> [], nextNodeId) remaining
+parseItems items nextNodeId tokens acc@(SA recur) =
+    case parseItem nextNodeId tokens acc of
         Fail0 err =>
             Fail0 err
 
-        Succ0 item remaining =>
-            succF $ parseItems (items :< item) remaining recur
+        Succ0 (item, followingNodeId) remaining =>
+            succF $ parseItems (items :< item) followingNodeId remaining recur
 
-lastItemSpan : SurfaceItem -> List SurfaceItem -> SourceSpan
-lastItemSpan item [] =
-    item.astInfo.span
-lastItemSpan _ (item :: rest) =
-    lastItemSpan item rest
-
-sourceFileInfo : List SurfaceItem -> AstInfo
-sourceFileInfo [] =
-    let start = MkSourcePos 1 1 0 in
-        MkAstInfo (MkNodeId 0) (MkSourceSpan "" start start)
-sourceFileInfo (first :: rest) =
-    let firstSpan = first.astInfo.span
-        lastSpan = lastItemSpan first rest
-     in MkAstInfo (MkNodeId 0) (mergeSpans firstSpan lastSpan)
-
-parseSourceFile : Rule False SurfaceSourceFile
-parseSourceFile tokens acc =
-    case parseItems [<] tokens acc of
+parseModule : Rule False SurfaceSourceFile
+parseModule firstItemNodeId tokens acc =
+    case parseItems [<] firstItemNodeId tokens acc of
         Fail0 err =>
             Fail0 err
 
-        Succ0 items remaining =>
+        Succ0 (items, nextNodeId) remaining =>
             Succ0
-                (surfaceAstNode
-                    (sourceFileInfo items)
-                    (MkSourceFileNode [] items))
+                ( surfaceAstNode
+                    (sourceFileInfo (MkNodeId 0) items) -- source file node id is always 0
+                    (MkSourceFileNode [] items)         -- ignore inner doc comments for now
+                , nextNodeId
+                )
                 remaining
 
-----------------------------------------------------------------------------------------------------
--- Main entry point: parseFile, using the idris2-parser library's machinery from Text.Parse.Manual.
------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
+-- Main entry point: parse file using the idris2-parser library's machinery from Text.Parse.Manual
+---------------------------------------------------------------------------------------------------
+
 public export
 parseFile : List (Bounded Token) -> Either (Bounded ParseError) SurfaceSourceFile
 parseFile tokens =
-    case parseSourceFile tokens suffixAcc of
+    case parseModule 1 tokens suffixAcc of  -- first item node id is 1 (0 is source file node id)
         Fail0 err =>
             Left err
 
-        Succ0 sourceFile [] =>
+        Succ0 (sourceFile, _) [] =>
             Right sourceFile
 
         Succ0 _ (token :: _) =>
