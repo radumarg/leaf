@@ -53,7 +53,7 @@ general fn main() -> bit {
 
 ## Progress Status
 
-An alpha release will be available relatively soon.
+An alpha release is planned for fall 2026.
 
 ## Todo
 
