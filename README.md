@@ -22,7 +22,7 @@
 <!-- [![Supported By Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.foundation/) -->
 <!-- ![Development status: Alpha](https://img.shields.io/badge/development%20status-alpha-orange) -->
 
-## About
+## About — This project is still a work in progress.
 
 * A statically typed quantum programming language with Rust-like syntax and conservative quantum extensions that preserve the look and feel of Rust.
 * Linear qubit ownership and mutable borrowing: no-cloning and qubit-use discipline are enforced statically by the type checker.
@@ -53,7 +53,7 @@ general fn main() -> bit {
 
 ## Progress Status
 
-WIP
+An alpha release will be available relatively soon.
 
 ## Todo
 
