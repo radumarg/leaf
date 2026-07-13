@@ -3,11 +3,21 @@
 
 This document compiles the lists of features which are covered by the [language documentation](README.md) but not yet supported in code.
 
-- quantum contracts
+- Recursion
+- Adjoint operations
+- Uncomputation support
+- Affine & Scratch qubits
+- Quantum Contracts
+- Lean 4 code generation
+- Quantum Conditionals
+  - sif+selse & smatch.
+- Classical subroutines
+- Prelude math functions
+- Prelude functions overloading
 - Modules: declare, import & resolve.
 - Documentation comments
 - Consts
-- Enums
-- Structs + Impl blocks.
-- QEnums
-- sif+selse & smatch.
+- Sum & Product data types:
+  - Enums
+  - QEnums
+  - Structs + Impl blocks.
