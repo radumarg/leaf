@@ -1,6 +1,6 @@
 <table>
   <tr>
-    <td style="vertical-align: middle; padding-right: 20px;">
+    <td td align="center">
       <img src="files/leaf.png" alt="Leaf" height="200">
     </td>
     <td style="vertical-align: middle;">
@@ -23,6 +23,31 @@
 <!-- ![Development status: Alpha](https://img.shields.io/badge/development%20status-alpha-orange) -->
 
 ## About
+
+* A statically typed quantum programming language with Rust-like syntax and conservative quantum extensions that preserve the look and feel of Rust.
+* Linear qubit ownership and mutable borrowing: no-cloning and qubit-use discipline are enforced statically by the type checker.
+* Safe ancilla management, with support for automatic uncomputation.
+* Lightweight quantum contracts (`requires`, `ensures`) for expressing and checking entanglement, separation, and state-hygiene properties.
+* Designed for formal verification, with program properties proved in Lean 4 against a type-safe intermediate representation.
+* Detailed diagnostics designed for both human developers and AI-assisted code generation.
+* Practical by construction: compiles to OpenQASM 3, with QIR support planned.
+* Built for the fault-tolerant quantum computing era.
+
+Simple code example:
+
+```leaf
+general fn coin_flip() -> bit {
+    let q = qalloc();
+    H(&q);
+    measr(q)
+}
+
+general fn main() -> bit {
+    coin_flip()
+}
+```
+
+## Docs
 
 [Documentation](docs/README.md)
 
