@@ -21,9 +21,9 @@ Rule strict result =
   -> (0 acc : SuffixAcc tokens)
   -> Res strict Token tokens CustomParseError (result, Nat)
 
+
 parseItem : Rule True SurfaceItem
-parseItem nodeId [] acc =
-    Fail0 (B EOI NoBounds)
+parseItem nodeId [] acc = Fail0 (B EOI NoBounds)
 parseItem nodeId tokens@((B token bounds) :: remaining) acc =
     let itemId = MkNodeId nodeId
         nextNodeId = S nodeId
@@ -32,38 +32,26 @@ parseItem nodeId tokens@((B token bounds) :: remaining) acc =
                 ?parse_function_item
 
             TokKw KwStruct =>
-                Fail0
-                    (B (Custom (UnsupportedFeature "Structs are not yet supported."))
-                       bounds)
+                failWithMessage "Structs are not yet supported." bounds
 
             TokKw KwEnum =>
-                Fail0
-                    (B (Custom (UnsupportedFeature "Enums are not yet supported."))
-                       bounds)
+                failWithMessage "Enums are not yet supported." bounds
 
             TokKw KwQenum =>
-                Fail0
-                    (B (Custom (UnsupportedFeature "Qenums are not yet supported."))
-                       bounds)
+                failWithMessage "Qenums are not yet supported." bounds
 
             TokKw KwImpl =>
-                Fail0
-                    (B (Custom (UnsupportedFeature "Impls blocks for struct are not yet supported."))
-                       bounds)
+                failWithMessage "Impls blocks for struct are not yet supported." bounds
 
             -- This may begin either a const declaration or `const fn`.
             TokKw KwConst =>
                 ?parse_const_item
 
             TokKw KwUse =>
-                Fail0
-                    (B (Custom (UnsupportedFeature "Use statements are not yet supported."))
-                       bounds)
+                failWithMessage "Use statements are not yet supported." bounds
 
             TokKw KwMod =>
-                Fail0
-                    (B (Custom (UnsupportedFeature "Modules are not yet supported."))
-                       bounds)
+                failWithMessage "Modules are not yet supported." bounds
 
             -- Visibility, documentation, attributes, and function effects
             -- precede the keyword that determines the ItemNode constructor.
@@ -71,9 +59,7 @@ parseItem nodeId tokens@((B token bounds) :: remaining) acc =
                 ?parse_public_item
 
             TokOuterDoc _ =>
-                Fail0
-                    (B (Custom (UnsupportedFeature "Outer doc comments are not yet supported."))
-                       bounds)
+                failWithMessage "Outer doc comments are not yet supported." bounds
 
             TokSym _ =>
                 ?parse_possibly_attributed_item

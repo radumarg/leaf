@@ -14,8 +14,8 @@ import Frontend.Token
 
 %default total
 
-lexThenParseModule : String -> Maybe SurfaceSourceFile
-lexThenParseModule inputProgram =
+lexThenParse : String -> Maybe SurfaceSourceFile
+lexThenParse inputProgram =
   case lexFile inputProgram of
       Left _ => Nothing
       Right tokens => case parseFile tokens of
@@ -24,7 +24,7 @@ lexThenParseModule inputProgram =
 
 parseAndPrettyPrint : String -> Maybe String
 parseAndPrettyPrint inputProgram =
-  case lexThenParseModule inputProgram of
+  case lexThenParse inputProgram of
     Nothing => Nothing
     Just sourceFile => Just (showSourceFileLax sourceFile)
 
