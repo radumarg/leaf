@@ -67,9 +67,9 @@ general fn main() -> bit {
 | Lambda Calculus Code Generator| Planned     |
 | Idris2 DSL                    | Implemented |
 | Idris DSL Lowering Pass       | Planned     |
-| Lean Interface                | Planned     |
 | OpenQASM 3 Serializer         | In progress |
 | Alpha release                 | Fall 2026   |
+| Lean Interface                | Planned     |
 
 <!-- ## Todo
 
