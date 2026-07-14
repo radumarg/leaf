@@ -53,9 +53,25 @@ general fn main() -> bit {
 
 ## Progress Status
 
-An alpha release is planned for fall 2026.
+| Capability                    | Status      |
+| ----------------------------  | ----------- |
+| Language Design & Docs        | Implemented |
+| Lexer                         | Implemented |
+| Parser                        | In progress |
+| Surface AST                   | In progress |
+| Semantic Analyzer             | In progress |
+| De-sugaring                   | Planned     |
+| Scope & name resolution       | Planned     |
+| Type checker                  | Planned     |
+| Quantum Lambda Calculus IR    | Planned     |
+| Lambda Calculus Code Generator| Planned     |
+| Idris2 DSL                    | Implemented |
+| Idris DSL Lowering Pass       | In progress |
+| Lean interface                | Planned     |
+| OpenQASM 3 Serializer         | In progress |
+| Alpha release                 | Fall 2026   |
 
-## Todo
+<!-- ## Todo
 
-[Pending Features](docs/todo.md)
+[Pending Features](docs/todo.md) -->
 
