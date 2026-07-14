@@ -6,12 +6,16 @@ import public Text.ParseError
 %default total
 
 public export
+data CustomParseError
+    = UnsupportedFeature String
+
+public export
 0 ParseError : Type
-ParseError = InnerError Void
+ParseError = InnerError CustomParseError
 
 public export
 renderParseError : ParseError -> String
-renderParseError (Custom value) impossible
+renderParseError (Custom (UnsupportedFeature message)) = message
 renderParseError EOI = "Unexpected end of input"
 renderParseError (Expected expected actual) =
   "Expected " ++ show expected ++ ", but got " ++ actual

@@ -10,6 +10,7 @@ depends = leaf,
           simple-tests
 
 modules = Lexer.LexerTest,
+          Parser.BasicParseTest,
           Run
 
 main = Run

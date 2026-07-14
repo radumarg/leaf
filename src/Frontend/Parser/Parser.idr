@@ -19,7 +19,7 @@ Rule strict result =
      (nextNodeId : Nat)
   -> (tokens : List (Bounded Token))
   -> (0 acc : SuffixAcc tokens)
-  -> Res strict Token tokens Void (result, Nat)
+  -> Res strict Token tokens CustomParseError (result, Nat)
 
 parseItem : Rule True SurfaceItem
 parseItem nodeId [] acc =
@@ -32,26 +32,38 @@ parseItem nodeId tokens@((B token bounds) :: remaining) acc =
                 ?parse_function_item
 
             TokKw KwStruct =>
-                ?parse_struct_item
+                Fail0
+                    (B (Custom (UnsupportedFeature "Structs are not yet supported."))
+                       bounds)
 
             TokKw KwEnum =>
-                ?parse_enum_item
+                Fail0
+                    (B (Custom (UnsupportedFeature "Enums are not yet supported."))
+                       bounds)
 
             TokKw KwQenum =>
-                ?parse_qenum_item
+                Fail0
+                    (B (Custom (UnsupportedFeature "Qenums are not yet supported."))
+                       bounds)
 
             TokKw KwImpl =>
-                ?parse_impl_item
+                Fail0
+                    (B (Custom (UnsupportedFeature "Impls blocks for struct are not yet supported."))
+                       bounds)
 
             -- This may begin either a const declaration or `const fn`.
             TokKw KwConst =>
                 ?parse_const_item
 
             TokKw KwUse =>
-                ?parse_use_item
+                Fail0
+                    (B (Custom (UnsupportedFeature "Use statements are not yet supported."))
+                       bounds)
 
             TokKw KwMod =>
-                ?parse_module_item
+                Fail0
+                    (B (Custom (UnsupportedFeature "Modules are not yet supported."))
+                       bounds)
 
             -- Visibility, documentation, attributes, and function effects
             -- precede the keyword that determines the ItemNode constructor.
@@ -59,7 +71,9 @@ parseItem nodeId tokens@((B token bounds) :: remaining) acc =
                 ?parse_public_item
 
             TokOuterDoc _ =>
-                ?parse_documented_item
+                Fail0
+                    (B (Custom (UnsupportedFeature "Outer doc comments are not yet supported."))
+                       bounds)
 
             TokSym _ =>
                 ?parse_possibly_attributed_item
