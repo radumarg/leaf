@@ -22,8 +22,8 @@ parseModule inputProgram =
         Left _ => Nothing
         Right ast => Just ast
 
-prettyPrintModule : String -> Maybe String
-prettyPrintModule inputProgram =
+parseAndPrettyPrint : String -> Maybe String
+parseAndPrettyPrint inputProgram =
   case parseModule inputProgram of
     Nothing => Nothing
     Just sourceFile => Just (showSourceFileLax sourceFile)
@@ -33,4 +33,4 @@ runBasicParseTests : IO ()
 runBasicParseTests = runTests $ Test.do
 
   test "empty input parses as an empty source file" $
-    prettyPrintModule "" `shouldBe` Just ""
+    parseAndPrettyPrint "" `shouldBe` Just ""
