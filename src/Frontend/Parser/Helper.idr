@@ -12,6 +12,18 @@ import Frontend.Syntax.AST
 
 %default total
 
+-- TODO: review
+sourcePos : Position -> SourcePos
+sourcePos (P line column) = MkSourcePos (S line) (S column) 0
+-- TODO: review
+public export
+sourceSpan : Bounds -> SourceSpan
+sourceSpan NoBounds =
+    let start = MkSourcePos 1 1 0 in
+        MkSourceSpan "" start start
+sourceSpan (BS start end) =
+    MkSourceSpan "" (sourcePos start) (sourcePos end)
+
 lastItemSpan : SurfaceItem -> List SurfaceItem -> SourceSpan
 lastItemSpan item [] =
     item.astInfo.span
@@ -29,5 +41,5 @@ sourceFileInfo nodeId (first :: rest) =
      in MkAstInfo nodeId (mergeSpans firstSpan lastSpan)
 
 public export
-failWithCustomError : CustomParseError -> Bounds -> Res strict Token tokens CustomParseError a
+failWithCustomError : CustomParseError -> Bounds -> Res isStrict Token tokens CustomParseError a
 failWithCustomError customParseError bounds = Fail0 (B (Custom customParseError) bounds)
