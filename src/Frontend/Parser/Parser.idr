@@ -29,7 +29,24 @@ parseFunDecl functionEffect nodeId [] acc = Fail0 (B EOI NoBounds)
 parseFunDecl functionEffect nodeId ((B token bounds) :: remaining) acc =
     case token of
         TokKw KwFn =>
-            ?parse_function_item
+            -- Orientative pseudocode: each parser would also thread the
+            -- remaining tokens, suffix proof, and next node id into the next
+            -- step. The final step wraps the declaration in ItemFunction and
+            -- returns it with Succ0.
+            let functionName       = ?parse_function_name
+                functionParameters = ?parse_function_parameters
+                returnType         = ?parse_optional_return_type
+                supportClause      = ?parse_optional_support_clause
+                contractClauses    = ?parse_contract_clauses
+                functionBody       = ?parse_function_body
+             in ?assemble_function_item
+                    functionEffect
+                    functionName
+                    functionParameters
+                    returnType
+                    supportClause
+                    contractClauses
+                    functionBody
 
         _ =>
             Fail0 (B (Expected ["fn"] (show token)) bounds)
@@ -109,7 +126,8 @@ parseItem nodeId ((B token bounds) :: remaining) acc@(SA recur) =
             succT $ parseFunDeclWithEffect EffectGeneral bounds nodeId remaining recur
 
         _ =>
-            failWithCustomError (UnsupportedFeature ("Unexpected token at top level: " ++ show token)) bounds
+            -- Extend error message with new features when these become available: module declarations, const declarations, structs and/or impl blocks, enums, qenums and inline docs.
+            failWithCustomError (UnexpectedToken ("Unexpected token: " ++ show token ++ " at top level in source file. At module level only only function declarations are allowed for now.")) bounds
 
 parseItems : SnocList SurfaceItem -> Rule False (List SurfaceItem)
 parseItems items nextNodeId [] _ =
