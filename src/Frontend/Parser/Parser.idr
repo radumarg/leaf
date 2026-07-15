@@ -21,48 +21,49 @@ Rule strict result =
   -> (0 acc : SuffixAcc tokens)
   -> Res strict Token tokens CustomParseError (result, Nat)
 
-
 parseItem : Rule True SurfaceItem
 parseItem nodeId [] acc = Fail0 (B EOI NoBounds)
 parseItem nodeId tokens@((B token bounds) :: remaining) acc =
     let itemId = MkNodeId nodeId
         nextNodeId = S nodeId
      in case token of
+
+            -- Start with items that are currently supported by the parser:
+
             TokKw KwFn =>
                 ?parse_function_item
 
             TokKw KwStruct =>
-                failWithMessage "Structs are not yet supported." bounds
+                failWithCustomError (UnsupportedFeature "Structs are not yet supported.") bounds
 
             TokKw KwEnum =>
-                failWithMessage "Enums are not yet supported." bounds
+                failWithCustomError (UnsupportedFeature "Enums are not yet supported.") bounds
 
             TokKw KwQenum =>
-                failWithMessage "Qenums are not yet supported." bounds
+                failWithCustomError (UnsupportedFeature "Qenums are not yet supported.") bounds
 
             TokKw KwImpl =>
-                failWithMessage "Impls blocks for struct are not yet supported." bounds
-
-            -- This may begin either a const declaration or `const fn`.
-            TokKw KwConst =>
-                ?parse_const_item
+                failWithCustomError (UnsupportedFeature "Impls blocks for struct are not yet supported.") bounds
 
             TokKw KwUse =>
-                failWithMessage "Use statements are not yet supported." bounds
+                failWithCustomError (UnsupportedFeature "Use statements are not yet supported.") bounds
 
             TokKw KwMod =>
-                failWithMessage "Modules are not yet supported." bounds
+                failWithCustomError (UnsupportedFeature "Modules are not yet supported.") bounds
 
-            -- Visibility, documentation, attributes, and function effects
-            -- precede the keyword that determines the ItemNode constructor.
+            TokKw KwConst =>
+                failWithCustomError (UnsupportedFeature "Const declarations or const functions are not yet supported.") bounds
+
+            -- Visibility, documentation, attributes, and function effects that may precede the item keyword:
+
             TokKw KwPub =>
-                ?parse_public_item
+                failWithCustomError (UnsupportedFeature "Modules and public declarations are not yet supported.") bounds
 
             TokOuterDoc _ =>
-                failWithMessage "Outer doc comments are not yet supported." bounds
+                failWithCustomError (UnsupportedFeature "Outer doc comments are not yet supported.") bounds
 
-            TokSym _ =>
-                ?parse_possibly_attributed_item
+            TokSym SymHash =>
+                ?parse_attribute_item
 
             TokKw KwUnitary =>
                 ?parse_unitary_function_item
@@ -74,15 +75,18 @@ parseItem nodeId tokens@((B token bounds) :: remaining) acc =
                 ?parse_general_function_item
 
             _ =>
-                ?parse_unexpected_item
+                failWithCustomError (UnsupportedFeature ("Unexpected token at top level: " ++ show token)) bounds
 
 parseItems : SnocList SurfaceItem -> Rule False (List SurfaceItem)
 parseItems items nextNodeId [] _ =
     Fail0 (B EOI NoBounds)  -- every valid token stream must contain TokEOF
-parseItems items nextNodeId
-           ((B TokEOF _) :: remaining)
-           (SA recur) =
-    Succ0 (items <>> [], nextNodeId) remaining
+parseItems items nextNodeId [B TokEOF _] (SA recur) =
+    Succ0 (items <>> [], nextNodeId) []
+parseItems _ _ ((B TokEOF _) :: (B token bounds) :: remaining) _ =
+    failWithCustomError
+        (UnexpectedEOFToken
+            ("Token " ++ show token ++ " occurs after the end-of-input marker."))
+        bounds
 parseItems items nextNodeId tokens acc@(SA recur) =
     case parseItem nextNodeId tokens acc of
         Fail0 err =>

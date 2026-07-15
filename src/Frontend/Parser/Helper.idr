@@ -29,7 +29,5 @@ sourceFileInfo nodeId (first :: rest) =
      in MkAstInfo nodeId (mergeSpans firstSpan lastSpan)
 
 public export
-failWithMessage : String -> Bounds -> Res strict Token tokens CustomParseError a
-failWithMessage message bounds =
-    Fail0 (B (Custom (UnsupportedFeature message)) bounds)
-
+failWithCustomError : CustomParseError -> Bounds -> Res strict Token tokens CustomParseError a
+failWithCustomError customParseError bounds = Fail0 (B (Custom customParseError) bounds)

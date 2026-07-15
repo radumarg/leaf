@@ -110,14 +110,14 @@ mutual
 
   public export
   data ItemNode : Type where
-    ItemFunction : (functionDeclaration : FunctionDeclarationNode) -> ItemNode
-    ItemStruct   : (structDeclaration   : StructDeclarationNode)   -> ItemNode
-    ItemEnum     : (enumDeclaration     : EnumDeclarationNode)     -> ItemNode
-    ItemQEnum    : (qenumDeclaration    : QEnumDeclarationNode)    -> ItemNode
-    ItemImpl     : (implDeclaration     : ImplDeclarationNode)     -> ItemNode
-    ItemConst    : (constDeclaration    : ConstDeclarationNode)    -> ItemNode
-    ItemUse      : (useDeclaration      : UseDeclarationNode)      -> ItemNode
-    ItemModule   : (moduleDeclaration   : ModuleDeclarationNode)   -> ItemNode
+    ItemFunction : (functionDeclaration : FunctionDeclarationNode) -> ItemNode -- function declaration
+    ItemStruct   : (structDeclaration   : StructDeclarationNode)   -> ItemNode -- struct declaration
+    ItemEnum     : (enumDeclaration     : EnumDeclarationNode)     -> ItemNode -- enum declaration
+    ItemQEnum    : (qenumDeclaration    : QEnumDeclarationNode)    -> ItemNode -- qenum declaration
+    ItemImpl     : (implDeclaration     : ImplDeclarationNode)     -> ItemNode -- impl block declaration
+    ItemConst    : (constDeclaration    : ConstDeclarationNode)    -> ItemNode -- const declaration
+    ItemUse      : (useDeclaration      : UseDeclarationNode)      -> ItemNode -- use statement
+    ItemModule   : (moduleDeclaration   : ModuleDeclarationNode)   -> ItemNode -- module declaration
 
   ------------------------------------------------------------------------------
   -- Function declarations

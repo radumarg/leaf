@@ -8,6 +8,7 @@ import public Text.ParseError
 public export
 data CustomParseError
     = UnsupportedFeature String
+    | UnexpectedEOFToken String
 
 public export
 0 ParseError : Type
@@ -16,6 +17,7 @@ ParseError = InnerError CustomParseError
 public export
 renderParseError : ParseError -> String
 renderParseError (Custom (UnsupportedFeature message)) = message
+renderParseError (Custom (UnexpectedEOFToken message)) = message
 renderParseError EOI = "Unexpected end of input"
 renderParseError (Expected expected actual) =
   "Expected " ++ show expected ++ ", but got " ++ actual
