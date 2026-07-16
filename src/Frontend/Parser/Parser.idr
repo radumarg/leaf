@@ -58,7 +58,7 @@ parseFunctionBody = ?parse_function_body
 
 parseFunDecl :
     (declarationStart : Bounds)
-  -> (visibility : Maybe (SurfaceAstNode Visibility))
+  -> (visibility : Maybe (SurfaceAstNode VisbilityQualifier))
   -> (functionEffect : Maybe (SurfaceAstNode FunctionEffect))
   -> Rule True SurfaceItem
 parseFunDecl declarationStart visibility functionEffect nodeId [] acc = Fail0 (B EOI NoBounds)
@@ -145,7 +145,7 @@ parseFunDecl declarationStart visibility functionEffect nodeId ((B token bounds)
 
 parseFunDeclWithEffect :
    (declarationStart : Bounds)
-  -> (visibility : Maybe (SurfaceAstNode Visibility))
+  -> (visibility : Maybe (SurfaceAstNode VisbilityQualifier))
   -> (effect : FunctionEffect)
   -> (effectBounds : Bounds)
   -> Rule True SurfaceItem

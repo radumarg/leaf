@@ -131,7 +131,7 @@ mutual
     constructor MkFunctionDeclarationNode
     functionDocs       : List SurfaceDocComment
     functionAttributes : List SurfaceAttribute
-    functionVisibility : Maybe (SurfaceAstNode Visibility)
+    functionVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
     -- `const fn` -- may be evaluated at compile time.
     isConstFunction    : Bool
     -- Nothing: no effect written (treated as general later).
@@ -163,7 +163,7 @@ mutual
 
     NormalParameter :
          (parameterDocs       : List SurfaceDocComment)
-      -> (parameterMutability : Mutability)
+      -> (parameterMutability : Maybe (SurfaceAstNode Mutability))
       -> (parameterName       : SurfaceName)
       -> (parameterType       : SurfaceTy)
       -> FunctionParameterNode
@@ -185,7 +185,7 @@ mutual
     constructor MkStructDeclarationNode
     structDocs       : List SurfaceDocComment
     structAttributes : List SurfaceAttribute
-    structVisibility : Visibility
+    structVisibility : VisbilityQualifier
     structName       : SurfaceName
     structFields     : List (SurfaceAstNode StructFieldNode)
 
@@ -203,7 +203,7 @@ mutual
     constructor MkEnumDeclarationNode
     enumDocs       : List SurfaceDocComment
     enumAttributes : List SurfaceAttribute
-    enumVisibility : Visibility
+    enumVisibility : VisbilityQualifier
     enumName       : SurfaceName
     enumVariants   : List (SurfaceAstNode EnumVariantNode)
 
@@ -232,7 +232,7 @@ mutual
     constructor MkQEnumDeclarationNode
     qenumDocs       : List SurfaceDocComment
     qenumAttributes : List SurfaceAttribute
-    qenumVisibility : Visibility
+    qenumVisibility : VisbilityQualifier
     qenumName       : SurfaceName
     qenumVariants   : List (SurfaceAstNode QEnumVariantNode)
 
@@ -262,7 +262,7 @@ mutual
   record ConstDeclarationNode where
     constructor MkConstDeclarationNode
     constDocs       : List SurfaceDocComment
-    constVisibility : Visibility
+    constVisibility : VisbilityQualifier
     constName       : SurfaceName
     constType       : SurfaceTy
     constValue      : SurfaceExpr
@@ -272,7 +272,7 @@ mutual
   record UseDeclarationNode where
     constructor MkUseDeclarationNode
     useDocs       : List SurfaceDocComment
-    useVisibility : Visibility
+    useVisibility : VisbilityQualifier
     usePath       : SurfacePath
 
   -- Two source forms:
@@ -282,7 +282,7 @@ mutual
   record ModuleDeclarationNode where
     constructor MkModuleDeclarationNode
     moduleDocs       : List SurfaceDocComment
-    moduleVisibility : Visibility
+    moduleVisibility : VisbilityQualifier
     moduleName       : SurfaceName
     moduleBody       : ModuleBody
 

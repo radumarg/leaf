@@ -191,7 +191,7 @@ attrsPrefix attrs = concatMap (\a => showAttribute a ++ "\n") attrs
 -- structure that is part of the big mutual block, so `map` is safe here.
 --------------------------------------------------------------------------------
 
-visPrefix : Visibility -> String
+visPrefix : VisbilityQualifier -> String
 visPrefix v = prefixSpace (show v)
 
 showQualifiersPrefix : List (SurfaceAstNode QuantumStorageQualifier) -> String

@@ -6,45 +6,31 @@ import Language.Reflection
 %default total
 %language ElabReflection
 
--- Derive.Prelude re-exports Language.Reflection, whose TT module defines its
--- own `Visibility` (the elaborator's Private/Export/Public for declarations).
--- Hide it so the unqualified name unambiguously means Leaf's Visibility.
-%hide Language.Reflection.TT.Visibility
+---------------------------------------------------------------------------------
+--- Shared syntax enums
+ --------------------------------------------------------------------------------
+--- Small enums used across declarations, parameters, types, and let-bindings.
+---
+--- Each enum carries a `show...Leaf` source-spelling function in the
+--- Token.idr style, so diagnostics quote exactly what the user wrote.
+---------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Shared syntax enums
---------------------------------------------------------------------------------
--- Small enums used across declarations, parameters, types, and let-bindings.
--- Like Operator.idr, these are VOCABULARY, not located nodes: none carries a
--- span or a phase wrapper. When a diagnostic needs to point at the keyword
--- itself ("`pub` is not allowed here", "`mut` is never written on a qubit
--- reference"), the owning node records the keyword's SourceSpan alongside
--- the enum value.
---
--- Each enum carries a `show...Leaf` source-spelling function in the
--- Token.idr style, so diagnostics quote exactly what the user wrote.
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- Visibility
---------------------------------------------------------------------------------
--- Whether an item is marked `pub`. `VisibilityPrivate` means NO keyword was
--- written -- there is no `priv` spelling in Leaf -- so items store a plain
--- `Visibility` rather than a `Maybe Visibility`; absence IS the private case.
+-- Visibility qualifier
 --------------------------------------------------------------------------------
 
 public export
-data Visibility = VisibilityPublic 
+data VisbilityQualifier = VisibilityPublic
 
-%runElab derive "Visibility" [Eq]
-
-public export
-showVisibilityLeaf : Visibility -> String
-showVisibilityLeaf v = "pub"
+%runElab derive "VisbilityQualifier" [Eq]
 
 public export
-implementation Show Visibility where
-  show = showVisibilityLeaf
+showVisibilityQualifierLeaf : VisbilityQualifier -> String
+showVisibilityQualifierLeaf v = "pub"
+
+public export
+implementation Show VisbilityQualifier where
+  show = showVisibilityQualifierLeaf
 
 --------------------------------------------------------------------------------
 -- Mutability
@@ -54,25 +40,19 @@ implementation Show Visibility where
 --   let mut x = 0;
 --   fn f(mut x: i32) -> i32 { ... }
 --
--- As with Visibility, `Immutable` means no keyword written. Reference
--- mutability (&T vs. &mut T) is NOT this type: that is BorrowKind in
+-- Note mutability (&T vs. &mut T) is NOT this type: that is BorrowKind in
 -- Operator.idr, kept separate because the two occupy different grammatical
 -- positions and Leaf's qubit rules treat them differently.
 --------------------------------------------------------------------------------
 
 public export
-data Mutability
-  = Mutable    -- `mut` written in source
-  | Immutable  -- nothing written (the default)
+data Mutability = Mutable
 
 %runElab derive "Mutability" [Eq]
 
 public export
 showMutabilityLeaf : Mutability -> String
-showMutabilityLeaf m =
-  case m of
-    Mutable   => "mut"
-    Immutable => ""
+showMutabilityLeaf Mutable = "mut"
 
 public export
 implementation Show Mutability where
@@ -85,17 +65,6 @@ implementation Show Mutability where
 --
 --   classical fn f(x: i32) -> i32 { ... }
 --   unitary fn had(q: qubit) -> qubit { ... }
---
--- The enum has a constructor for EVERY spellable effect, including `general`,
--- even though general is the semantic default. A function declaration should
--- store `Maybe FunctionEffect`:
---
---   Nothing              -- no qualifier written; treated as general later
---   Just EffectGeneral   -- the user explicitly wrote `general`
---
--- The distinction is surface-real (explicit `general` is used for API
--- specification per the spec) and costs nothing to keep. Collapsing
--- `Nothing` into general is a canonicalization step, not a parsing step.
 --------------------------------------------------------------------------------
 
 public export
@@ -167,10 +136,7 @@ implementation Show SupportKind where
 --
 -- Binders store `List QuantumStorageQualifier` IN SOURCE ORDER, so
 -- `scratch linear` and `linear scratch` round-trip differently even though
--- they mean the same thing. The AST does not forbid nonsense combinations
--- (`linear affine`, `scratch scratch`): rejecting those with a good message
--- ("`linear` and `affine` are mutually exclusive") is a validation pass's
--- job, using the qualifiers' spans recorded on the binder.
+-- they mean the same thing. 
 --------------------------------------------------------------------------------
 
 public export
@@ -208,9 +174,6 @@ implementation Show QuantumStorageQualifier where
 -- a different operation. The Let node requires exactly one of these two
 -- markers whenever an initializer is present, which makes `x := 5;`
 -- unrepresentable as an assignment statement by construction.
---
--- NOTE: this type supersedes `LetBindingOperator` in Operator.idr, which
--- should be deleted from there -- one home for this distinction, not two.
 --------------------------------------------------------------------------------
 
 public export
