@@ -26,9 +26,9 @@ Rule strict result =
   -> (0 acc : SuffixAcc tokens)
   -> Res strict Token tokens CustomParseError (result, Nat)
 
-parseFunctionName : Rule True SurfaceName
-parseFunctionName _ [] acc = Fail0 (B EOI NoBounds)
-parseFunctionName nodeId ((B token bounds) :: remaining) acc =
+parseName : String -> Rule True SurfaceName
+parseName _ _ [] acc = Fail0 (B EOI NoBounds)
+parseName expectedNameDescription nodeId ((B token bounds) :: remaining) acc =
     let nextNodeId = S nodeId
     in case token of
         TokIdent name =>
@@ -39,10 +39,145 @@ parseFunctionName nodeId ((B token bounds) :: remaining) acc =
             in Succ0 (functionNameNode, nextNodeId) remaining
 
         _ =>
-            Fail0 (B (Expected ["function name"] (show token)) bounds)
+            Fail0 (B (Expected [ expectedNameDescription ] (show token)) bounds)
+
+parseParameterDocComments : Rule False (List SurfaceDocComment)
+parseParameterDocComments nodeId [] _ =
+    Succ0 ([], nodeId) []
+parseParameterDocComments nodeId ((B token bounds) :: remaining) _ =
+    case token of
+        TokOuterDoc _ =>
+            failWithCustomError
+                (UnsupportedFeature "Function outer doc comments are not yet supported.")
+                bounds
+        _ =>
+            Succ0 ([], nodeId) (B token bounds :: remaining)
+
+parseParameterMutability : Rule False (Maybe (SurfaceAstNode Mutability))
+parseParameterMutability nodeId [] _ =
+    Succ0 (Nothing, nodeId) []
+parseParameterMutability nodeId ((B token bounds) :: remaining) _ =
+    case token of
+        TokKw KwMut =>
+            failWithCustomError
+                (UnsupportedFeature "Mutable function arguments are not yet supported.")
+                bounds
+        _ =>
+            Succ0 (Nothing, nodeId) (B token bounds :: remaining)
+
+parseParameterType : Rule True SurfaceTy
+parseParameterType = ?parse_parameter_type
+
+parameterStartSpan :
+     List SurfaceDocComment
+  -> Maybe (SurfaceAstNode Mutability)
+  -> SurfaceName
+  -> SourceSpan
+parameterStartSpan (doc :: _) _ _ = doc.astInfo.span
+parameterStartSpan [] (Just mutability) _ = mutability.astInfo.span
+parameterStartSpan [] Nothing name = name.astInfo.span
+
+parseFunctionParameter : Rule True (SurfaceAstNode FunctionParameterNode)
+parseFunctionParameter nodeId tokens acc =
+    case parseParameterDocComments (S nodeId) tokens acc of
+        Fail0 err => Fail0 err
+        Succ0 (docs, afterDocsNodeId) afterDocs @{docsSuffix} =>
+            case parseParameterMutability afterDocsNodeId afterDocs suffixAcc of
+                Fail0 err => Fail0 err
+                Succ0 (mutability, afterMutabilityNodeId)
+                      afterMutability @{mutabilitySuffix} =>
+                    case parseName
+                           "parameter name" afterMutabilityNodeId afterMutability suffixAcc of
+                        Fail0 err => Fail0 err
+                        Succ0 (name, afterNameNodeId) afterName @{nameSuffix} =>
+                            case afterName of
+                                [] => Fail0 (B EOI NoBounds)
+                                (B token bounds) :: afterColon =>
+                                    case token of
+                                        TokSym SymColon =>
+                                            case parseParameterType
+                                                    afterNameNodeId
+                                                    afterColon
+                                                    suffixAcc of
+                                                Fail0 err => Fail0 err
+                                                Succ0 (parameterType, finalNodeId)
+                                                      finalTokens @{typeSuffix} =>
+                                                    let parameterSpan =
+                                                            mergeSpans
+                                                                (parameterStartSpan docs mutability name)
+                                                                parameterType.astInfo.span
+                                                        parameter =
+                                                            surfaceAstNode
+                                                                (MkAstInfo
+                                                                    (MkNodeId nodeId)
+                                                                    parameterSpan)
+                                                                (NormalParameter
+                                                                    docs
+                                                                    mutability
+                                                                    name
+                                                                    parameterType)
+                                                     in Succ0
+                                                            (parameter, finalNodeId)
+                                                            finalTokens
+                                                            @{Data.List.Suffix.trans typeSuffix $
+                                                              Data.List.Suffix.trans
+                                                                (the
+                                                                  (Suffix True
+                                                                    afterColon
+                                                                    (B (TokSym SymColon) bounds :: afterColon))
+                                                                  (Uncons Same)) $
+                                                              Data.List.Suffix.trans nameSuffix $
+                                                              Data.List.Suffix.trans mutabilitySuffix $
+                                                              docsSuffix}
+                                        _ =>
+                                            Fail0 (B (Expected [":"] (show token)) bounds)
+
+parseFunctionParameterList : 
+    SnocList (SurfaceAstNode FunctionParameterNode) ->
+    Rule False (List (SurfaceAstNode FunctionParameterNode))
+parseFunctionParameterList parsed nodeId [] _ = Fail0 (B EOI NoBounds)
+parseFunctionParameterList parsed nodeId
+    ((B token bounds) :: remaining) acc@(SA recur) =
+    case token of
+        TokSym SymRParen =>
+            Succ0 (parsed <>> [], nodeId) remaining
+        _ =>
+            case parseFunctionParameter
+                    nodeId (B token bounds :: remaining) acc of
+                Fail0 err => Fail0 err
+                Succ0 (parameter, nextNodeId) afterParameter =>
+                    case afterParameter of
+                        [] => 
+                            Fail0 (B EOI NoBounds)
+
+                        (B (TokSym SymComma) _) :: afterComma =>
+                            succF $
+                                parseFunctionParameterList
+                                    (parsed :< parameter)
+                                    nextNodeId
+                                    afterComma
+                                    recur
+
+                        (B (TokSym SymRParen) closeBounds) :: afterClose =>
+                            Succ0
+                                (parsed <>> [parameter], nextNodeId)
+                                afterClose
+
+                        (B unexpected unexpectedBounds) :: _ =>
+                            Fail0
+                                (B
+                                    (Expected [",", ")"] (show unexpected))
+                                    unexpectedBounds)
 
 parseFunctionParameters : Rule True (List (SurfaceAstNode FunctionParameterNode))
-parseFunctionParameters = ?parse_function_parameters
+parseFunctionParameters _ [] _ = Fail0 (B EOI NoBounds)
+parseFunctionParameters nodeId
+    ((B token bounds) :: remaining) acc@(SA recur) =
+    case token of
+        TokSym SymLParen =>
+            succT $ parseFunctionParameterList [<] nodeId remaining recur
+        _ =>
+            Fail0 (B (Expected ["("] (show token)) bounds)
 
 parseOptionalReturnType : Rule False (Maybe SurfaceTy)
 parseOptionalReturnType = ?parse_optional_return_type
@@ -66,7 +201,7 @@ parseFunDecl declarationStart visibility functionEffect nodeId ((B token bounds)
     let nextNodeId = S nodeId
     in case token of
         TokKw KwFn =>
-                case parseFunctionName nextNodeId remaining recur of
+                case parseName "function name" nextNodeId remaining recur of
                     Fail0 err => Fail0 err
                     Succ0 (functionName, afterNameNodeId) afterName @{nameSuffix} =>
                             case parseFunctionParameters
