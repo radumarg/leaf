@@ -65,9 +65,9 @@ general fn main() -> bit {
 | Type Checker & Typed AST      | Planned     |
 | Quantum Lambda Calculus IR    | Planned     |
 | Lambda Calculus Code Generator| Planned     |
-| Idris2 DSL                    | Implemented |
+| Idris2 DSL                    | Protoype    |
 | Idris DSL Lowering Pass       | Planned     |
-| OpenQASM 3 Serializer         | In progress |
+| OpenQASM 3 Serializer         | Protoype    |
 | Alpha release                 | Fall 2026   |
 | Lean Interface                | Planned     |
 
