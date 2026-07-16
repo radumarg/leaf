@@ -9,6 +9,9 @@ import Frontend.ASTData
 import Frontend.ASTPhases
 import Frontend.Parser.Error
 import Frontend.Syntax.AST
+import Frontend.Syntax.Common
+import Frontend.Syntax.Doc
+import Frontend.Syntax.Name
 
 %default total
 
@@ -43,3 +46,13 @@ sourceFileInfo nodeId (first :: rest) =
 public export
 failWithCustomError : CustomParseError -> Bounds -> Res isStrict Token tokens CustomParseError a
 failWithCustomError customParseError bounds = Fail0 (B (Custom customParseError) bounds)
+
+public export
+parameterStartSpan :
+     List SurfaceDocComment
+  -> Maybe (SurfaceAstNode Mutability)
+  -> SurfaceName
+  -> SourceSpan
+parameterStartSpan (doc :: _) _ _ = doc.astInfo.span
+parameterStartSpan [] (Just mutability) _ = mutability.astInfo.span
+parameterStartSpan [] Nothing name = name.astInfo.span

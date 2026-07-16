@@ -41,6 +41,9 @@ parseName expectedNameDescription nodeId ((B token bounds) :: remaining) acc =
         _ =>
             Fail0 (B (Expected [ expectedNameDescription ] (show token)) bounds)
 
+parseType : Rule True SurfaceTy
+parseType = ?parse_type
+
 parseParameterDocComments : Rule False (List SurfaceDocComment)
 parseParameterDocComments nodeId [] _ =
     Succ0 ([], nodeId) []
@@ -65,18 +68,6 @@ parseParameterMutability nodeId ((B token bounds) :: remaining) _ =
         _ =>
             Succ0 (Nothing, nodeId) (B token bounds :: remaining)
 
-parseParameterType : Rule True SurfaceTy
-parseParameterType = ?parse_parameter_type
-
-parameterStartSpan :
-     List SurfaceDocComment
-  -> Maybe (SurfaceAstNode Mutability)
-  -> SurfaceName
-  -> SourceSpan
-parameterStartSpan (doc :: _) _ _ = doc.astInfo.span
-parameterStartSpan [] (Just mutability) _ = mutability.astInfo.span
-parameterStartSpan [] Nothing name = name.astInfo.span
-
 parseFunctionParameter : Rule True (SurfaceAstNode FunctionParameterNode)
 parseFunctionParameter nodeId tokens acc =
     case parseParameterDocComments (S nodeId) tokens acc of
@@ -95,7 +86,7 @@ parseFunctionParameter nodeId tokens acc =
                                 (B token bounds) :: afterColon =>
                                     case token of
                                         TokSym SymColon =>
-                                            case parseParameterType
+                                            case parseType
                                                     afterNameNodeId
                                                     afterColon
                                                     suffixAcc of
@@ -180,13 +171,60 @@ parseFunctionParameters nodeId
             Fail0 (B (Expected ["("] (show token)) bounds)
 
 parseOptionalReturnType : Rule False (Maybe SurfaceTy)
-parseOptionalReturnType = ?parse_optional_return_type
+parseOptionalReturnType nodeId [] _ =
+    Succ0 (Nothing, nodeId) []
+parseOptionalReturnType nodeId
+    ((B token bounds) :: remaining) acc@(SA recur) =
+    case token of
+        TokSym SymArrow =>
+            case parseType nodeId remaining recur of
+                Fail0 err => Fail0 err
+                Succ0 (returnType, nextNodeId) finalTokens @{typeSuffix} =>
+                    Succ0
+                        (Just returnType, nextNodeId)
+                        finalTokens
+                        @{Data.List.Suffix.weaken $
+                          Data.List.Suffix.trans typeSuffix $
+                          the
+                            (Suffix True
+                              remaining
+                              (B (TokSym SymArrow) bounds :: remaining))
+                            (Uncons Same)}
+        _ =>
+            Succ0
+                (Nothing, nodeId)
+                (B token bounds :: remaining)
 
 parseOptionalSupportClause : Rule False (List (SurfaceAstNode SupportKind))
-parseOptionalSupportClause = ?parse_optional_support_clause
+parseOptionalSupportClause nodeId [] _ =
+    Succ0 ([], nodeId) []
+parseOptionalSupportClause nodeId ((B token bounds) :: remaining) _ =
+    case token of
+        TokKw KwSupports =>
+            failWithCustomError
+                (UnsupportedFeature "Function 'supports' clauses are not yet supported.")
+                bounds
+
+        _ =>
+            Succ0 ([], nodeId) (B token bounds :: remaining)
 
 parseContractClauses : Rule False (List SurfaceContractClause)
-parseContractClauses = ?parse_contract_clauses
+parseContractClauses nodeId [] _ =
+    Succ0 ([], nodeId) []
+parseContractClauses nodeId ((B token bounds) :: remaining) _ =
+    case token of
+        TokKw KwRequires => unsupportedContract bounds
+        TokKw KwEnsures  => unsupportedContract bounds
+        _ => Succ0 ([], nodeId) (B token bounds :: remaining)
+  where
+    unsupportedContract : Bounds ->
+                          Res False Token tokens CustomParseError
+                              (List SurfaceContractClause, Nat)
+    unsupportedContract bounds =
+        failWithCustomError
+            (UnsupportedFeature
+                "Quantum contracts 'requires' and/or 'ensures' are not yet supported.")
+            bounds
 
 parseFunctionBody : Rule True SurfaceBlock
 parseFunctionBody = ?parse_function_body
