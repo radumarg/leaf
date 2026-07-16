@@ -91,3 +91,12 @@ record Scope where
   id      : ScopeId
   parent  : Maybe ScopeId
   symbols : List SymbolId
+
+--------------------------------------------------------------------------------
+-- Helpers for AST nodes
+--------------------------------------------------------------------------------
+
+public export
+reserveNodeId : Nat -> (NodeId, Nat)
+reserveNodeId current =
+    (MkNodeId current, S current)

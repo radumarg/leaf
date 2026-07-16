@@ -29,12 +29,12 @@ Rule strict result =
 parseName : String -> Rule True SurfaceName
 parseName _ _ [] acc = Fail0 (B EOI NoBounds)
 parseName expectedNameDescription nodeId ((B token bounds) :: remaining) acc =
-    let nextNodeId = S nodeId
+    let (nameNodeId, nextNodeId) = reserveNodeId nodeId
     in case token of
         TokIdent name =>
             let functionNameNode =
                     surfaceAstNode
-                        (MkAstInfo (MkNodeId nodeId) (sourceSpan bounds))
+                        (MkAstInfo nameNodeId (sourceSpan bounds))
                         (MkNameNode name)
             in Succ0 (functionNameNode, nextNodeId) remaining
 
@@ -70,7 +70,8 @@ parseParameterMutability nodeId ((B token bounds) :: remaining) _ =
 
 parseFunctionParameter : Rule True (SurfaceAstNode FunctionParameterNode)
 parseFunctionParameter nodeId tokens acc =
-    case parseParameterDocComments (S nodeId) tokens acc of
+    let (parameterNodeId, nextNodeId) = reserveNodeId nodeId
+    in case parseParameterDocComments nextNodeId tokens acc of
         Fail0 err => Fail0 err
         Succ0 (docs, afterDocsNodeId) afterDocs @{docsSuffix} =>
             case parseParameterMutability afterDocsNodeId afterDocs suffixAcc of
@@ -100,7 +101,7 @@ parseFunctionParameter nodeId tokens acc =
                                                         parameter =
                                                             surfaceAstNode
                                                                 (MkAstInfo
-                                                                    (MkNodeId nodeId)
+                                                                    parameterNodeId
                                                                     parameterSpan)
                                                                 (NormalParameter
                                                                     docs
@@ -236,7 +237,7 @@ parseFunDecl :
   -> Rule True SurfaceItem
 parseFunDecl declarationStart visibility functionEffect nodeId [] acc = Fail0 (B EOI NoBounds)
 parseFunDecl declarationStart visibility functionEffect nodeId ((B token bounds) :: remaining) acc@(SA recur) =
-    let nextNodeId = S nodeId
+    let (funNodeId, nextNodeId) = reserveNodeId nodeId
     in case token of
         TokKw KwFn =>
                 case parseName "function name" nextNodeId remaining recur of
@@ -294,9 +295,7 @@ parseFunDecl declarationStart visibility functionEffect nodeId ((B token bounds)
                                                                                                 functionBody.astInfo.span
                                                                                         item =
                                                                                             surfaceAstNode
-                                                                                                (MkAstInfo
-                                                                                                    (MkNodeId nodeId)
-                                                                                                    itemSpan)
+                                                                                                (MkAstInfo funNodeId itemSpan)
                                                                                                 (ItemFunction declaration)
                                                                                      in Succ0
                                                                                             (item, finalNodeId)
@@ -324,12 +323,12 @@ parseFunDeclWithEffect :
   -> Rule True SurfaceItem
 parseFunDeclWithEffect declarationStart visibility effect effectBounds nodeId [] acc = Fail0 (B EOI NoBounds)
 parseFunDeclWithEffect declarationStart visibility effect effectBounds nodeId ((B token bounds) :: remaining) acc =
-    let nextNodeId = S nodeId
+    let (funNodeId, nextNodeId) = reserveNodeId nodeId
     in case token of
         TokKw KwFn =>
             let effectNode =
                     surfaceAstNode
-                        (MkAstInfo (MkNodeId nodeId) (sourceSpan effectBounds))
+                        (MkAstInfo funNodeId (sourceSpan effectBounds))
                         effect
              in parseFunDecl declarationStart visibility (Just effectNode) nextNodeId (B token bounds :: remaining) acc
 
@@ -339,15 +338,14 @@ parseFunDeclWithEffect declarationStart visibility effect effectBounds nodeId ((
 parsePubFunDecl : Bounds -> Rule True SurfaceItem
 parsePubFunDecl pubTokenBounds nodeId [] acc = Fail0 (B EOI NoBounds)
 parsePubFunDecl pubTokenBounds nodeId ((B token nexTokBounds) :: remaining) acc@(SA recur) =
-    let pubModifierNode =
+    let (pubModifierNodeId, nextNodeId) = reserveNodeId nodeId
+        pubModifierNode =
                     surfaceAstNode
-                        (MkAstInfo (MkNodeId nodeId) (sourceSpan pubTokenBounds))
+                        (MkAstInfo pubModifierNodeId (sourceSpan pubTokenBounds))
                         VisibilityPublic
-        nextNodeId = S nodeId
-        declarationStartBounds = pubTokenBounds
     in case token of
         TokKw KwFn =>
-            parseFunDecl declarationStartBounds (Just pubModifierNode) Nothing nextNodeId (B token nexTokBounds :: remaining) acc
+            parseFunDecl pubTokenBounds (Just pubModifierNode) Nothing nextNodeId (B token nexTokBounds :: remaining) acc
 
         TokKw KwClassical =>
             succT $ parseFunDeclWithEffect pubTokenBounds (Just pubModifierNode) EffectClassical nexTokBounds nextNodeId remaining recur
