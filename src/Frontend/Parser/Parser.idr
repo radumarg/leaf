@@ -8,8 +8,12 @@ import Frontend.ASTPhases
 import Frontend.Source
 import Frontend.Token
 import Frontend.Syntax.AST
+import Frontend.Syntax.Attribute
 import Frontend.Syntax.Common
+import Frontend.Syntax.Contract
 import Frontend.Syntax.Doc
+import Frontend.Syntax.Name
+import Frontend.Syntax.Type
 import Frontend.Parser.Error
 import Frontend.Parser.Helper
 
@@ -22,112 +26,233 @@ Rule strict result =
   -> (0 acc : SuffixAcc tokens)
   -> Res strict Token tokens CustomParseError (result, Nat)
 
+parseFunctionName : Rule True SurfaceName
+parseFunctionName _ [] acc = Fail0 (B EOI NoBounds)
+parseFunctionName nodeId ((B token bounds) :: remaining) acc =
+    let nextNodeId = S nodeId
+    in case token of
+        TokIdent name =>
+            let functionNameNode =
+                    surfaceAstNode
+                        (MkAstInfo (MkNodeId nodeId) (sourceSpan bounds))
+                        (MkNameNode name)
+            in Succ0 (functionNameNode, nextNodeId) remaining
+
+        _ =>
+            Fail0 (B (Expected ["function name"] (show token)) bounds)
+
+parseFunctionParameters : Rule True (List (SurfaceAstNode FunctionParameterNode))
+parseFunctionParameters = ?parse_function_parameters
+
+parseOptionalReturnType : Rule False (Maybe SurfaceTy)
+parseOptionalReturnType = ?parse_optional_return_type
+
+parseOptionalSupportClause : Rule False (List (SurfaceAstNode SupportKind))
+parseOptionalSupportClause = ?parse_optional_support_clause
+
+parseContractClauses : Rule False (List SurfaceContractClause)
+parseContractClauses = ?parse_contract_clauses
+
+parseFunctionBody : Rule True SurfaceBlock
+parseFunctionBody = ?parse_function_body
+
 parseFunDecl :
-     (functionEffect : Maybe (SurfaceAstNode FunctionEffect))
+    (declarationStart : Bounds)
+  -> (visibility : Maybe (SurfaceAstNode Visibility))
+  -> (functionEffect : Maybe (SurfaceAstNode FunctionEffect))
   -> Rule True SurfaceItem
-parseFunDecl functionEffect nodeId [] acc = Fail0 (B EOI NoBounds)
-parseFunDecl functionEffect nodeId ((B token bounds) :: remaining) acc =
-    case token of
+parseFunDecl declarationStart visibility functionEffect nodeId [] acc = Fail0 (B EOI NoBounds)
+parseFunDecl declarationStart visibility functionEffect nodeId ((B token bounds) :: remaining) acc@(SA recur) =
+    let nextNodeId = S nodeId
+    in case token of
         TokKw KwFn =>
-            -- Orientative pseudocode: each parser would also thread the
-            -- remaining tokens, suffix proof, and next node id into the next
-            -- step. The final step wraps the declaration in ItemFunction and
-            -- returns it with Succ0.
-            let functionName       = ?parse_function_name
-                functionParameters = ?parse_function_parameters
-                returnType         = ?parse_optional_return_type
-                supportClause      = ?parse_optional_support_clause
-                contractClauses    = ?parse_contract_clauses
-                functionBody       = ?parse_function_body
-             in ?assemble_function_item
-                    functionEffect
-                    functionName
-                    functionParameters
-                    returnType
-                    supportClause
-                    contractClauses
-                    functionBody
+                case parseFunctionName nextNodeId remaining recur of
+                    Fail0 err => Fail0 err
+                    Succ0 (functionName, afterNameNodeId) afterName @{nameSuffix} =>
+                            case parseFunctionParameters
+                                    afterNameNodeId afterName suffixAcc of
+                                Fail0 err => Fail0 err
+                                Succ0 (functionParameters, afterParametersNodeId)
+                                      afterParameters @{parametersSuffix} =>
+                                        case parseOptionalReturnType
+                                                afterParametersNodeId
+                                                afterParameters
+                                                suffixAcc of
+                                            Fail0 err => Fail0 err
+                                            Succ0 (returnType, afterReturnTypeNodeId)
+                                                  afterReturnType @{returnTypeSuffix} =>
+                                                    case parseOptionalSupportClause
+                                                            afterReturnTypeNodeId
+                                                            afterReturnType
+                                                            suffixAcc of
+                                                        Fail0 err => Fail0 err
+                                                        Succ0 (supportClause, afterSupportNodeId)
+                                                              afterSupport @{supportSuffix} =>
+                                                                case parseContractClauses
+                                                                        afterSupportNodeId
+                                                                        afterSupport
+                                                                        suffixAcc of
+                                                                    Fail0 err =>Fail0 err
+                                                                    Succ0 (contractClauses, afterContractsNodeId)
+                                                                          afterContracts @{contractsSuffix} =>
+                                                                            case parseFunctionBody
+                                                                                    afterContractsNodeId
+                                                                                    afterContracts
+                                                                                    suffixAcc of
+                                                                                Fail0 err => Fail0 err
+                                                                                Succ0 (functionBody, finalNodeId)
+                                                                                      finalTokens @{bodySuffix} =>
+                                                                                    let declaration =
+                                                                                            MkFunctionDeclarationNode
+                                                                                                []                  -- docs
+                                                                                                []                  -- attributes
+                                                                                                visibility
+                                                                                                False               -- not const
+                                                                                                functionEffect
+                                                                                                functionName
+                                                                                                functionParameters
+                                                                                                returnType
+                                                                                                supportClause
+                                                                                                contractClauses
+                                                                                                functionBody
+                                                                                        itemSpan =
+                                                                                            mergeSpans
+                                                                                                (sourceSpan declarationStart)
+                                                                                                functionBody.astInfo.span
+                                                                                        item =
+                                                                                            surfaceAstNode
+                                                                                                (MkAstInfo
+                                                                                                    (MkNodeId nodeId)
+                                                                                                    itemSpan)
+                                                                                                (ItemFunction declaration)
+                                                                                     in Succ0
+                                                                                            (item, finalNodeId)
+                                                                                            finalTokens
+                                                                                            @{Data.List.Suffix.trans bodySuffix $
+                                                                                              Data.List.Suffix.trans contractsSuffix $
+                                                                                              Data.List.Suffix.trans supportSuffix $
+                                                                                              Data.List.Suffix.trans returnTypeSuffix $
+                                                                                              Data.List.Suffix.trans parametersSuffix $
+                                                                                              Data.List.Suffix.trans nameSuffix $
+                                                                                              the
+                                                                                                (Suffix True
+                                                                                                  remaining
+                                                                                                  (B (TokKw KwFn) bounds :: remaining))
+                                                                                                (Uncons Same)}
 
         _ =>
             Fail0 (B (Expected ["fn"] (show token)) bounds)
 
 parseFunDeclWithEffect :
-     (effect : FunctionEffect)
+   (declarationStart : Bounds)
+  -> (visibility : Maybe (SurfaceAstNode Visibility))
+  -> (effect : FunctionEffect)
   -> (effectBounds : Bounds)
   -> Rule True SurfaceItem
-parseFunDeclWithEffect effect effectBounds nodeId [] acc = Fail0 (B EOI NoBounds)
-parseFunDeclWithEffect effect effectBounds nodeId ((B token bounds) :: remaining) acc =
+parseFunDeclWithEffect declarationStart visibility effect effectBounds nodeId [] acc = Fail0 (B EOI NoBounds)
+parseFunDeclWithEffect declarationStart visibility effect effectBounds nodeId ((B token bounds) :: remaining) acc =
     let nextNodeId = S nodeId
     in case token of
         TokKw KwFn =>
             let effectNode =
                     surfaceAstNode
-                        (MkAstInfo (MkNodeId nodeId) (sourceSpan (effectBounds <+> bounds)))
+                        (MkAstInfo (MkNodeId nodeId) (sourceSpan effectBounds))
                         effect
-             in parseFunDecl (Just effectNode) nextNodeId (B token bounds :: remaining) acc
+             in parseFunDecl declarationStart visibility (Just effectNode) nextNodeId (B token bounds :: remaining) acc
 
         _ =>
             Fail0 (B (Expected ["fn"] (show token)) bounds)
 
+parsePubFunDecl : Bounds -> Rule True SurfaceItem
+parsePubFunDecl pubTokenBounds nodeId [] acc = Fail0 (B EOI NoBounds)
+parsePubFunDecl pubTokenBounds nodeId ((B token nexTokBounds) :: remaining) acc@(SA recur) =
+    let pubModifierNode =
+                    surfaceAstNode
+                        (MkAstInfo (MkNodeId nodeId) (sourceSpan pubTokenBounds))
+                        VisibilityPublic
+        nextNodeId = S nodeId
+        declarationStartBounds = pubTokenBounds
+    in case token of
+        TokKw KwFn =>
+            parseFunDecl declarationStartBounds (Just pubModifierNode) Nothing nextNodeId (B token nexTokBounds :: remaining) acc
+
+        TokKw KwClassical =>
+            succT $ parseFunDeclWithEffect pubTokenBounds (Just pubModifierNode) EffectClassical nexTokBounds nextNodeId remaining recur
+
+        TokKw KwUnitary =>
+            succT $ parseFunDeclWithEffect pubTokenBounds (Just pubModifierNode) EffectUnitary nexTokBounds nextNodeId remaining recur
+
+        TokKw KwIsometry =>
+            succT $ parseFunDeclWithEffect pubTokenBounds (Just pubModifierNode) EffectIsometry nexTokBounds nextNodeId remaining recur
+
+        TokKw KwCoisometry =>
+            succT $ parseFunDeclWithEffect pubTokenBounds (Just pubModifierNode) EffectCoisometry nexTokBounds nextNodeId remaining recur
+
+        TokKw KwGeneral =>
+            succT $ parseFunDeclWithEffect pubTokenBounds (Just pubModifierNode) EffectGeneral nexTokBounds nextNodeId remaining recur
+
+        _ =>
+            Fail0 (B (Expected ["fn", "classical", "unitary", "isometry", "coisometry", "general"] (show token)) nexTokBounds)
+
 parseItem : Rule True SurfaceItem
 parseItem nodeId [] acc = Fail0 (B EOI NoBounds)
-parseItem nodeId ((B token bounds) :: remaining) acc@(SA recur) =
+parseItem nodeId ((B token tokBounds) :: remaining) acc@(SA recur) =
     case token of
         -- Start with items that are currently supported by the parser:
 
         TokKw KwFn =>
-            parseFunDecl Nothing nodeId (B token bounds :: remaining) acc
+            parseFunDecl tokBounds Nothing Nothing nodeId (B token tokBounds :: remaining) acc
 
         TokKw KwStruct =>
-            failWithCustomError (UnsupportedFeature "Structs are not yet supported.") bounds
+            failWithCustomError (UnsupportedFeature "Structs are not yet supported.") tokBounds
 
         TokKw KwEnum =>
-            failWithCustomError (UnsupportedFeature "Enums are not yet supported.") bounds
+            failWithCustomError (UnsupportedFeature "Enums are not yet supported.") tokBounds
 
         TokKw KwQenum =>
-            failWithCustomError (UnsupportedFeature "Qenums are not yet supported.") bounds
+            failWithCustomError (UnsupportedFeature "Qenums are not yet supported.") tokBounds
 
         TokKw KwImpl =>
-            failWithCustomError (UnsupportedFeature "Impls blocks for struct are not yet supported.") bounds
+            failWithCustomError (UnsupportedFeature "Impls blocks for struct are not yet supported.") tokBounds
 
         TokKw KwUse =>
-            failWithCustomError (UnsupportedFeature "Use statements are not yet supported.") bounds
+            failWithCustomError (UnsupportedFeature "Use statements are not yet supported.") tokBounds
 
         TokKw KwMod =>
-            failWithCustomError (UnsupportedFeature "Modules are not yet supported.") bounds
+            failWithCustomError (UnsupportedFeature "Modules are not yet supported.") tokBounds
 
         TokKw KwConst =>
-            failWithCustomError (UnsupportedFeature "Const declarations or const functions are not yet supported.") bounds
+            failWithCustomError (UnsupportedFeature "Const declarations or const functions are not yet supported.") tokBounds
 
         -- Visibility, documentation, attributes, and function effects that may precede the item keyword:
 
         TokKw KwPub =>
-            failWithCustomError (UnsupportedFeature "Modules and public declarations are not yet supported.") bounds
+            succT $ parsePubFunDecl tokBounds nodeId remaining recur
 
         TokOuterDoc _ =>
-            failWithCustomError (UnsupportedFeature "Outer doc comments are not yet supported.") bounds
+            failWithCustomError (UnsupportedFeature "Outer doc comments are not yet supported.") tokBounds
 
         TokSym SymHash =>
             ?parse_attribute_item
 
         TokKw KwClassical =>
-            succT $ parseFunDeclWithEffect EffectClassical bounds nodeId remaining recur
+            succT $ parseFunDeclWithEffect tokBounds Nothing EffectClassical tokBounds nodeId remaining recur
 
         TokKw KwUnitary =>
-            succT $ parseFunDeclWithEffect EffectUnitary bounds nodeId remaining recur
+            succT $ parseFunDeclWithEffect tokBounds Nothing EffectUnitary tokBounds nodeId remaining recur
 
         TokKw KwIsometry =>
-            succT $ parseFunDeclWithEffect EffectIsometry bounds nodeId remaining recur
+            succT $ parseFunDeclWithEffect tokBounds Nothing EffectIsometry tokBounds nodeId remaining recur
 
         TokKw KwCoisometry =>
-            succT $ parseFunDeclWithEffect EffectCoisometry bounds nodeId remaining recur
+            succT $ parseFunDeclWithEffect tokBounds Nothing EffectCoisometry tokBounds nodeId remaining recur
 
         TokKw KwGeneral =>
-            succT $ parseFunDeclWithEffect EffectGeneral bounds nodeId remaining recur
+            succT $ parseFunDeclWithEffect tokBounds Nothing EffectGeneral tokBounds nodeId remaining recur
 
         _ =>
             -- Extend error message with new features when these become available: module declarations, const declarations, structs and/or impl blocks, enums, qenums and inline docs.
-            failWithCustomError (UnexpectedToken ("Unexpected token: " ++ show token ++ " at top level in source file. At module level only only function declarations are allowed for now.")) bounds
+            failWithCustomError (UnexpectedToken ("Unexpected token: " ++ show token ++ " at top level in source file. At module level only only function declarations are allowed for now.")) tokBounds
 
 parseItems : SnocList SurfaceItem -> Rule False (List SurfaceItem)
 parseItems items nextNodeId [] _ =

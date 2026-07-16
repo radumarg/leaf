@@ -796,7 +796,10 @@ mutual
   showFunctionDeclarationNode : PrettyStyle -> FunctionDeclarationNode -> String
   showFunctionDeclarationNode style
     (MkFunctionDeclarationNode docs attrs vis isConst effect nm params retTy supports contracts body) =
-    let effectStr = case effect of
+    let visibilityStr = case vis of
+                          Nothing                       => ""
+                          Just (MkAstNode _ _ visibility) => visPrefix visibility
+        effectStr = case effect of
                       Nothing                        => ""
                       Just (MkAstNode _ _ eff)  => show eff ++ " "
         constStr    = if isConst then "const " else ""
@@ -809,7 +812,7 @@ mutual
                         _  => " supports " ++
                               joinWith ", " (map (\(MkAstNode _ _ k) => show k) supports)
         contractsStr = concatMap (\c => " " ++ c) (showContractClauseList style contracts)
-    in docsPrefix docs ++ attrsPrefix attrs ++ visPrefix vis ++ constStr ++ effectStr ++
+    in docsPrefix docs ++ attrsPrefix attrs ++ visibilityStr ++ constStr ++ effectStr ++
        "fn " ++ showName nm ++ "(" ++ paramsStr ++ ")" ++ retStr ++ supportsStr ++
        contractsStr ++ " " ++ showBlock style body
 

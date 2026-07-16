@@ -34,18 +34,13 @@ import Language.Reflection
 --------------------------------------------------------------------------------
 
 public export
-data Visibility
-  = VisibilityPublic   -- `pub` written in source
-  | VisibilityPrivate  -- nothing written (the default)
+data Visibility = VisibilityPublic 
 
 %runElab derive "Visibility" [Eq]
 
 public export
 showVisibilityLeaf : Visibility -> String
-showVisibilityLeaf v =
-  case v of
-    VisibilityPublic  => "pub"
-    VisibilityPrivate => ""
+showVisibilityLeaf v = "pub"
 
 public export
 implementation Show Visibility where

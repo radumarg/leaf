@@ -131,7 +131,7 @@ mutual
     constructor MkFunctionDeclarationNode
     functionDocs       : List SurfaceDocComment
     functionAttributes : List SurfaceAttribute
-    functionVisibility : Visibility
+    functionVisibility : Maybe (SurfaceAstNode Visibility)
     -- `const fn` -- may be evaluated at compile time.
     isConstFunction    : Bool
     -- Nothing: no effect written (treated as general later).
