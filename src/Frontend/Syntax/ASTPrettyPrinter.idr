@@ -222,7 +222,8 @@ mutual
   showPatternNode pat =
     case pat of
       PatternWildcard          => "_"
-      PatternName mutability nm => prefixSpace (show mutability) ++ showName nm
+      PatternName mutability nm =>
+        maybe "" (\m => prefixSpace (show m)) mutability ++ showName nm
       PatternPath p             => showPath p
       PatternLiteral lit        => showLiteral lit
       PatternParenthesized inner => parens (showPattern inner)

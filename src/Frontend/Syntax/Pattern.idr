@@ -77,7 +77,7 @@ mutual
     -- here: the spec only ever writes them directly after `let`, so they
     -- belong to the Let statement node, applying to its whole binder.
     PatternName :
-         (mutability  : Mutability)
+         (mutability  : Maybe Mutability)
       -> (binderName  : SurfaceName)
       -> PatternNode
 
