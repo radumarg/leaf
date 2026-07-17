@@ -75,3 +75,6 @@ general fn main() -> bit {
 
 [Pending Features](docs/todo.md) -->
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.

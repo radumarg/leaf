@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use Leaf in your work, please cite it using the metadata in this file."
+type: software
+title: "Leaf"
+abstract: >-
+  Leaf is a strongly and statically typed quantum programming language
+  implemented in Idris 2. It has Rust-like syntax, compiles to OpenQASM 3,
+  and enables Lean 4-based formal verification of quantum algorithms.
+authors:
+  - family-names: "Marginean"
+    given-names: "Radu"
+repository-code: "https://github.com/radumarg/leaf-qpl"
+url: "https://github.com/radumarg/leaf-qpl"
+license: "Apache-2.0"
+keywords:
+  - "quantum programming language"
+  - "quantum computing"
+  - "formal verification"
+  - "Idris 2"
+  - "Lean 4"
+  - "OpenQASM 3"
