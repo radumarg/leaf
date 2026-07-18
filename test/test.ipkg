@@ -11,6 +11,7 @@ depends = leaf,
 
 modules = Lexer.LexerTest,
           Parser.BasicParseTest,
+          CompileCodeExamples,
           Run
 
 main = Run
