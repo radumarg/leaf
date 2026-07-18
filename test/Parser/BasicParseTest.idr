@@ -16,7 +16,7 @@ import Frontend.Token
 
 lexThenParse : String -> String -> Maybe SurfaceSourceFile
 lexThenParse fileName inputProgram =
-  case lexFile fileName inputProgram of
+  case lexFile inputProgram of
       Left _ => Nothing
       Right tokens => case parseFile fileName tokens of
         Left _ => Nothing
