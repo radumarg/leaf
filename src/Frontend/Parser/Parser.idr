@@ -814,8 +814,8 @@ parseItems items nextNodeId tokens acc@(SA recur) =
         Succ0 (item, followingNodeId) remaining =>
             succF $ parseItems (items :< item) followingNodeId remaining recur
 
-parseModule : Rule False SurfaceSourceFile
-parseModule firstItemNodeId tokens acc =
+parseModule : String -> Rule False SurfaceSourceFile
+parseModule fileName firstItemNodeId tokens acc =
     case parseItems [<] firstItemNodeId tokens acc of
         Fail0 err =>
             Fail0 err
@@ -823,8 +823,8 @@ parseModule firstItemNodeId tokens acc =
         Succ0 (items, nextNodeId) remaining =>
             Succ0
                 ( surfaceAstNode
-                    (sourceFileInfo (MkNodeId 0) items) -- source file node id is always 0
-                    (MkSourceFileNode [] items)         -- ignore inner doc comments for now
+                    (sourceFileInfo fileName (MkNodeId 0) items)  -- source file node id is always 0
+                    (MkSourceFileNode [] items)                   -- ignore inner doc comments for now
                 , nextNodeId
                 )
                 remaining
@@ -834,9 +834,9 @@ parseModule firstItemNodeId tokens acc =
 ---------------------------------------------------------------------------------------------------
 
 public export
-parseFile : List (Bounded Token) -> Either (Bounded ParseError) SurfaceSourceFile
-parseFile tokens =
-    case parseModule 1 tokens suffixAcc of  -- first item node id is 1 (0 is source file node id)
+parseFile : String -> List (Bounded Token) -> Either (Bounded ParseError) SurfaceSourceFile
+parseFile fileName tokens =
+    case parseModule fileName 1 tokens suffixAcc of   -- first item node id is 1 (0 is source file node id)
         Fail0 err =>
             Left err
 

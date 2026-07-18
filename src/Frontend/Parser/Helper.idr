@@ -34,11 +34,11 @@ lastItemSpan _ (item :: rest) =
     lastItemSpan item rest
 
 public export
-sourceFileInfo : NodeId -> List SurfaceItem -> AstInfo
-sourceFileInfo nodeId [] =
+sourceFileInfo : String -> NodeId -> List SurfaceItem -> AstInfo
+sourceFileInfo sourceFileName nodeId [] =
     let start = MkSourcePos 1 1 0 in
-        MkAstInfo nodeId (MkSourceSpan "" start start)
-sourceFileInfo nodeId (first :: rest) =
+        MkAstInfo nodeId (MkSourceSpan sourceFileName start start)
+sourceFileInfo _ nodeId (first :: rest) =
     let firstSpan = first.astInfo.span
         lastSpan = lastItemSpan first rest
      in MkAstInfo nodeId (mergeSpans firstSpan lastSpan)

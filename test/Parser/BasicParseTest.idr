@@ -14,17 +14,17 @@ import Frontend.Token
 
 %default total
 
-lexThenParse : String -> Maybe SurfaceSourceFile
-lexThenParse inputProgram =
-  case lexFile inputProgram of
+lexThenParse : String -> String -> Maybe SurfaceSourceFile
+lexThenParse fileName inputProgram =
+  case lexFile fileName inputProgram of
       Left _ => Nothing
-      Right tokens => case parseFile tokens of
+      Right tokens => case parseFile fileName tokens of
         Left _ => Nothing
         Right ast => Just ast
 
 parseAndPrettyPrint : String -> Maybe String
 parseAndPrettyPrint inputProgram =
-  case lexThenParse inputProgram of
+  case lexThenParse "test-fixture.rs" inputProgram of
     Nothing => Nothing
     Just sourceFile => Just (showSourceFileLax sourceFile)
 
