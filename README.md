@@ -12,6 +12,8 @@
   </tr>
 </table>
 
+<br/>
+
 ![Alpha](https://img.shields.io/badge/alpha-Fall_2026-orange)
 [![Tests](https://github.com/radumarg/leaf-qpl/actions/workflows/test.yml/badge.svg)](https://github.com/radumarg/leaf-qpl/actions/workflows/test.yml)
 [![Issues](https://img.shields.io/github/issues/radumarg/leaf-qpl)](https://github.com/radumarg/leaf-qpl/issues)
