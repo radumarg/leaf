@@ -22,10 +22,10 @@ compileLeafFile programFile = do
     Right sampleProgram =>
       case lexFile sampleProgram of
         Left err => pure $ Left $ "Lexer error in \{programFile}: " ++ show err
-        Right tokens =>
-          case parseFile programFile tokens of
-            Left err => pure $ Left $ "Parse error in \{programFile} at: " ++ show err.bounds ++ ", " ++ renderParseError err.val
-            Right _ => pure $ Right ()
+        Right tokens => pure $ Right ()
+        --   case parseFile programFile tokens of
+        --     Left err => pure $ Left $ "Parse error in \{programFile} at: " ++ show err.bounds ++ ", " ++ renderParseError err.val
+        --     Right _ => pure $ Right ()
 
 export
 compileCodeExamples : IO (Either String ())

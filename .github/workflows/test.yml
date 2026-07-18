@@ -10,13 +10,13 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Chez Scheme
         run: sudo apt-get update && sudo apt-get install -y chezscheme
 
       - name: Cache Pack and Idris 2
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.local/state/pack
