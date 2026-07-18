@@ -1,4 +1,4 @@
-<table>
+<table align="center">
   <tr>
     <td td align="center">
       <img src="files/leaf.png" alt="Leaf" height="200">
