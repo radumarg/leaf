@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////
+// Phase Kickback Example
+//
+// The standard extension of Leaf code files should be `.lf`
+// We use `.rs` here for syntax higlighting purposes only.
+//////////////////////////////////////////////////////////////
+
+
 general fn phase_kickback() -> bit {
     let q0 = qalloc();
     let q1 = qalloc();

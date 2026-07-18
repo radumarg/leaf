@@ -1,3 +1,10 @@
+//////////////////////////////////////////////////////////////
+// Implementation of Deutsch's algorithm in Leaf.
+//
+// The standard extension of Leaf code files should be `.lf`
+// We use `.rs` here for syntax higlighting purposes only.
+//////////////////////////////////////////////////////////////
+
 unitary fn balanced_oracle(
     q0: qubit,
     q1: qubit,
