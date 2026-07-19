@@ -27,17 +27,18 @@ compileLeafFile programFile = do
         --     Left err => pure $ Left $ "Parse error in \{programFile} at: " ++ show err.bounds ++ ", " ++ renderParseError err.val
         --     Right _ => pure $ Right ()
 
+compileLeafFiles : String -> List String -> IO (Either String ())
+compileLeafFiles examplesDirectory [] = pure $ Right ()
+compileLeafFiles examplesDirectory (fileName :: fileNames) = do
+  Right () <- compileLeafFile $ examplesDirectory ++ "/" ++ fileName
+    | Left err => pure $ Left err
+  compileLeafFiles examplesDirectory fileNames
+
 export
-compileCodeExamples : IO (Either String ())
-compileCodeExamples = do
+discoverAndCompileExamples : IO (Either String ())
+discoverAndCompileExamples = do
   let examplesDirectory = "examples"
   Right entries <- listDir examplesDirectory
     | Left err => pure $ Left $ "Failed to list \{examplesDirectory}: " ++ show err
   let codeExampleFiles = filter (isSuffixOf ".rs") entries
-  foldlM
-    (\result, fileName =>
-      case result of
-        Left err => pure $ Left err
-        Right () => compileLeafFile $ examplesDirectory ++ "/" ++ fileName)
-    (Right ())
-    codeExampleFiles
+  compileLeafFiles examplesDirectory codeExampleFiles
