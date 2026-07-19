@@ -33,11 +33,11 @@ compileCodeExamples = do
   let examplesDirectory = "examples"
   Right entries <- listDir examplesDirectory
     | Left err => pure $ Left $ "Failed to list \{examplesDirectory}: " ++ show err
-  let exampleFiles = filter (isSuffixOf ".rs") entries
+  let codeExampleFiles = filter (isSuffixOf ".rs") entries
   foldlM
     (\result, fileName =>
       case result of
         Left err => pure $ Left err
         Right () => compileLeafFile $ examplesDirectory ++ "/" ++ fileName)
     (Right ())
-    exampleFiles
+    codeExampleFiles
