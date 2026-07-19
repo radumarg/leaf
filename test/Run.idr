@@ -10,7 +10,7 @@ main : IO ()
 main = do
   runLexerTests
   runBasicParseTests
-  Right () <- compileCodeExamples
+  Right () <- discoverAndCompileExamples
     | Left err => do
         putStrLn err
         exitFailure

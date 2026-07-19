@@ -28,7 +28,9 @@ compileLeafFile programFile = do
         --     Right _ => pure $ Right ()
 
 compileLeafFiles : String -> List String -> IO (Either String ())
-compileLeafFiles examplesDirectory [] = pure $ Right ()
+compileLeafFiles examplesDirectory [] = do
+  putStrLn "Finished compiling all code examples."
+  pure $ Right ()
 compileLeafFiles examplesDirectory (fileName :: fileNames) = do
   Right () <- compileLeafFile $ examplesDirectory ++ "/" ++ fileName
     | Left err => pure $ Left err
