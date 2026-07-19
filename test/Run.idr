@@ -4,12 +4,14 @@ import System
 
 import CompileCodeExamples
 import Lexer.LexerTest
-import Parser.BasicParseTest
+import Parser.TopModuleParseTest
+import Parser.FunctionParseTest
 
 main : IO ()
 main = do
   runLexerTests
-  runBasicParseTests
+  runTopModuleParseTests
+  runFunctionParseTests
   Right () <- discoverAndCompileExamples
     | Left err => do
         putStrLn err

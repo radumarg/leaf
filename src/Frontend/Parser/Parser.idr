@@ -745,11 +745,14 @@ parseItem nodeId ((B token tokBounds) :: remaining) acc@(SA recur) =
     
         -- Start with items that are currently supported by the parser:
 
-        TokKw KwFn =>
-            parseFunDecl tokBounds [] Nothing Nothing nodeId (B token tokBounds :: remaining) acc
+        TokKw KwMod =>
+            failWithCustomError (UnsupportedFeature "Modules are not yet supported.") tokBounds
 
-        TokKw KwStruct =>
-            failWithCustomError (UnsupportedFeature "Structs are not yet supported.") tokBounds
+        TokKw KwUse =>
+            failWithCustomError (UnsupportedFeature "Use statements are not yet supported.") tokBounds
+
+        TokKw KwConst =>
+            failWithCustomError (UnsupportedFeature "Const declarations or const functions are not yet supported.") tokBounds
 
         TokKw KwEnum =>
             failWithCustomError (UnsupportedFeature "Enums are not yet supported.") tokBounds
@@ -757,17 +760,14 @@ parseItem nodeId ((B token tokBounds) :: remaining) acc@(SA recur) =
         TokKw KwQenum =>
             failWithCustomError (UnsupportedFeature "Qenums are not yet supported.") tokBounds
 
+        TokKw KwStruct =>
+            failWithCustomError (UnsupportedFeature "Structs are not yet supported.") tokBounds
+
         TokKw KwImpl =>
-            failWithCustomError (UnsupportedFeature "Impls blocks for struct are not yet supported.") tokBounds
+            failWithCustomError (UnsupportedFeature "Impls blocks and structs are not yet supported.") tokBounds
 
-        TokKw KwUse =>
-            failWithCustomError (UnsupportedFeature "Use statements are not yet supported.") tokBounds
-
-        TokKw KwMod =>
-            failWithCustomError (UnsupportedFeature "Modules are not yet supported.") tokBounds
-
-        TokKw KwConst =>
-            failWithCustomError (UnsupportedFeature "Const declarations or const functions are not yet supported.") tokBounds
+        TokKw KwFn =>
+            parseFunDecl tokBounds [] Nothing Nothing nodeId (B token tokBounds :: remaining) acc
 
         -- Visibility, documentation, attributes, and function effects that may precede the item keyword:
 
@@ -797,7 +797,7 @@ parseItem nodeId ((B token tokBounds) :: remaining) acc@(SA recur) =
 
         _ =>
             -- Extend error message with new features when these become available: module declarations, const declarations, structs and/or impl blocks, enums, qenums and inline docs.
-            failWithCustomError (UnexpectedToken ("Unexpected token: " ++ show token ++ " at top level in source file. At module level only only function declarations are allowed for now.")) tokBounds
+            failWithCustomError (UnexpectedToken ("Unexpected token: `" ++ interpolate token ++ "` at top level in source file. At module level only only function declarations are allowed for now.")) tokBounds
 
 parseItems : SnocList SurfaceItem -> Rule False (List SurfaceItem)
 parseItems items nextNodeId [] _ =
@@ -833,15 +833,25 @@ parseModule fileName firstItemNodeId tokens acc =
 -- Main entry point: parse file using the idris2-parser library's machinery from Text.Parse.Manual
 ---------------------------------------------------------------------------------------------------
 
+locatedParseError : String -> Bounds -> ParseError -> Located ParseError
+locatedParseError fileName bounds parseError =
+    MkLocated ({ file := fileName } (sourceSpan bounds)) parseError
+
+unexpectedLocated : String -> Bounded Token -> Either (Located ParseError) a
+unexpectedLocated fileName token =
+    case the (Either (Bounded ParseError) a) (Text.ParseError.unexpected token) of
+        Left (B err bounds) => Left (locatedParseError fileName bounds err)
+        Right result => Right result
+
 public export
-parseFile : String -> List (Bounded Token) -> Either (Bounded ParseError) SurfaceSourceFile
+parseFile : String -> List (Bounded Token) -> Either (Located ParseError) SurfaceSourceFile
 parseFile fileName tokens =
     case parseModule fileName 1 tokens suffixAcc of   -- first item node id is 1 (0 is source file node id)
-        Fail0 err =>
-            Left err
+        Fail0 (B err bounds) =>
+            Left (locatedParseError fileName bounds err)
 
         Succ0 (sourceFile, _) [] =>
             Right sourceFile
 
-        Succ0 _ (token :: _) =>
-            unexpected token
+        Succ0 _ ((B token bounds) :: remaining) =>
+            unexpectedLocated fileName (B token bounds)
