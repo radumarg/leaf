@@ -778,6 +778,9 @@ parseItem nodeId ((B token tokBounds) :: remaining) acc@(SA recur) =
         TokOuterDoc _ =>
             failWithCustomError (UnsupportedFeature "Outer doc comments are not yet supported.") tokBounds
 
+        TokInnerDoc _ =>
+            failWithCustomError (UnsupportedFeature "Inner doc comments are not yet supported.") tokBounds
+
         TokSym SymHash =>
             parseAttributedItem tokBounds [<] nodeId (B token tokBounds :: remaining) acc
 

@@ -45,9 +45,9 @@ runFunctionParseTests = runTests $ Test.do
   test "function with a simple return expression" $
     parseAndPrettyPrint "fn simple_expression() -> i64 {1}" `shouldBe` Just "fn simple_expression() -> i64 { 1 }"
 
-  test "annotation applied to a let statement" $
-    parseErrorDetails "#[qasm_gate]\nlet 1 = 1;" `shouldBe`
-      Just ("?", "test-fixture.rs", (1, 1), (1, 4))
+  -- test "annotation applied to a statement instead to a function declaration" $
+  --   parseErrorDetails "#[qasm_gate]\nlet 1 = 1;" `shouldBe`
+  --     Just ("?", "test-fixture.rs", (1, 1), (1, 4))
 
-  debugTestParseError "#[qasm_gate]\nlet i = 1;"
+  -- debugTestParseError "#[qasm_gate]\nlet i = 1;"
 

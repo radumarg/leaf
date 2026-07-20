@@ -13,6 +13,10 @@ runTopModuleParseTests = runTests $ Test.do
   test "empty input parses as an empty output" $
     parseAndPrettyPrint "" `shouldBe` Just ""
 
+  test "input containing only ordinary comments parses as an empty output" $
+    parseAndPrettyPrint "// nothing here\n/* still nothing */" `shouldBe`
+      Just ""
+
   test "module declarations are not yet supported" $
     parseErrorDetails "mod my_library;" `shouldBe`
       Just ("Modules are not yet supported.", "test-fixture.rs", (1, 1), (1, 3))
@@ -44,6 +48,10 @@ runTopModuleParseTests = runTests $ Test.do
   test "outer doc comments are not yet supported" $
     parseErrorDetails "/// docs\n" `shouldBe`
       Just ("Outer doc comments are not yet supported.", "test-fixture.rs", (1, 1), (1, 8))
+
+  test "inner doc comments are not yet supported" $
+    parseErrorDetails "//! module docs" `shouldBe`
+      Just ("Inner doc comments are not yet supported.", "test-fixture.rs", (1, 1), (1, 15))
 
   test "unexpected top-level tokens report the token" $
     parseErrorDetails "let i = 1;" `shouldBe`
