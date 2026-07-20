@@ -11,6 +11,7 @@ import Frontend.Parser.Error
 import Frontend.Parser.Parser
 import Frontend.Source
 import Frontend.Syntax.AST
+import Frontend.Syntax.ASTDebugPrinter
 import Frontend.Syntax.ASTPrettyPrinter
 
 showParseError : Located ParseError -> String
@@ -37,6 +38,13 @@ main = let programFile = "program.rs" in
         case lexFile sampleProgram of
           Left err => putStrLn $ "Lexer error: " ++ show err
           Right tokens => do
+            putStrLn "Tokens:"
+            traverse_ (putStrLn . show) tokens
             case parseFile programFile tokens of
               Left err => putStrLn $ showParseError err
-              Right program => putStrLn $ "Parsed program:\n" ++ showSourceFileLax program
+              Right program => do
+                putStrLn ""
+                putStrLn "AST Nodes:"
+                putStrLn $ showAstDebug program
+                putStrLn "Pretty Printed Program:"
+                putStrLn $ "Parsed program:\n" ++ showSourceFileStrict program

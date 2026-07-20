@@ -73,8 +73,9 @@ mutual
     let (typeNodeId, nextNodeId) = reserveNodeId nodeId in
     case token of
       TokTypPrim primitiveName =>
-        Succ0 (surfaceAstNode (MkAstInfo typeNodeId (sourceSpan bounds))
-                              (TyPrimitive primitiveName), nextNodeId) remaining
+        Succ0
+          (surfaceAstNode (MkAstInfo typeNodeId (sourceSpan bounds)) (TyPrimitive primitiveName), nextNodeId)
+          remaining
       TokSym SymLParen =>
         succT $ parseParenType typeNodeId bounds nextNodeId remaining recur
       TokSym SymLBracket =>

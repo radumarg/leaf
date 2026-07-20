@@ -46,3 +46,17 @@ parseErrorDetails inputProgram =
                                     (errorStart.line, errorStart.column),
                                     (errorEnd.line, errorEnd.column))
         Right _ => Nothing
+
+export
+debugTestParseError : String -> List ETest
+debugTestParseError code =
+  let actual = parseErrorDetails code
+      name = "error details actually returned: " ++ show actual
+  in test name $ actual `shouldBe` Nothing
+
+export
+debugTestParseSuccess : String -> List ETest
+debugTestParseSuccess code =
+  let actual = parseAndPrettyPrint code
+      name = "actually returned: " ++ show actual
+  in test name $ actual `shouldBe` Just "expected output"

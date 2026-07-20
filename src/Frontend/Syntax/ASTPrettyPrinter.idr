@@ -207,6 +207,11 @@ showQualifiersPrefix1 : List1 (SurfaceAstNode QuantumStorageQualifier) -> String
 showQualifiersPrefix1 quals =
   joinWith " " (map (\(MkAstNode _ _ q) => show q) (forget quals)) ++ " "
 
+showMutabilityPrefix : Maybe (SurfaceAstNode Mutability) -> String
+showMutabilityPrefix Nothing = ""
+showMutabilityPrefix (Just (MkAstNode _ _ mutability)) =
+  prefixSpace (show mutability)
+
 --------------------------------------------------------------------------------
 -- Patterns (Frontend.Syntax.Pattern) -- self-recursive, but independent of
 -- expressions, so this is its own mutual block.
@@ -777,7 +782,8 @@ mutual
   showFunctionParameterNode style p =
     case p of
       NormalParameter docs mutability nm ty =>
-        docsPrefix docs ++ prefixSpace (show mutability) ++ showName nm ++ ": " ++ showTy style ty
+        docsPrefix docs ++ showMutabilityPrefix mutability ++
+        showName nm ++ ": " ++ showTy style ty
       ReceiverParameter docs Nothing => docsPrefix docs ++ "self"
       ReceiverParameter docs (Just (MkAstNode _ _ borrow)) =>
         docsPrefix docs ++
