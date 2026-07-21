@@ -519,7 +519,8 @@ parseBlockContents blockNodeId openBounds statements nodeId
                           expressionSuffix}
 
               (B unexpected unexpectedBounds) :: _ =>
-                Fail0 (B (Expected [";", "}"] (show unexpected)) unexpectedBounds)
+                failWithCustomError (ParseErrorWithMessage
+                  "Expected `;` or `}`, found instead: `\{interpolate unexpected}`.") unexpectedBounds
 
 parseFunctionBody : Rule True SurfaceBlock
 parseFunctionBody _ [] _ = Fail0 (B EOI NoBounds)
@@ -529,7 +530,9 @@ parseFunctionBody nodeId ((B token bounds) :: remaining) acc@(SA recur) =
         let (blockNodeId, nextNodeId) = reserveNodeId nodeId
          in succT $
               parseBlockContents blockNodeId bounds [<] nextNodeId remaining recur
-      _ => Fail0 (B (Expected ["{"] (show token)) bounds)
+      _ =>
+        failWithCustomError (ParseErrorWithMessage
+              "Expected a function body declaration starting with `{`, found instead: `\{interpolate token}`.") bounds
 
 parseAttribute : Rule True SurfaceAttribute
 parseAttribute _ [] _ = Fail0 (B EOI NoBounds)
@@ -564,8 +567,7 @@ parseAttribute nodeId tokens _ =
               (MkAttributeNode name (Just [argument]))
          in Succ0 (attribute, nextNodeId) remaining
 
-    B token bounds :: _ =>
-      Fail0 (B (Expected ["#[attribute] or #[attribute(\"name\")]"] (show token)) bounds)
+    B token bounds :: _ => failWithCustomError (ParseErrorWithMessage "Malformed attribute.") bounds
 
 parseFunDecl :
     (declarationStart : Bounds)
@@ -651,7 +653,8 @@ parseFunDecl declarationStart attributes visibility functionEffect nodeId ((B to
                                                                                                 (Uncons Same)}
 
         _ =>
-            Fail0 (B (Expected ["fn"] (show token)) bounds)
+            failWithCustomError (ParseErrorWithMessage
+              "Expected `fun` keyword, found instead: `\{interpolate token}`.") bounds
 
 parseFunDeclWithEffect :
    (declarationStart : Bounds)
@@ -672,7 +675,8 @@ parseFunDeclWithEffect declarationStart attributes visibility effect effectBound
              in parseFunDecl declarationStart attributes visibility (Just effectNode) nextNodeId (B token bounds :: remaining) acc
 
         _ =>
-            Fail0 (B (Expected ["fn"] (show token)) bounds)
+            failWithCustomError (ParseErrorWithMessage
+              "Expected `fun` after `\{show effect}` effect modifier, found instead: `\{interpolate token}`.") bounds
 
 parsePubFunDecl : Bounds -> Bounds -> List SurfaceAttribute -> Rule True SurfaceItem
 parsePubFunDecl declarationStart pubTokenBounds attributes nodeId [] acc = Fail0 (B EOI NoBounds)
@@ -701,8 +705,30 @@ parsePubFunDecl declarationStart pubTokenBounds attributes nodeId ((B token nexT
         TokKw KwGeneral =>
             succT $ parseFunDeclWithEffect declarationStart attributes (Just pubModifierNode) EffectGeneral nexTokBounds nextNodeId remaining recur
 
+        TokKw KwMod =>
+            failWithCustomError (UnsupportedFeature "Modules are not yet supported.") nexTokBounds
+
+        TokKw KwUse =>
+            failWithCustomError (UnsupportedFeature "Use statements are not yet supported.") nexTokBounds
+
+        TokKw KwConst =>
+            failWithCustomError (UnsupportedFeature "Const declarations or const functions are not yet supported.") nexTokBounds
+
+        TokKw KwEnum =>
+            failWithCustomError (UnsupportedFeature "Enums are not yet supported.") nexTokBounds
+
+        TokKw KwEnum =>
+            failWithCustomError (UnsupportedFeature "Enums are not yet supported.") nexTokBounds
+
+        TokKw KwQenum =>
+            failWithCustomError (UnsupportedFeature "Qenums are not yet supported.") nexTokBounds
+
+        TokKw KwStruct =>
+            failWithCustomError (UnsupportedFeature "Structs are not yet supported.") nexTokBounds
+
         _ =>
-            Fail0 (B (Expected ["fn", "classical", "unitary", "isometry", "coisometry", "general"] (show token)) nexTokBounds)
+          failWithCustomError (ParseErrorWithMessage
+            "Expected function declaration after `pub` visibility modifier, found instead: `\{interpolate token}`.") nexTokBounds
 
 parseAttributedItem : Bounds -> SnocList SurfaceAttribute -> Rule True SurfaceItem
 parseAttributedItem _ _ _ [] _ = Fail0 (B EOI NoBounds)
@@ -716,28 +742,38 @@ parseAttributedItem declarationStart attributes nodeId
           succT $ assert_total $
             parseAttributedItem declarationStart (attributes :< attribute)
               nextNodeId afterAttribute recur
+
     TokKw KwFn =>
       parseFunDecl declarationStart (attributes <>> []) Nothing Nothing nodeId
         (B token bounds :: remaining) acc
+
     TokKw KwPub =>
       succT $ parsePubFunDecl declarationStart bounds (attributes <>> [])
         nodeId remaining recur
+
     TokKw KwClassical =>
       succT $ parseFunDeclWithEffect declarationStart (attributes <>> [])
         Nothing EffectClassical bounds nodeId remaining recur
+
     TokKw KwUnitary =>
       succT $ parseFunDeclWithEffect declarationStart (attributes <>> [])
         Nothing EffectUnitary bounds nodeId remaining recur
+
     TokKw KwIsometry =>
       succT $ parseFunDeclWithEffect declarationStart (attributes <>> [])
         Nothing EffectIsometry bounds nodeId remaining recur
+
     TokKw KwCoisometry =>
       succT $ parseFunDeclWithEffect declarationStart (attributes <>> [])
         Nothing EffectCoisometry bounds nodeId remaining recur
+
     TokKw KwGeneral =>
       succT $ parseFunDeclWithEffect declarationStart (attributes <>> [])
         Nothing EffectGeneral bounds nodeId remaining recur
-    _ => Fail0 (B (Expected ["function declaration after attribute"] (show token)) bounds)
+
+    _ =>
+        failWithCustomError (ParseErrorWithMessage
+          "Expected function declaration after attribute, found instead: `\{interpolate token}`.") bounds
 
 parseItem : Rule True SurfaceItem
 parseItem nodeId [] acc = Fail0 (B EOI NoBounds)

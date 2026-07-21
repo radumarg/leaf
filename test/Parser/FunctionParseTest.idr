@@ -45,9 +45,40 @@ runFunctionParseTests = runTests $ Test.do
   test "function with a simple return expression" $
     parseAndPrettyPrint "fn simple_expression() -> i64 {1}" `shouldBe` Just "fn simple_expression() -> i64 { 1 }"
 
-  -- test "annotation applied to a statement instead to a function declaration" $
-  --   parseErrorDetails "#[qasm_gate]\nlet 1 = 1;" `shouldBe`
-  --     Just ("?", "test-fixture.rs", (1, 1), (1, 4))
+  test "annotation applied to a statement instead to a function declaration" $
+    parseErrorDetails "#[qasm_gate]\nlet i = 1;" `shouldBe`
+      Just ("Expected function declaration after attribute, found instead: `let`.", "test-fixture.rs", (2, 1), (2, 4))
 
-  -- debugTestParseError "#[qasm_gate]\nlet i = 1;"
+  test "function expected after pub visibility modifier" $
+    parseErrorDetails "pub let i = 1;" `shouldBe`
+      Just ("Expected function declaration after `pub` visibility modifier, found instead: `let`.", "test-fixture.rs", (1, 5), (1, 8))
 
+  test "function keyword expected after function effect" $
+    parseErrorDetails "pub general let i = 1;" `shouldBe`
+      Just ("Expected `fun` after `general` effect modifier, found instead: `let`.", "test-fixture.rs", (1, 13), (1, 16))
+
+  test "malformed attribute, missing closing bracket" $
+    parseErrorDetails "#[qasm_gate \nfn empty() -> () {}" `shouldBe`
+      Just ("Malformed attribute.", "test-fixture.rs", (1, 1), (1, 2))
+
+  test "malformed attribute, extra content" $
+    parseErrorDetails "#[qasm_gate bogus_name] \nfn empty() -> () {}" `shouldBe`
+      Just ("Malformed attribute.", "test-fixture.rs", (1, 1), (1, 2))
+
+  test "malformed attribute with argument, missing closing bracket" $
+    parseErrorDetails "#[qasm_def(\"qasm_subroutine_name\") \nfn empty() -> () {}" `shouldBe`
+      Just ("Malformed attribute.", "test-fixture.rs", (1, 1), (1, 2))
+
+  test "malformed attribute with argument, extra content" $
+    parseErrorDetails "#[qasm_def(\"qasm_subroutine_name\") bogus_name] \nfn empty() -> () {}" `shouldBe`
+      Just ("Malformed attribute.", "test-fixture.rs", (1, 1), (1, 2))
+
+  test "function without opening brace" $
+    parseErrorDetails "fn empty(); }" `shouldBe`
+      Just ("Expected a function body declaration starting with `{`, found instead: `;`.", "test-fixture.rs", (1, 11), (1, 12))
+
+  -- test "function with statement missing semicolon" $
+  --   parseErrorDetails "fn simple() { let i: i32 = 1 }" `shouldBe`
+  --     Just ("Expected a function body declaration starting with `{`, found instead: `;`.", "test-fixture.rs", (1, 11), (1, 12))
+
+  -- debugTestParseError "fn simple() { let i: i32 = 1;"

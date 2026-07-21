@@ -15,17 +15,34 @@ import Frontend.Syntax.Name
 
 %default total
 
--- TODO: review
-sourcePos : Position -> SourcePos
-sourcePos (P line column) = MkSourcePos (S line) (S column) 0
--- TODO: review
+-- Text.Bounds positions use zero-based lines and columns, while Leaf's
+-- SourcePos uses one-based lines and columns. There is also an endpoint
+-- mismatch specific to bounds emitted by ILex: they originate as ByteBounds,
+-- whose end is the position of the token's last byte, and toBounds preserves
+-- that inclusive end. Leaf's SourceSpan instead uses a half-open end position.
+--
+-- Start and end must consequently be converted differently. The start only
+-- changes index base; the end changes index base and advances past the final
+-- character. This conversion is for ILex-produced Bounds, not arbitrary
+-- Text.Bounds values. Advancing the column is safe as long as tokens do not
+-- end with a newline which is actually the case for tokens in Token.idr.
+
+sourceStartPos : Position -> SourcePos
+sourceStartPos (P line column) =
+  MkSourcePos (S line) (S column) 0
+
+sourceEndPos : Position -> SourcePos
+sourceEndPos (P line column) =
+  MkSourcePos (S line) (S (S column)) 0
+
 public export
 sourceSpan : Bounds -> SourceSpan
 sourceSpan NoBounds =
-    let start = MkSourcePos 1 1 0 in
-        MkSourceSpan "" start start
+  let start = MkSourcePos 1 1 0
+  in MkSourceSpan "" start start
+
 sourceSpan (BS start end) =
-    MkSourceSpan "" (sourcePos start) (sourcePos end)
+  MkSourceSpan "" (sourceStartPos start) (sourceEndPos end)
 
 lastItemSpan : SurfaceItem -> List SurfaceItem -> SourceSpan
 lastItemSpan item [] =

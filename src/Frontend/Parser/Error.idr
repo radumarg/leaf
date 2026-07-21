@@ -9,6 +9,7 @@ public export
 data CustomParseError
     = UnsupportedFeature String
     | UnexpectedToken String
+    | ParseErrorWithMessage String
 
 public export
 0 ParseError : Type
@@ -18,6 +19,7 @@ public export
 renderParseError : ParseError -> String
 renderParseError (Custom (UnsupportedFeature message)) = message
 renderParseError (Custom (UnexpectedToken message)) = message
+renderParseError (Custom (ParseErrorWithMessage message)) = message
 renderParseError EOI = "Parse error: unexpected end of input"
 renderParseError (Expected expected actual) =
   "Parse error: expected " ++ show expected ++ ", but got " ++ actual
