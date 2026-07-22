@@ -2,6 +2,7 @@ module Frontend.Parser.Parser
 
 import Text.Bounds
 import Text.Parse.Manual
+import Text.Parse.Syntax
 import Data.List1
 
 import Frontend.ASTData
@@ -91,8 +92,9 @@ mutual
       Succ0 (elementType, afterElementNodeId) afterElement @{elementSuffix} =>
         case afterElement of
           [] => Fail0 (B EOI NoBounds)
-          (B (TokSym SymSemi) semiBounds) :: afterSemi =>
-            case parseArrayLength afterElementNodeId afterSemi suffixAcc of
+          _ :: _ =>
+            case (exact (TokSym SymSemi) *>
+                  Text.Parse.Manual.acc (parseArrayLength afterElementNodeId)) afterElement of
               Fail0 err => Fail0 err
               Succ0 (length, finalNodeId) afterLength @{lengthSuffix} =>
                 case afterLength of
@@ -106,17 +108,10 @@ mutual
                           @{Data.List.Suffix.trans
                               (the (Suffix True finalTokens
                                       (B (TokSym SymRBracket) closeBounds :: finalTokens))
-                                   (Uncons Same)) $
-                            Data.List.Suffix.trans lengthSuffix $
-                            Data.List.Suffix.trans
-                              (the (Suffix True afterSemi
-                                      (B (TokSym SymSemi) semiBounds :: afterSemi))
                                    (Uncons Same))
-                              elementSuffix}
+                              (Data.List.Suffix.trans lengthSuffix elementSuffix)}
                   (B unexpected unexpectedBounds) :: _ =>
                     Fail0 (B (Expected ["]"] (show unexpected)) unexpectedBounds)
-          (B unexpected unexpectedBounds) :: _ =>
-            Fail0 (B (Expected [";"] (show unexpected)) unexpectedBounds)
 
   parseParenType : NodeId -> Bounds -> Rule True SurfaceTy
   parseParenType _ _ _ [] _ = Fail0 (B EOI NoBounds)
@@ -142,7 +137,7 @@ mutual
                            (Uncons Same))
                       firstSuffix}
           (B (TokSym SymComma) commaBounds) :: afterComma =>
-            case assert_total $ parseTupleTail afterFirstNodeId afterComma suffixAcc of
+            case parseTupleTail afterFirstNodeId afterComma suffixAcc of
               Fail0 err => Fail0 err
               Succ0 (tail, finalNodeId) finalTokens @{tailSuffix} =>
                 let ty = surfaceAstNode
@@ -233,45 +228,33 @@ parseFunctionParameter nodeId tokens acc =
                         Succ0 (name, afterNameNodeId) afterName @{nameSuffix} =>
                             case afterName of
                                 [] => Fail0 (B EOI NoBounds)
-                                (B token bounds) :: afterColon =>
-                                    case token of
-                                        TokSym SymColon =>
-                                            case parseType
-                                                    afterNameNodeId
-                                                    afterColon
-                                                    suffixAcc of
-                                                Fail0 err => Fail0 err
-                                                Succ0 (parameterType, finalNodeId)
-                                                      finalTokens @{typeSuffix} =>
-                                                    let parameterSpan =
-                                                            mergeSpans
-                                                                (parameterStartSpan docs mutability name)
-                                                                parameterType.astInfo.span
-                                                        parameter =
-                                                            surfaceAstNode
-                                                                (MkAstInfo
-                                                                    parameterNodeId
-                                                                    parameterSpan)
-                                                                (NormalParameter
-                                                                    docs
-                                                                    mutability
-                                                                    name
-                                                                    parameterType)
-                                                     in Succ0
-                                                            (parameter, finalNodeId)
-                                                            finalTokens
-                                                            @{Data.List.Suffix.trans typeSuffix $
-                                                              Data.List.Suffix.trans
-                                                                (the
-                                                                  (Suffix True
-                                                                    afterColon
-                                                                    (B (TokSym SymColon) bounds :: afterColon))
-                                                                  (Uncons Same)) $
-                                                              Data.List.Suffix.trans nameSuffix $
-                                                              Data.List.Suffix.trans mutabilitySuffix $
-                                                              docsSuffix}
-                                        _ =>
-                                            Fail0 (B (Expected [":"] (show token)) bounds)
+                                _ :: _ =>
+                                    case (exact (TokSym SymColon) *>
+                                          Text.Parse.Manual.acc (parseType afterNameNodeId)) afterName of
+                                        Fail0 err => Fail0 err
+                                        Succ0 (parameterType, finalNodeId)
+                                              finalTokens @{typeSuffix} =>
+                                            let parameterSpan =
+                                                    mergeSpans
+                                                        (parameterStartSpan docs mutability name)
+                                                        parameterType.astInfo.span
+                                                parameter =
+                                                    surfaceAstNode
+                                                        (MkAstInfo
+                                                            parameterNodeId
+                                                            parameterSpan)
+                                                        (NormalParameter
+                                                            docs
+                                                            mutability
+                                                            name
+                                                            parameterType)
+                                             in Succ0
+                                                    (parameter, finalNodeId)
+                                                    finalTokens
+                                                    @{Data.List.Suffix.trans typeSuffix $
+                                                      Data.List.Suffix.trans nameSuffix $
+                                                      Data.List.Suffix.trans mutabilitySuffix $
+                                                      docsSuffix}
 
 parseFunctionParameterList : 
     SnocList (SurfaceAstNode FunctionParameterNode) ->
@@ -312,13 +295,8 @@ parseFunctionParameterList parsed nodeId
 
 parseFunctionParameters : Rule True (List (SurfaceAstNode FunctionParameterNode))
 parseFunctionParameters _ [] _ = Fail0 (B EOI NoBounds)
-parseFunctionParameters nodeId
-    ((B token bounds) :: remaining) acc@(SA recur) =
-    case token of
-        TokSym SymLParen =>
-            succT $ parseFunctionParameterList [<] nodeId remaining recur
-        _ =>
-            Fail0 (B (Expected ["("] (show token)) bounds)
+parseFunctionParameters nodeId tokens@(_ :: _) _ =
+    (exact (TokSym SymLParen) *> acc (parseFunctionParameterList [<] nodeId)) tokens
 
 parseOptionalReturnType : Rule False (Maybe SurfaceTy)
 parseOptionalReturnType nodeId [] _ =
@@ -751,7 +729,7 @@ mutual
                                   (B (TokSym SymLParen) openBounds :: remaining))
                                (Uncons Same))}
               (B (TokSym SymComma) commaBounds) :: afterComma =>
-                case assert_total $
+                case
                            parseExpressionTupleTail afterFirstNodeId afterComma suffixAcc of
                   Fail0 err => Fail0 err
                   Succ0 (tail, finalNodeId) finalTokens @{tailSuffix} =>
@@ -814,7 +792,7 @@ mutual
                                   (B (TokSym SymLBracket) openBounds :: remaining))
                                (Uncons Same))}
               (B (TokSym SymComma) commaBounds) :: afterComma =>
-                case assert_total $
+                case
                            parseArrayElements afterFirstNodeId afterComma suffixAcc of
                   Fail0 err => Fail0 err
                   Succ0 (tail, finalNodeId) finalTokens @{tailSuffix} =>
@@ -1205,7 +1183,7 @@ mutual
   parseBlockExpression : Rule True SurfaceExpr
   parseBlockExpression nodeId tokens acc =
     let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-     in case assert_total $ parseFunctionBody afterExpressionNodeId tokens acc of
+     in case parseFunctionBody afterExpressionNodeId tokens acc of
           Fail0 err => Fail0 err
           Succ0 (block, finalNodeId) finalTokens @{blockSuffix} =>
             Succ0
@@ -1243,7 +1221,7 @@ mutual
                parseExpression afterExpressionNodeId remaining recur of
           Fail0 err => Fail0 err
           Succ0 (condition, afterConditionNodeId) afterCondition @{conditionSuffix} =>
-            case assert_total $
+            case
                        parseFunctionBody afterConditionNodeId afterCondition suffixAcc of
               Fail0 err => Fail0 err
               Succ0 (body, finalNodeId) finalTokens @{bodySuffix} =>
@@ -1276,7 +1254,7 @@ mutual
      in case assert_total $ parseExpression afterNameNodeId remaining recur of
           Fail0 err => Fail0 err
           Succ0 (iterable, afterIterableNodeId) afterIterable @{iterableSuffix} =>
-            case assert_total $
+            case
                        parseFunctionBody afterIterableNodeId afterIterable suffixAcc of
               Fail0 err => Fail0 err
               Succ0 (body, finalNodeId) finalTokens @{bodySuffix} =>
@@ -1398,14 +1376,14 @@ mutual
      in case assert_total $ parseExpression afterIfNodeId remaining recur of
           Fail0 err => Fail0 err
           Succ0 (condition, afterConditionNodeId) afterCondition @{conditionSuffix} =>
-            case assert_total $
+            case
                        parseFunctionBody afterConditionNodeId afterCondition suffixAcc of
               Fail0 err => Fail0 err
               Succ0 (thenBlock, afterThenNodeId) afterThen @{thenSuffix} =>
                 case afterThen of
                   (B (TokKw KwElse) elseBounds) ::
                     afterElse@((B (TokSym SymLBrace) openElseBounds) :: elseTokens) =>
-                      case assert_total $
+                      case
                                  parseFunctionBody afterThenNodeId afterElse suffixAcc of
                         Fail0 err => Fail0 err
                         Succ0 (elseBlock, finalNodeId) finalTokens @{elseSuffix} =>
@@ -1515,7 +1493,7 @@ parseLetStatement nodeId ((B token letBounds) :: remaining) acc@(SA recur) =
                       case parseType afterNameNodeId afterColon suffixAcc of
                         Fail0 err => Fail0 err
                         Succ0 (ty, afterTypeNodeId) afterType @{typeSuffix} =>
-                          case assert_total $
+                          case
                                      parseLetInitializer afterTypeNodeId afterType suffixAcc of
                             Fail0 err => Fail0 err
                             Succ0 (initializer, finalNodeId) afterInitializer @{initializerSuffix} =>
@@ -1550,7 +1528,7 @@ parseLetStatement nodeId ((B token letBounds) :: remaining) acc@(SA recur) =
                                   Fail0 (B (Expected [";"] (show unexpected)) unexpectedBounds)
                                 [] => Fail0 (B EOI NoBounds)
                     (B (TokSym SymEq) eqBounds) :: afterEq =>
-                      case assert_total $
+                      case
                                  parseLetInitializer afterNameNodeId afterName suffixAcc of
                         Fail0 err => Fail0 err
                         Succ0 (initializer, finalNodeId) afterInitializer
@@ -1647,7 +1625,7 @@ parseBlockContents blockNodeId openBounds statements nodeId
         case parseLetStatement nodeId (B token bounds :: remaining) acc of
           Fail0 err => Fail0 err
           Succ0 (statement, nextNodeId) afterStatement =>
-            succT $ assert_total $
+            succT $
               parseBlockContents blockNodeId openBounds
                 (statements :< statement) nextNodeId afterStatement recur
 
@@ -1932,7 +1910,7 @@ parseAttributedItem declarationStart attributes nodeId
       case parseAttribute nodeId (B token bounds :: remaining) acc of
         Fail0 err => Fail0 err
         Succ0 (attribute, nextNodeId) afterAttribute =>
-          succT $ assert_total $
+          succT $
             parseAttributedItem declarationStart (attributes :< attribute)
               nextNodeId afterAttribute recur
 
