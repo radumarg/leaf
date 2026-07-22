@@ -12,13 +12,14 @@ import Frontend.Syntax.AST
 import Frontend.Syntax.Common
 import Frontend.Syntax.Doc
 import Frontend.Syntax.Name
+import Frontend.Syntax.Operator
 
 %default total
 
 -- Text.Bounds positions use zero-based lines and columns, while Leaf's
 -- SourcePos uses one-based lines and columns. There is also an endpoint
 -- mismatch specific to bounds emitted by ILex: they originate as ByteBounds,
--- whose end is the position of the token's last byte, and toBounds preserves
+-- whose end is the position of the token's last byte, and integer literal preserves
 -- that inclusive end. Leaf's SourceSpan instead uses a half-open end position.
 --
 -- Start and end must consequently be converted differently. The start only
@@ -61,6 +62,24 @@ sourceFileInfo _ nodeId (first :: rest) =
      in MkAstInfo nodeId (mergeSpans firstSpan lastSpan)
 
 public export
+record ExpressionTupleTail where
+  constructor MkExpressionTupleTail
+  tupleTailElements : List SurfaceExpr
+  tupleCloseBounds  : Bounds
+
+public export
+record CallArguments where
+  constructor MkCallArguments
+  callArgumentValues : List SurfaceExpr
+  callCloseBounds     : Bounds
+
+public export
+record ArrayElements where
+  constructor MkArrayElements
+  arrayElementValues : List SurfaceExpr
+  arrayCloseBounds   : Bounds
+
+public export
 failWithCustomError : CustomParseError -> Bounds -> Res isStrict Token tokens CustomParseError a
 failWithCustomError customParseError bounds = Fail0 (B (Custom customParseError) bounds)
 
@@ -73,3 +92,40 @@ parameterStartSpan :
 parameterStartSpan (doc :: _) _ _ = doc.astInfo.span
 parameterStartSpan [] (Just mutability) _ = mutability.astInfo.span
 parameterStartSpan [] Nothing name = name.astInfo.span
+
+public export
+assignmentOperator : Symbol -> Maybe AssignmentOperator
+assignmentOperator SymEq        = Just AssignValue
+assignmentOperator SymPlusEq    = Just AssignAdd
+assignmentOperator SymMinusEq   = Just AssignSubtract
+assignmentOperator SymStarEq    = Just AssignMultiply
+assignmentOperator SymSlashEq   = Just AssignDivide
+assignmentOperator SymPercentEq = Just AssignRemainder
+assignmentOperator SymAndEq     = Just AssignBitAnd
+assignmentOperator SymOrEq      = Just AssignBitOr
+assignmentOperator SymCaretEq   = Just AssignBitXor
+assignmentOperator SymShlEq     = Just AssignShiftLeft
+assignmentOperator SymShrEq     = Just AssignShiftRight
+assignmentOperator _            = Nothing
+
+public export
+binaryOperator : Symbol -> Maybe (BinaryOperator, Nat)
+binaryOperator SymStar   = Just (BinaryMultiply, 80)
+binaryOperator SymSlash  = Just (BinaryDivide, 80)
+binaryOperator SymPercent = Just (BinaryRemainder, 80)
+binaryOperator SymPlus   = Just (BinaryAdd, 75)
+binaryOperator SymMinus  = Just (BinarySubtract, 75)
+binaryOperator SymShl    = Just (BinaryShiftLeft, 70)
+binaryOperator SymShr    = Just (BinaryShiftRight, 70)
+binaryOperator SymAmp    = Just (BinaryBitAnd, 65)
+binaryOperator SymCaret  = Just (BinaryBitXor, 60)
+binaryOperator SymPipe   = Just (BinaryBitOr, 55)
+binaryOperator SymLt     = Just (BinaryLess, 50)
+binaryOperator SymLe     = Just (BinaryLessEqual, 50)
+binaryOperator SymGt     = Just (BinaryGreater, 50)
+binaryOperator SymGe     = Just (BinaryGreaterEqual, 50)
+binaryOperator SymEqEq   = Just (BinaryEqual, 50)
+binaryOperator SymNotEq  = Just (BinaryNotEqual, 50)
+binaryOperator SymAndAnd = Just (BinaryLogicalAnd, 45)
+binaryOperator SymOrOr   = Just (BinaryLogicalOr, 40)
+binaryOperator _         = Nothing

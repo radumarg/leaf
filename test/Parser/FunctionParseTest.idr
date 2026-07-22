@@ -77,8 +77,8 @@ runFunctionParseTests = runTests $ Test.do
     parseErrorDetails "fn empty(); }" `shouldBe`
       Just ("Expected a function body declaration starting with `{`, found instead: `;`.", "test-fixture.rs", (1, 11), (1, 12))
 
-  -- test "function with statement missing semicolon" $
-  --   parseErrorDetails "fn simple() { let i: i32 = 1 }" `shouldBe`
-  --     Just ("Expected a function body declaration starting with `{`, found instead: `;`.", "test-fixture.rs", (1, 11), (1, 12))
+  test "function with statement missing semicolon" $
+    parseErrorDetails "fn simple() { let i: i32 = 1; 2 let j = 3;" `shouldBe`
+      Just ("Expected `;` or `}`, found instead: `let`.", "test-fixture.rs", (1, 33), (1, 36))
 
-  -- debugTestParseError "fn simple() { let i: i32 = 1;"
+  debugTestParseError "fn simple() { let i: i32 = 1; 2 let j = 3;"
