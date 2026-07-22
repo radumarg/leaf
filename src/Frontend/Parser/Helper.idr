@@ -11,6 +11,7 @@ import Frontend.Parser.Error
 import Frontend.Syntax.AST
 import Frontend.Syntax.Common
 import Frontend.Syntax.Doc
+import Frontend.Syntax.Literal
 import Frontend.Syntax.Name
 import Frontend.Syntax.Operator
 
@@ -129,3 +130,93 @@ binaryOperator SymNotEq  = Just (BinaryNotEqual, 50)
 binaryOperator SymAndAnd = Just (BinaryLogicalAnd, 45)
 binaryOperator SymOrOr   = Just (BinaryLogicalOr, 40)
 binaryOperator _         = Nothing
+
+public export
+functionEffectFromKeyword : Keyword -> Maybe FunctionEffect
+functionEffectFromKeyword KwClassical  = Just EffectClassical
+functionEffectFromKeyword KwUnitary    = Just EffectUnitary
+functionEffectFromKeyword KwIsometry   = Just EffectIsometry
+functionEffectFromKeyword KwCoisometry = Just EffectCoisometry
+functionEffectFromKeyword KwGeneral    = Just EffectGeneral
+functionEffectFromKeyword _            = Nothing
+
+public export
+unsupportedTopLevelItem : Keyword -> Maybe CustomParseError
+unsupportedTopLevelItem KwMod =
+  Just (UnsupportedFeature "Modules are not yet supported.")
+unsupportedTopLevelItem KwUse =
+  Just (UnsupportedFeature "Use statements are not yet supported.")
+unsupportedTopLevelItem KwConst =
+  Just (UnsupportedFeature
+    "Const declarations or const functions are not yet supported.")
+unsupportedTopLevelItem KwEnum =
+  Just (UnsupportedFeature "Enums are not yet supported.")
+unsupportedTopLevelItem KwQenum =
+  Just (UnsupportedFeature "Qenums are not yet supported.")
+unsupportedTopLevelItem KwStruct =
+  Just (UnsupportedFeature "Structs are not yet supported.")
+unsupportedTopLevelItem _ = Nothing
+
+public export
+startsWithUppercase : String -> Bool
+startsWithUppercase text =
+  case unpack text of
+    character :: _ => character >= 'A' && character <= 'Z'
+    [] => False
+
+public export
+makeLiteralExpression : LiteralNode -> Bounds -> Nat -> (SurfaceExpr, Nat)
+makeLiteralExpression literalValue bounds nodeId =
+  let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
+      (literalNodeId, nextNodeId) = reserveNodeId afterExpressionNodeId
+      literal = surfaceAstNode (MkAstInfo literalNodeId (sourceSpan bounds))
+                               literalValue
+      expression = surfaceAstNode (MkAstInfo expressionNodeId (sourceSpan bounds))
+                                  (ExprLiteral literal)
+   in (expression, nextNodeId)
+
+public export
+makeNameExpression : String -> Bounds -> Nat -> (SurfaceExpr, Nat)
+makeNameExpression nameText bounds nodeId =
+  let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
+      (nameNodeId, nextNodeId) = reserveNodeId afterExpressionNodeId
+      name = surfaceAstNode (MkAstInfo nameNodeId (sourceSpan bounds))
+                            (MkNameNode nameText)
+      expression = surfaceAstNode (MkAstInfo expressionNodeId (sourceSpan bounds))
+                                  (ExprName name)
+   in (expression, nextNodeId)
+
+public export
+makeBuiltinExpression : Builtin -> Bounds -> Nat -> (SurfaceExpr, Nat)
+makeBuiltinExpression builtin bounds nodeId =
+  let (expressionNodeId, nextNodeId) = reserveNodeId nodeId
+      expression = surfaceAstNode (MkAstInfo expressionNodeId (sourceSpan bounds))
+                                  (ExprBuiltin builtin)
+   in (expression, nextNodeId)
+
+
+public export
+assignmentTargetFromExpression : SurfaceExpr -> Maybe AssignmentTargetNode
+assignmentTargetFromExpression (MkAstNode _ _ expression) =
+  case expression of
+    ExprName name => Just (AssignTargetName name)
+    ExprIndex object index => Just (AssignTargetIndex object index)
+    ExprField object field => Just (AssignTargetField object field)
+    ExprTupleIndex object indexRaw => Just (AssignTargetTupleIndex object indexRaw)
+    _ => Nothing
+
+public export
+isBlockLikeExpression : SurfaceExpr -> Bool
+isBlockLikeExpression (MkAstNode _ _ expression) =
+  case expression of
+    ExprBlock _ => True
+    ExprIf _ => True
+    ExprQIf _ => True
+    ExprSIf _ => True
+    ExprMatch _ => True
+    ExprQMatch _ => True
+    ExprSMatch _ => True
+    ExprLoop _ => True
+    ExprWhile _ _ => True
+    ExprFor _ _ _ => True
+    _ => False

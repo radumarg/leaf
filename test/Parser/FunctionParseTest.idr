@@ -81,4 +81,4 @@ runFunctionParseTests = runTests $ Test.do
     parseErrorDetails "fn simple() { let i: i32 = 1; 2 let j = 3;" `shouldBe`
       Just ("Expected `;` or `}`, found instead: `let`.", "test-fixture.rs", (1, 33), (1, 36))
 
-  debugTestParseError "fn simple() { let i: i32 = 1; 2 let j = 3;"
+  -- debugTestParseError "fn simple() { let i: i32 = 1; 2 let j = 3;"
