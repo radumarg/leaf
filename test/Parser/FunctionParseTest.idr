@@ -26,6 +26,16 @@ runFunctionParseTests = runTests $ Test.do
     parseAndPrettyPrint "uncompsafe fn empty() {}" `shouldBe`
       Just "uncompsafe fn empty() { }"
 
+  test "const classical function" $
+    parseAndPrettyPrint
+      "const classical fn multBy2(i: i32) -> i32 { 2 * i }" `shouldBe`
+      Just "const classical fn multBy2(i: i32) -> i32 { (2 * i) }"
+
+  test "public const classical function" $
+    parseAndPrettyPrint
+      "pub const classical fn multBy2(i: i32) -> i32 { 2 * i }" `shouldBe`
+      Just "pub const classical fn multBy2(i: i32) -> i32 { (2 * i) }"
+
   test "pub unitary empty function with unit output" $
     parseAndPrettyPrint "pub unitary fn empty() -> () {}" `shouldBe` Just "pub unitary fn empty() -> () { }"
 
@@ -64,6 +74,12 @@ runFunctionParseTests = runTests $ Test.do
       `shouldBe`
       Just
         "fn qualified(q: affine qubit, pair: (scratch linear qubit, affine qubit)) { }"
+
+  test "conflicting ownership qualifiers in a type are rejected" $
+    parseAndPrettyPrint "fn bad(q: linear affine qubit) {}" `shouldBe` Nothing
+
+  test "duplicate scratch qualifiers in a type are rejected" $
+    parseAndPrettyPrint "fn bad(q: scratch scratch qubit) {}" `shouldBe` Nothing
 
   test "higher-order function types" $
     parseAndPrettyPrint

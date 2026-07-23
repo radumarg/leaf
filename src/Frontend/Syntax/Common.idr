@@ -33,6 +33,27 @@ implementation Show VisbilityQualifier where
   show = showVisibilityQualifierLeaf
 
 --------------------------------------------------------------------------------
+-- Function constness
+--------------------------------------------------------------------------------
+-- The optional `const` qualifier written before `fn`. Absence is represented by
+-- `Nothing` on a function declaration so an explicitly written qualifier retains
+-- its own source location.
+--------------------------------------------------------------------------------
+
+public export
+data FunctionConstness = ConstFunction
+
+%runElab derive "FunctionConstness" [Eq]
+
+public export
+showFunctionConstnessLeaf : FunctionConstness -> String
+showFunctionConstnessLeaf ConstFunction = "const"
+
+public export
+implementation Show FunctionConstness where
+  show = showFunctionConstnessLeaf
+
+--------------------------------------------------------------------------------
 -- Mutability
 --------------------------------------------------------------------------------
 -- Whether a BINDING is marked `mut`:

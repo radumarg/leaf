@@ -8,6 +8,7 @@ import Frontend.Token
 import Frontend.ASTData
 import Frontend.ASTPhases
 import Frontend.Parser.Error
+import Frontend.Syntax.Attribute
 import Frontend.Syntax.AST
 import Frontend.Syntax.Common
 import Frontend.Syntax.Doc
@@ -68,35 +69,27 @@ sourceFileInfo _ nodeId (first :: rest) =
         lastSpan = lastItemSpan first rest
      in MkAstInfo nodeId (mergeSpans firstSpan lastSpan)
 
+||| Legal states reached while collecting a top-level item's declaration prefix.
+||| Each constructor represents one accepted modifier sequence and retains the
+||| visibility that may precede it. `PrefixConstEffect` represents
+||| `const <effect> fn`; the reverse order is deliberately not constructible.
 public export
-record ExpressionTupleTail where
-  constructor MkExpressionTupleTail
-  tupleTailElements : List SurfaceExpr
-  tupleCloseBounds  : Bounds
+data ItemPrefixState
+  = PrefixOrdinary (Maybe (SurfaceAstNode VisbilityQualifier))
+  | PrefixConst (Maybe (SurfaceAstNode VisbilityQualifier)) Bounds
+  | PrefixEffect
+      (Maybe (SurfaceAstNode VisbilityQualifier))
+      (SurfaceAstNode FunctionEffect)
+  | PrefixConstEffect
+      (Maybe (SurfaceAstNode VisbilityQualifier))
+      Bounds
+      (SurfaceAstNode FunctionEffect)
 
 public export
-record CallArguments where
-  constructor MkCallArguments
-  callArgumentValues : List SurfaceExpr
-  callCloseBounds     : Bounds
-
-public export
-record ArrayElements where
-  constructor MkArrayElements
-  arrayElementValues : List SurfaceExpr
-  arrayCloseBounds   : Bounds
-
-public export
-record PatternTail where
-  constructor MkPatternTail
-  patternTailValues : List SurfacePattern
-  patternCloseBounds : Bounds
-
-public export
-record TupleTail where
-    constructor MkTupleTail
-    elementTypes : List SurfaceTy
-    closingBounds : Bounds
+record CommaList a where
+  constructor MkCommaList
+  values : List a
+  closeBounds : Bounds
 
 public export
 record TypePathTail where
@@ -105,10 +98,12 @@ record TypePathTail where
     lastBounds : Bounds
 
 public export
-record FunctionTypeParameters where
-    constructor MkFunctionTypeParameters
-    functionTypeParameters : List (SurfaceAstNode (FunctionTypeParameterNode SurfaceExpr))
-    closingBounds : Bounds
+record ItemPrefix where
+  constructor MkItemPrefix
+  itemNodeId : NodeId
+  declarationStart : Bounds
+  attributes : SnocList SurfaceAttribute
+  state : ItemPrefixState
 
 public export
 failWithCustomError : CustomParseError -> Bounds -> Res isStrict Token tokens CustomParseError a
@@ -138,6 +133,13 @@ assignmentOperator SymCaretEq   = Just AssignBitXor
 assignmentOperator SymShlEq     = Just AssignShiftLeft
 assignmentOperator SymShrEq     = Just AssignShiftRight
 assignmentOperator _            = Nothing
+
+public export
+unaryOperator : Symbol -> Maybe UnaryOperator
+unaryOperator SymMinus = Just UnaryNegate
+unaryOperator SymBang  = Just UnaryLogicalNot
+unaryOperator SymAmp   = Just (UnaryBorrow SharedBorrow)
+unaryOperator _        = Nothing
 
 public export
 binaryOperator : Symbol -> Maybe (BinaryOperator, Nat)
@@ -211,12 +213,17 @@ makeLiteralExpression literalValue bounds nodeId =
    in (expression, nextNodeId)
 
 public export
+makeName : String -> Bounds -> Nat -> (SurfaceName, Nat)
+makeName nameText bounds nodeId =
+  let (nameNodeId, nextNodeId) = reserveNodeId nodeId
+      name = surfaceAstNode (MkAstInfo nameNodeId (sourceSpan bounds)) (MkNameNode nameText)
+   in (name, nextNodeId)
+
+public export
 makeNameExpression : String -> Bounds -> Nat -> (SurfaceExpr, Nat)
 makeNameExpression nameText bounds nodeId =
   let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-      (nameNodeId, nextNodeId) = reserveNodeId afterExpressionNodeId
-      name = surfaceAstNode (MkAstInfo nameNodeId (sourceSpan bounds))
-                            (MkNameNode nameText)
+      (name, nextNodeId) = makeName nameText bounds afterExpressionNodeId
       expression = surfaceAstNode (MkAstInfo expressionNodeId (sourceSpan bounds))
                                   (ExprName name)
    in (expression, nextNodeId)
@@ -257,3 +264,84 @@ isBlockLikeExpression (MkAstNode _ _ expression) =
     ExprCtrl (ControlledBlock _ _ _) => True
     ExprAdjoint (AdjointBlock _) => True
     _ => False
+
+public export
+isComparisonOperator : BinaryOperator -> Bool
+isComparisonOperator BinaryEqual = True
+isComparisonOperator BinaryNotEqual = True
+isComparisonOperator BinaryGreater = True
+isComparisonOperator BinaryGreaterEqual = True
+isComparisonOperator BinaryLess = True
+isComparisonOperator BinaryLessEqual = True
+isComparisonOperator _ = False
+
+public export
+isUnparenthesizedComparison : SurfaceExpr -> Bool
+isUnparenthesizedComparison (MkAstNode _ _ (ExprBinary operator _ _)) =
+  isComparisonOperator operator.value
+isUnparenthesizedComparison _ = False
+
+public export
+isOpenRangeTerminator : Token -> Bool
+isOpenRangeTerminator (TokSym SymSemi) = True
+isOpenRangeTerminator (TokSym SymComma) = True
+isOpenRangeTerminator (TokSym SymRParen) = True
+isOpenRangeTerminator (TokSym SymRBracket) = True
+isOpenRangeTerminator (TokSym SymRBrace) = True
+isOpenRangeTerminator _ = False
+
+public export
+isOptionalValueTerminator : Token -> Bool
+isOptionalValueTerminator (TokSym SymSemi) = True
+isOptionalValueTerminator (TokSym SymComma) = True
+isOptionalValueTerminator (TokSym SymRBrace) = True
+isOptionalValueTerminator _ = False
+
+public export
+nextTokenSatisfies :
+  (Token -> Bool) -> List (Bounded Token) -> Bool
+nextTokenSatisfies predicate ((B token _) :: _) = predicate token
+nextTokenSatisfies _ [] = False
+
+||| Valid quantum-storage qualifiers collected in source order. Ownership and
+||| scratch occupy separate slots so duplicates and conflicting ownership
+||| qualifiers can be rejected consistently by every grammar that uses them.
+public export
+record StorageQualifiers where
+  constructor MkStorageQualifiers
+  ownership : Maybe (SurfaceAstNode QuantumStorageQualifier)
+  scratch : Maybe (SurfaceAstNode QuantumStorageQualifier)
+  ordered : SnocList (SurfaceAstNode QuantumStorageQualifier)
+
+public export
+emptyStorageQualifiers : StorageQualifiers
+emptyStorageQualifiers = MkStorageQualifiers Nothing Nothing [<]
+
+||| Adds one located qualifier or returns the diagnostic for an invalid combination.
+public export
+addStorageQualifier :
+     StorageQualifiers
+  -> SurfaceAstNode QuantumStorageQualifier
+  -> Either String StorageQualifiers
+addStorageQualifier qualifiers located =
+  case located.value of
+    QualifierScratch =>
+      case qualifiers.scratch of
+        Just _ => Left "Duplicate `scratch` storage qualifier."
+        Nothing => Right $ MkStorageQualifiers qualifiers.ownership
+          (Just located) (qualifiers.ordered :< located)
+    QualifierLinear => addOwnership
+    QualifierAffine => addOwnership
+  where
+    addOwnership : Either String StorageQualifiers
+    addOwnership =
+      case qualifiers.ownership of
+        Nothing => Right $ MkStorageQualifiers (Just located)
+          qualifiers.scratch (qualifiers.ordered :< located)
+        Just existing =>
+          if existing.value == located.value
+            then Left
+              ("Duplicate `" ++ show located.value ++ "` storage qualifier.")
+            else Left
+              ("Cannot combine `" ++ show existing.value ++ "` and `" ++
+               show located.value ++ "` storage qualifiers.")

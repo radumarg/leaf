@@ -376,7 +376,7 @@ mutual
       ItemUse _       => []
       ItemModule md   => validateModuleDecl md
 
-  -- Fields (in declaration order): docs, attributes, visibility, isConst,
+  -- Fields (in declaration order): docs, attributes, visibility, constness,
   -- effect, name, parameters, returnType, supports, contracts, body.
   validateFunctionDecl : FunctionDeclarationNode -> List ValidationError
   validateFunctionDecl

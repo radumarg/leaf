@@ -806,14 +806,16 @@ mutual
 
   showFunctionDeclarationNode : PrettyStyle -> FunctionDeclarationNode -> String
   showFunctionDeclarationNode style
-    (MkFunctionDeclarationNode docs attrs vis isConst effect nm params retTy supports contracts body) =
+    (MkFunctionDeclarationNode docs attrs vis constness effect nm params retTy supports contracts body) =
     let visibilityStr = case vis of
                           Nothing                       => ""
                           Just (MkAstNode _ _ visibility) => visPrefix visibility
         effectStr = case effect of
                       Nothing                        => ""
                       Just (MkAstNode _ _ eff)  => show eff ++ " "
-        constStr    = if isConst then "const " else ""
+        constStr    = case constness of
+                        Nothing                         => ""
+                        Just (MkAstNode _ _ qualifier) => show qualifier ++ " "
         paramsStr   = joinWith ", " (showFunctionParameterList style params)
         retStr      = case retTy of
                         Nothing => ""

@@ -132,8 +132,8 @@ mutual
     functionDocs       : List SurfaceDocComment
     functionAttributes : List SurfaceAttribute
     functionVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
-    -- `const fn` -- may be evaluated at compile time.
-    isConstFunction    : Bool
+    -- Nothing: ordinary `fn`. Just: the user explicitly wrote `const fn`.
+    functionConstness  : Maybe (SurfaceAstNode FunctionConstness)
     -- Nothing: no effect written (treated as general later).
     -- Just (located EffectGeneral): the user explicitly wrote `general`.
     functionEffect     : Maybe (SurfaceAstNode FunctionEffect)

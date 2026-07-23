@@ -29,6 +29,10 @@ runTopModuleParseTests = runTests $ Test.do
     parseAndPrettyPrint "const N: i64 = 4;" `shouldBe`
       Just "const N: i64 = 4;"
 
+  test "public constant expression declaration" $
+    parseAndPrettyPrint "pub const MAX_USERS: i16 = 100;" `shouldBe`
+      Just "pub const MAX_USERS: i16 = 100;"
+
   test "constant function declaration" $
     parseAndPrettyPrint
       "const fn square(x: i64) -> i64 {\n    x * x\n}" `shouldBe`
