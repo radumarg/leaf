@@ -390,26 +390,26 @@ emitUnterminatedStringLiteral :
 emitUnterminatedStringLiteral _ =
   rememberFatalError LexUnterminatedStringLiteral
 
-emitInvalidBasisStringLiteral :
+emitUnterminatedBasisStringLiteral :
      (sk : LeafLexerStack q)
   => String
   -> F1 q LeafState
-emitInvalidBasisStringLiteral rawText =
-  rememberFatalError (LexInvalidBasisStringLiteral rawText)
+emitUnterminatedBasisStringLiteral _ =
+  rememberFatalError LexUnterminatedBasisStringLiteral
 
-emitInvalidByteStringLiteral :
+emitUnterminatedByteStringLiteral :
      (sk : LeafLexerStack q)
   => String
   -> F1 q LeafState
-emitInvalidByteStringLiteral rawText =
-  rememberFatalError (LexInvalidByteStringLiteral rawText)
+emitUnterminatedByteStringLiteral _ =
+  rememberFatalError LexUnterminatedByteStringLiteral
 
-emitInvalidByteLiteral :
+emitUnterminatedByteLiteral :
      (sk : LeafLexerStack q)
   => String
   -> F1 q LeafState
-emitInvalidByteLiteral rawText =
-  rememberFatalError (LexInvalidByteLiteral rawText)
+emitUnterminatedByteLiteral _ =
+  rememberFatalError LexUnterminatedByteLiteral
 
 emitOrdinaryCharLiteralError :
      (sk : LeafLexerStack q)
@@ -543,9 +543,9 @@ initialRules =
   -- Unterminated candidates come after closed-literal candidates, so a valid
   -- string wins by maximal munch. They come before identifiers so `bs"bad` is
   -- not split into `bs` and a string fragment.
-  , string unterminatedBasisStringCandidate emitInvalidBasisStringLiteral
-  , string unterminatedByteStringCandidate emitInvalidByteStringLiteral
-  , string unterminatedByteLiteralCandidate emitInvalidByteLiteral
+  , string unterminatedBasisStringCandidate emitUnterminatedBasisStringLiteral
+  , string unterminatedByteStringCandidate emitUnterminatedByteStringLiteral
+  , string unterminatedByteLiteralCandidate emitUnterminatedByteLiteral
   , string unterminatedNormalStringCandidate emitUnterminatedStringLiteral
   , string ordinaryCharLiteralCandidate emitOrdinaryCharLiteralError
 

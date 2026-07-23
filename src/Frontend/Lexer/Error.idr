@@ -28,6 +28,9 @@ data LexerError
   | LexInvalidStringLiteral String
   | LexInvalidNumberLiteral String
   | LexUnterminatedStringLiteral
+  | LexUnterminatedBasisStringLiteral
+  | LexUnterminatedByteStringLiteral
+  | LexUnterminatedByteLiteral
   | LexOrdinaryCharLiteralNeedsToken
   | LexInternalLexerError String
 
@@ -75,6 +78,15 @@ Interpolation LexerError where
 
   interpolate LexUnterminatedStringLiteral =
     "Unterminated string literal"
+
+  interpolate LexUnterminatedBasisStringLiteral =
+    "Unterminated basis-string literal"
+
+  interpolate LexUnterminatedByteStringLiteral =
+    "Unterminated byte-string literal"
+
+  interpolate LexUnterminatedByteLiteral =
+    "Unterminated byte literal"
 
   interpolate LexOrdinaryCharLiteralNeedsToken =
     "Ordinary character literals are not currently part of Leaf's token set. Use a byte literal like b'a' or add a dedicated character token."

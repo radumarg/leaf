@@ -1,6 +1,7 @@
 module Frontend.Lexer.Regex
 
 import Text.ILex
+import Text.ILex.RExp.Unicode as Uni
 
 %default total
 %hide Prelude.(>>)
@@ -61,12 +62,19 @@ asciiAlphaNumUnderscore = asciiAlphaNum <|> '_'
 --
 -- Therefore `foo'` is a single identifier and `fn'` is not split into `fn` plus
 -- an apostrophe.
+--
+-- `Text.ILex`'s own `alpha`/`alphaNum` are ASCII-only (`a`-`z`/`A`-`Z`/`0`-`9`),
+-- despite reading as generic names, so they cannot be used here. Genuine
+-- Unicode letters and digits come from `Text.ILex.RExp.Unicode`'s generated
+-- Unicode general-category tables instead: `letter` is categories
+-- Lu+Ll+Lt+Lm+Lo ("Unicode alphabetic") and `decimalNumber` is category Nd
+-- ("Unicode digit").
 --------------------------------------------------------------------------------
 identifierStart : RExp True
-identifierStart = alpha <|> '_'
+identifierStart = Uni.letter <|> '_'
 
 identifierRest : RExp True
-identifierRest = alphaNum <|> '_' <|> '\''
+identifierRest = Uni.letter <|> Uni.decimalNumber <|> '_' <|> '\''
 
 export
 identifierLike : RExp True

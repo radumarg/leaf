@@ -199,6 +199,21 @@ runLexerTests = runTests $ Test.do
   test "block comment truncated right after four stars is unterminated" $
     lexTokenValues "/****" `shouldBe` Left LexUnterminatedBlockComment
 
+  test "bare slash-star with nothing else is unterminated" $
+    lexTokenValues "/*" `shouldBe` Left LexUnterminatedBlockComment
+
+  test "triple-nested block comments are skipped" $
+    lexTokenValues "let /* one /* two /* three */ two */ one */ x" `shouldBe`
+      Right [TokKw KwLet, TokIdent "x", TokEOF]
+
+  test "CRLF line ending terminates a normal line comment" $
+    lexTokenValues "let // comment\r\nx" `shouldBe`
+      Right [TokKw KwLet, TokIdent "x", TokEOF]
+
+  test "CRLF line ending terminates an outer doc line comment" $
+    lexTokenValues "/// docs\r\nfn" `shouldBe`
+      Right [TokOuterDoc "/// docs", TokKw KwFn, TokEOF]
+
   ------------------------------------------------------------
   -- Identifiers and reserved words.
   ------------------------------------------------------------
@@ -211,6 +226,17 @@ runLexerTests = runTests $ Test.do
   test "apostrophe remains part of identifiers" $
     lexTokenValues "foo' fn'" `shouldBe`
       Right [TokIdent "foo'", TokIdent "fn'", TokEOF]
+
+  test "Unicode letters are valid identifier start and continuation characters" $
+    lexTokenValues "café Ω θ_variable" `shouldBe`
+      Right
+        [ TokIdent "café", TokIdent "Ω", TokIdent "θ_variable"
+        , TokEOF
+        ]
+
+  test "Unicode decimal digits continue identifiers" $
+    lexTokenValues "x०१ n१" `shouldBe`
+      Right [TokIdent "x०१", TokIdent "n१", TokEOF]
 
   test "reserved prefixes remain identifiers when extended" $
     lexTokenValues "truex zerox minusi1 qalloc'" `shouldBe`
@@ -730,6 +756,35 @@ runLexerTests = runTests $ Test.do
       , Left (LexInvalidNumberLiteral "1_")
       ]
 
+  test "leading zeros are preserved in decimal integer literals" $
+    lexTokenValues "007" `shouldBe` Right [TokIntLitRaw "007", TokEOF]
+
+  test "additional malformed numeric spellings are number literal errors" $
+    [ lexTokenValues "0b_"
+    , lexTokenValues "1abc"
+    , lexTokenValues "1u9"
+    ] `shouldBe`
+      [ Left (LexInvalidNumberLiteral "0b_")
+      , Left (LexInvalidNumberLiteral "1abc")
+      , Left (LexInvalidNumberLiteral "1u9")
+      ]
+
+  test "a bare inclusive range-from operator at end of input splits correctly" $
+    lexTokenValues "1..=" `shouldBe`
+      Right [TokIntLitRaw "1", TokSym SymDotDotEq, TokEOF]
+
+  test "compound assignment and shift operators are recognized without surrounding whitespace" $
+    lexTokenValues "x<<=1;x>>=2;x&&y;x||y;x!=y;x==y" `shouldBe`
+      Right
+        [ TokIdent "x", TokSym SymShlEq, TokIntLitRaw "1", TokSym SymSemi
+        , TokIdent "x", TokSym SymShrEq, TokIntLitRaw "2", TokSym SymSemi
+        , TokIdent "x", TokSym SymAndAnd, TokIdent "y", TokSym SymSemi
+        , TokIdent "x", TokSym SymOrOr, TokIdent "y", TokSym SymSemi
+        , TokIdent "x", TokSym SymNotEq, TokIdent "y", TokSym SymSemi
+        , TokIdent "x", TokSym SymEqEq, TokIdent "y"
+        , TokEOF
+        ]
+
   ------------------------------------------------------------
   -- Strings and bytes.
   ------------------------------------------------------------
@@ -751,6 +806,9 @@ runLexerTests = runTests $ Test.do
   test "unterminated normal string is an unterminated string error" $
     lexTokenValues "\"abc" `shouldBe` Left LexUnterminatedStringLiteral
 
+  test "a normal string literal cannot span a real line break" $
+    lexTokenValues "\"abc\ndef\"" `shouldBe` Left LexUnterminatedStringLiteral
+
   test "basis strings from multiple forms are emitted as raw basis string tokens" $
     lexTokenValues "bs\"01+-iI\" bs\"++----++\" bs\"iiiiIIIII\"" `shouldBe`
       Right
@@ -771,6 +829,12 @@ runLexerTests = runTests $ Test.do
       , Left (LexInvalidBasisStringLiteral "bs\"0 +\"")
       ]
 
+  test "unterminated basis string is an unterminated basis string error" $
+    lexTokenValues "bs\"01" `shouldBe` Left LexUnterminatedBasisStringLiteral
+
+  test "unterminated basis string error has bounds" $
+    lexErrorHasBounds "bs\"01" `shouldBe` Just True
+
   test "byte literals are emitted as raw byte literal tokens" $
     lexTokenValues "b'a' b'\\n' b'\\x41'" `shouldBe`
       Right
@@ -787,6 +851,15 @@ runLexerTests = runTests $ Test.do
       , Left (LexInvalidByteLiteral "b'\\q'")
       , Left (LexInvalidByteLiteral "b'\\x4G'")
       ]
+
+  test "closed byte literal with a truncated hex escape is a byte literal error" $
+    lexTokenValues "b'\\x4'" `shouldBe` Left (LexInvalidByteLiteral "b'\\x4'")
+
+  test "unterminated byte literal is an unterminated byte literal error" $
+    lexTokenValues "b'\\n" `shouldBe` Left LexUnterminatedByteLiteral
+
+  test "unterminated byte literal error has bounds" $
+    lexErrorHasBounds "b'\\n" `shouldBe` Just True
 
   test "byte strings are emitted as raw byte string tokens" $
     lexTokenValues "b\"abc\" b\"a\\n\\x41\"" `shouldBe`
@@ -807,8 +880,20 @@ runLexerTests = runTests $ Test.do
       , Left (LexInvalidByteStringLiteral "b\"ABC\\x4G\"")
       ]
 
+  test "unterminated byte string is an unterminated byte string error" $
+    lexTokenValues "b\"abc" `shouldBe` Left LexUnterminatedByteStringLiteral
+
+  test "unterminated byte string error has bounds" $
+    lexErrorHasBounds "b\"abc" `shouldBe` Just True
+
+  test "a byte string literal cannot span a real line break" $
+    lexTokenValues "b\"ab\ncd\"" `shouldBe` Left LexUnterminatedByteStringLiteral
+
   test "ordinary character literals request a dedicated token" $
     lexTokenValues "'a'" `shouldBe` Left LexOrdinaryCharLiteralNeedsToken
+
+  test "multi-character ordinary literals also request a dedicated token" $
+    lexTokenValues "'ab'" `shouldBe` Left LexOrdinaryCharLiteralNeedsToken
 
   ------------------------------------------------------------
   -- Unit literal and attributes.
