@@ -14,8 +14,14 @@ import Frontend.Syntax.Doc
 import Frontend.Syntax.Literal
 import Frontend.Syntax.Name
 import Frontend.Syntax.Operator
+import Frontend.Syntax.Pattern
+import Frontend.Syntax.Type
 
 %default total
+
+public export
+snocList1 : List1 a -> a -> List1 a
+snocList1 (first ::: rest) value = first ::: (rest ++ [value])
 
 -- Text.Bounds positions use zero-based lines and columns, while Leaf's
 -- SourcePos uses one-based lines and columns. There is also an endpoint
@@ -81,6 +87,30 @@ record ArrayElements where
   arrayCloseBounds   : Bounds
 
 public export
+record PatternTail where
+  constructor MkPatternTail
+  patternTailValues : List SurfacePattern
+  patternCloseBounds : Bounds
+
+public export
+record TupleTail where
+    constructor MkTupleTail
+    elementTypes : List SurfaceTy
+    closingBounds : Bounds
+
+public export
+record TypePathTail where
+    constructor MkTypePathTail
+    pathSegments : List SurfacePathSegment
+    lastBounds : Bounds
+
+public export
+record FunctionTypeParameters where
+    constructor MkFunctionTypeParameters
+    functionTypeParameters : List (SurfaceAstNode (FunctionTypeParameterNode SurfaceExpr))
+    closingBounds : Bounds
+
+public export
 failWithCustomError : CustomParseError -> Bounds -> Res isStrict Token tokens CustomParseError a
 failWithCustomError customParseError bounds = Fail0 (B (Custom customParseError) bounds)
 
@@ -134,6 +164,7 @@ binaryOperator _         = Nothing
 public export
 functionEffectFromKeyword : Keyword -> Maybe FunctionEffect
 functionEffectFromKeyword KwClassical  = Just EffectClassical
+functionEffectFromKeyword KwUncompsafe = Just EffectUncompsafe
 functionEffectFromKeyword KwUnitary    = Just EffectUnitary
 functionEffectFromKeyword KwIsometry   = Just EffectIsometry
 functionEffectFromKeyword KwCoisometry = Just EffectCoisometry
@@ -141,14 +172,18 @@ functionEffectFromKeyword KwGeneral    = Just EffectGeneral
 functionEffectFromKeyword _            = Nothing
 
 public export
+storageQualifierFromKeyword : Keyword -> Maybe QuantumStorageQualifier
+storageQualifierFromKeyword KwLinear  = Just QualifierLinear
+storageQualifierFromKeyword KwAffine  = Just QualifierAffine
+storageQualifierFromKeyword KwScratch = Just QualifierScratch
+storageQualifierFromKeyword _         = Nothing
+
+public export
 unsupportedTopLevelItem : Keyword -> Maybe CustomParseError
 unsupportedTopLevelItem KwMod =
   Just (UnsupportedFeature "Modules are not yet supported.")
 unsupportedTopLevelItem KwUse =
   Just (UnsupportedFeature "Use statements are not yet supported.")
-unsupportedTopLevelItem KwConst =
-  Just (UnsupportedFeature
-    "Const declarations or const functions are not yet supported.")
 unsupportedTopLevelItem KwEnum =
   Just (UnsupportedFeature "Enums are not yet supported.")
 unsupportedTopLevelItem KwQenum =
@@ -219,4 +254,6 @@ isBlockLikeExpression (MkAstNode _ _ expression) =
     ExprLoop _ => True
     ExprWhile _ _ => True
     ExprFor _ _ _ => True
+    ExprCtrl (ControlledBlock _ _ _) => True
+    ExprAdjoint (AdjointBlock _) => True
     _ => False

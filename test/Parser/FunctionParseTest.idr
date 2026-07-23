@@ -22,6 +22,10 @@ runFunctionParseTests = runTests $ Test.do
   test "unitary empty function with unit output" $
     parseAndPrettyPrint "unitary fn empty() -> () {}" `shouldBe` Just "unitary fn empty() -> () { }"
 
+  test "uncompsafe function effect" $
+    parseAndPrettyPrint "uncompsafe fn empty() {}" `shouldBe`
+      Just "uncompsafe fn empty() { }"
+
   test "pub unitary empty function with unit output" $
     parseAndPrettyPrint "pub unitary fn empty() -> () {}" `shouldBe` Just "pub unitary fn empty() -> () { }"
 
@@ -38,6 +42,39 @@ runFunctionParseTests = runTests $ Test.do
 
   test "empty function with parameters" $
     parseAndPrettyPrint "fn add(i : i32, point : (i32, i32)) {}" `shouldBe` Just "fn add(i: i32, point: (i32, i32)) { }"
+
+  test "mutable function parameter" $
+    parseAndPrettyPrint "fn increment(mut x: i32) -> i32 { x += 1; x }"
+      `shouldBe` Just "fn increment(mut x: i32) -> i32 { x += 1; x }"
+
+  test "named and path types" $
+    parseAndPrettyPrint "fn use_types(person: Person, config: my_module::Config) {}"
+      `shouldBe` Just "fn use_types(person: Person, config: my_module::Config) { }"
+
+  test "reference and slice types" $
+    parseAndPrettyPrint
+      "fn borrow(q: &qubit, person: &Person, mutable: &mut Person, values: &[i32], output: &mut [i32]) {}"
+      `shouldBe`
+      Just
+        "fn borrow(q: &qubit, person: &Person, mutable: &mut Person, values: &[i32], output: &mut [i32]) { }"
+
+  test "qualified types" $
+    parseAndPrettyPrint
+      "fn qualified(q: affine qubit, pair: (scratch linear qubit, affine qubit)) {}"
+      `shouldBe`
+      Just
+        "fn qualified(q: affine qubit, pair: (scratch linear qubit, affine qubit)) { }"
+
+  test "higher-order function types" $
+    parseAndPrettyPrint
+      "general fn phase_kickback(oracle: unitary fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)) {}"
+      `shouldBe`
+      Just
+        "general fn phase_kickback(oracle: unitary fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)) { }"
+
+  test "function type without an effect or return type" $
+    parseAndPrettyPrint "fn callback(f: fn(value: i32)) {}"
+      `shouldBe` Just "fn callback(f: fn(value: i32)) { }"
 
   test "function with a simple statement" $
     parseAndPrettyPrint "fn simple() {let i: i32 = 1;}" `shouldBe` Just "fn simple() { let i: i32 = 1; }"

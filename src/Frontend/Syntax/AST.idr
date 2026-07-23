@@ -185,7 +185,7 @@ mutual
     constructor MkStructDeclarationNode
     structDocs       : List SurfaceDocComment
     structAttributes : List SurfaceAttribute
-    structVisibility : VisbilityQualifier
+    structVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
     structName       : SurfaceName
     structFields     : List (SurfaceAstNode StructFieldNode)
 
@@ -203,7 +203,7 @@ mutual
     constructor MkEnumDeclarationNode
     enumDocs       : List SurfaceDocComment
     enumAttributes : List SurfaceAttribute
-    enumVisibility : VisbilityQualifier
+    enumVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
     enumName       : SurfaceName
     enumVariants   : List (SurfaceAstNode EnumVariantNode)
 
@@ -232,7 +232,7 @@ mutual
     constructor MkQEnumDeclarationNode
     qenumDocs       : List SurfaceDocComment
     qenumAttributes : List SurfaceAttribute
-    qenumVisibility : VisbilityQualifier
+    qenumVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
     qenumName       : SurfaceName
     qenumVariants   : List (SurfaceAstNode QEnumVariantNode)
 
@@ -262,7 +262,7 @@ mutual
   record ConstDeclarationNode where
     constructor MkConstDeclarationNode
     constDocs       : List SurfaceDocComment
-    constVisibility : VisbilityQualifier
+    constVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
     constName       : SurfaceName
     constType       : SurfaceTy
     constValue      : SurfaceExpr
@@ -272,7 +272,7 @@ mutual
   record UseDeclarationNode where
     constructor MkUseDeclarationNode
     useDocs       : List SurfaceDocComment
-    useVisibility : VisbilityQualifier
+    useVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
     usePath       : SurfacePath
 
   -- Two source forms:
@@ -282,7 +282,7 @@ mutual
   record ModuleDeclarationNode where
     constructor MkModuleDeclarationNode
     moduleDocs       : List SurfaceDocComment
-    moduleVisibility : VisbilityQualifier
+    moduleVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
     moduleName       : SurfaceName
     moduleBody       : ModuleBody
 

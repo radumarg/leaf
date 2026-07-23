@@ -37,6 +37,52 @@ runExpressionParseTests = runTests $ Test.do
       Just
         "fn states() { let a = bs\"10110010\"; let b = bs\"++----++\"; let c = bs\"10+-+-001\"; let d = bs\"iiiiIIIII\"; }"
 
+  test "tuple and wildcard let patterns" $
+    parseAndPrettyPrint
+      "fn destructure() {let (a, b, c) = (1, 2, 3); let (x, _, z) = (1, 2, 3);}" `shouldBe`
+      Just
+        "fn destructure() { let (a, b, c) = (1, 2, 3); let (x, _, z) = (1, 2, 3); }"
+
+  test "array let pattern with type annotation" $
+    parseAndPrettyPrint
+      "fn measure() {let [b0, b1, b2]: [bit; 3] = measr(qs);}" `shouldBe`
+      Just
+        "fn measure() { let [b0, b1, b2]: [bit; 3] = measr(qs); }"
+
+  test "mutable let bindings can be reassigned" $
+    parseAndPrettyPrint
+      "fn mutable() { let mut x: i32 = 0; x = 5; let mut values = [0, 0]; values[0] = 10; }"
+      `shouldBe`
+      Just
+        "fn mutable() { let mut x: i32 = 0; x = 5; let mut values = [0, 0]; values[0] = 10; }"
+
+  test "constant expression in array type declaration" $
+    parseAndPrettyPrint
+      "fn arrays() { let b: [i32; 2 + 2]; }" `shouldBe`
+      Just "fn arrays() { let b: [i32; (2 + 2)]; }"
+
+  test "parenthesized constant expression in initialized array type declaration" $
+    parseAndPrettyPrint
+      "fn arrays() { let b: [i32; (2 + 2)] = [1, 2, 3, 4]; }" `shouldBe`
+      Just "fn arrays() { let b: [i32; ((2 + 2))] = [1, 2, 3, 4]; }"
+
+  test "named constant in array type declaration" $
+    parseAndPrettyPrint
+      "const N: i64 = 4;\nfn arrays() { let c: [i32; N]; }" `shouldBe`
+      Just "const N: i64 = 4;\nfn arrays() { let c: [i32; N]; }"
+
+  test "quantum storage qualifiers on let bindings" $
+    parseAndPrettyPrint
+      "fn allocate() {let linear q: qubit = qalloc(); let affine a: qubit = qalloc(); let scratch linear qs: [qubit; 2] = qalloc(2); let affine scratch t: qubit = qalloc();}" `shouldBe`
+      Just
+        "fn allocate() { let linear q: qubit = qalloc(); let affine a: qubit = qalloc(); let scratch linear qs: [qubit; 2] = qalloc(2); let affine scratch t: qubit = qalloc(); }"
+
+  test "auto-uncompute let initializer" $
+    parseAndPrettyPrint
+      "fn compute() {let q: qubit := f(q); let result := compute_value();}" `shouldBe`
+      Just
+        "fn compute() { let q: qubit := f(q); let result := compute_value(); }"
+
   test "unit literal expression" $
     parseAndPrettyPrint "fn unit() {()}" `shouldBe` Just "fn unit() { () }"
 
@@ -69,8 +115,8 @@ runExpressionParseTests = runTests $ Test.do
       Just "fn arithmetic() { (1 + (2 * 3)); (((8 / 2) % 3) - 1) }"
 
   test "shift comparison and equality precedence" $
-    parseAndPrettyPrint "fn comparisons() {a + b << c < d == e}" `shouldBe`
-      Just "fn comparisons() { ((((a + b) << c) < d) == e) }"
+    parseAndPrettyPrint "fn comparisons() {a + b << c < d && e == f}" `shouldBe`
+      Just "fn comparisons() { ((((a + b) << c) < d) && (e == f)) }"
 
   test "bitwise and logical precedence" $
     parseAndPrettyPrint "fn logic() {a & b ^ c | d && e || f}" `shouldBe`
@@ -79,6 +125,29 @@ runExpressionParseTests = runTests $ Test.do
   test "all comparison operators" $
     parseAndPrettyPrint "fn comparisons() {a <= b; a > b; a >= b; a != b}" `shouldBe`
       Just "fn comparisons() { (a <= b); (a > b); (a >= b); (a != b) }"
+
+  test "comparison operators cannot be chained" $
+    parseErrorDetails "fn f() {a < b < c}" `shouldBe`
+      Just
+        ( "Comparison operators cannot be chained. Parenthesize one of the comparisons."
+        , "test-fixture.rs"
+        , (1, 15)
+        , (1, 16)
+        )
+
+  test "mixed equality and ordering comparisons cannot be chained" $
+    parseErrorDetails "fn f() {a < b == c}" `shouldBe`
+      Just
+        ( "Comparison operators cannot be chained. Parenthesize one of the comparisons."
+        , "test-fixture.rs"
+        , (1, 15)
+        , (1, 17)
+        )
+
+  test "parenthesized comparisons may be compared explicitly" $
+    parseAndPrettyPrint "fn comparisons() {(a < b) < c; a < (b < c)}"
+      `shouldBe`
+      Just "fn comparisons() { (((a < b)) < c); (a < ((b < c))) }"
 
   test "cast expressions" $
     parseAndPrettyPrint "fn casts() {x as i32; value as i32 as i64}" `shouldBe`
@@ -129,6 +198,18 @@ runExpressionParseTests = runTests $ Test.do
       Just
         "fn control() { if ready { work(); } loop { break; } while ready { continue; } for x in values { use_value(x); } finish() }"
 
+  test "statement-leading block expressions stop before following expression tokens" $
+    parseAndPrettyPrint
+      "fn boundaries() {if ready {} -value; loop {} (value); while ready {} [0]; for x in values {} {1} ctrl(&q0) {} -other; adjoint {} [1]}"
+      `shouldBe`
+      Just
+        "fn boundaries() { if ready { } (-value); loop { } (value); while ready { } [0]; for x in values { } { 1 } ctrl((&q0)) { } (-other); adjoint { } [1] }"
+
+  test "parenthesized block-like expressions retain ordinary continuation syntax" $
+    parseAndPrettyPrint "fn continuation() {(if ready {1} else {2}) + 3}"
+      `shouldBe`
+      Just "fn continuation() { ((if ready { 1 } else { 2 }) + 3) }"
+
   test "break continue and return expressions" $
     parseAndPrettyPrint "fn exits() {break 1; continue; return; return value}" `shouldBe`
       Just "fn exits() { break 1; continue; return; return value }"
@@ -169,26 +250,70 @@ runExpressionParseTests = runTests $ Test.do
       Just ("Self expressions are not yet supported.",
             "test-fixture.rs", (1, 9), (1, 13))
 
-  test "controlled callable expressions are not yet supported" $
-    parseErrorDetails
+  test "controlled callable expression" $
+    parseAndPrettyPrint
+      "fn f() {ctrl(q0, q1).apply(H)(q2)}" `shouldBe`
+      Just "fn f() { ctrl(q0, q1).apply(H)(q2) }"
+
+  test "controlled callable expression with borrowed qubits and basis" $
+    parseAndPrettyPrint
       "fn f() {ctrl(&q0, &q1).on(bs\"10\").apply(H)(&q2)}" `shouldBe`
-      Just ("Control expressions are not yet supported.",
-            "test-fixture.rs", (1, 9), (1, 13))
+      Just "fn f() { ctrl((&q0), (&q1)).on(bs\"10\").apply(H)((&q2)) }"
 
-  test "controlled block expressions are not yet supported" $
-    parseErrorDetails "fn f() {ctrl(&q0, &q1) {H(&q2);}}" `shouldBe`
-      Just ("Control expressions are not yet supported.",
-            "test-fixture.rs", (1, 9), (1, 13))
+  test "controlled generic callable expression" $
+    parseAndPrettyPrint
+      "fn f() {ctrl(q0, q1).on(bs\"++\").apply(f)(q2, q3)}" `shouldBe`
+      Just "fn f() { ctrl(q0, q1).on(bs\"++\").apply(f)(q2, q3) }"
 
-  test "adjoint callable expressions are not yet supported" $
-    parseErrorDetails "fn f() {adjoint(f)(&q1, &q2, &q3)}" `shouldBe`
-      Just ("Adjoint expressions are not yet supported.",
-            "test-fixture.rs", (1, 9), (1, 16))
+  test "controlled block expression" $
+    parseAndPrettyPrint "fn f() {ctrl(&q0, &q1) {H(&q2);}}" `shouldBe`
+      Just "fn f() { ctrl((&q0), (&q1)) { H((&q2)); } }"
 
-  test "adjoint block expressions are not yet supported" $
-    parseErrorDetails "fn f() {adjoint {f();}}" `shouldBe`
-      Just ("Adjoint expressions are not yet supported.",
-            "test-fixture.rs", (1, 9), (1, 16))
+  test "controlled block expression with basis" $
+    parseAndPrettyPrint
+      "fn f() {ctrl(&q0, &q1).on(bs\"++\") {f(&q2, &q3);}}" `shouldBe`
+      Just
+        "fn f() { ctrl((&q0), (&q1)).on(bs\"++\") { f((&q2), (&q3)); } }"
+
+  test "semicolon-free non-final quantum modifier blocks" $
+    parseAndPrettyPrint
+      "fn f() {ctrl(&q0) {H(&q1);} adjoint {H(&q1);} finish()}" `shouldBe`
+      Just
+        "fn f() { ctrl((&q0)) { H((&q1)); } adjoint { H((&q1)); } finish() }"
+
+  test "control expression requires a control qubit" $
+    parseErrorDetails "fn f() {ctrl().apply(H)(q)}" `shouldBe`
+      Just ("`ctrl` requires at least one control qubit.",
+            "test-fixture.rs", (1, 9), (1, 15))
+
+  test "adjoint as a higher-order callable" $
+    parseAndPrettyPrint "fn use_adjoint() {let f_adjoint = adjoint(f);}" `shouldBe`
+      Just "fn use_adjoint() { let f_adjoint = adjoint(f); }"
+
+  test "adjoint callable application" $
+    parseAndPrettyPrint "fn f() {adjoint(f)(q1, q2, q3)}" `shouldBe`
+      Just "fn f() { adjoint(f)(q1, q2, q3) }"
+
+  test "adjoint callable application with borrowed qubits" $
+    parseAndPrettyPrint "fn f() {adjoint(f)(&q1, &q2, &q3)}" `shouldBe`
+      Just "fn f() { adjoint(f)((&q1), (&q2), (&q3)) }"
+
+  test "adjoint block expression" $
+    parseAndPrettyPrint "fn f() {adjoint {f(&q1, &q2, &q3);}}" `shouldBe`
+      Just "fn f() { adjoint { f((&q1), (&q2), (&q3)); } }"
+
+  test "adjoint block with built-in gates" $
+    parseAndPrettyPrint "fn f() {adjoint {H(&q1); CT(&q1, &q2)}}" `shouldBe`
+      Just "fn f() { adjoint { H((&q1)); CT((&q1), (&q2)) } }"
+
+  test "adjoint applied to built-in gates" $
+    parseAndPrettyPrint "fn f() {adjoint(CT)(&q1, &q2); adjoint(H)(&q1)}" `shouldBe`
+      Just "fn f() { adjoint(CT)((&q1), (&q2)); adjoint(H)((&q1)) }"
+
+  test "adjoint requires one callable" $
+    parseErrorDetails "fn f() {adjoint()}" `shouldBe`
+      Just ("`adjoint(...)` requires one callable expression.",
+            "test-fixture.rs", (1, 16), (1, 18))
 
   test "postfix index field tuple-index and method-call expressions" $
     parseAndPrettyPrint "fn postfix() {a[i]; p.x; t.0; a.len()}" `shouldBe`

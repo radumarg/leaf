@@ -25,9 +25,14 @@ runTopModuleParseTests = runTests $ Test.do
     parseErrorDetails "use my_library::helper;" `shouldBe`
       Just ("Use statements are not yet supported.", "test-fixture.rs", (1, 1), (1, 4))
 
-  test "const declarations are not yet supported" $
-    parseErrorDetails "const VALUE: i32 = 1;" `shouldBe`
-      Just ("Const declarations or const functions are not yet supported.", "test-fixture.rs", (1, 1), (1, 6))
+  test "constant expression declaration" $
+    parseAndPrettyPrint "const N: i64 = 4;" `shouldBe`
+      Just "const N: i64 = 4;"
+
+  test "constant function declaration" $
+    parseAndPrettyPrint
+      "const fn square(x: i64) -> i64 {\n    x * x\n}" `shouldBe`
+      Just "const fn square(x: i64) -> i64 { (x * x) }"
 
   test "enum declarations are not yet supported" $
     parseErrorDetails "enum Result {}" `shouldBe`

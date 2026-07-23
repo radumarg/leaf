@@ -194,6 +194,10 @@ attrsPrefix attrs = concatMap (\a => showAttribute a ++ "\n") attrs
 visPrefix : VisbilityQualifier -> String
 visPrefix v = prefixSpace (show v)
 
+optionalVisPrefix : Maybe (SurfaceAstNode VisbilityQualifier) -> String
+optionalVisPrefix Nothing = ""
+optionalVisPrefix (Just (MkAstNode _ _ visibility)) = visPrefix visibility
+
 showQualifiersPrefix : List (SurfaceAstNode QuantumStorageQualifier) -> String
 showQualifiersPrefix []    = ""
 showQualifiersPrefix quals =
@@ -847,7 +851,7 @@ mutual
 
   showStructDeclarationNode : PrettyStyle -> StructDeclarationNode -> String
   showStructDeclarationNode style (MkStructDeclarationNode docs attrs vis nm fields) =
-    docsPrefix docs ++ attrsPrefix attrs ++ visPrefix vis ++ "struct " ++ showName nm ++
+    docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "struct " ++ showName nm ++
       " " ++ braces (joinWith ", " (showStructFieldList style fields))
 
   public export
@@ -871,7 +875,7 @@ mutual
 
   showEnumDeclarationNode : PrettyStyle -> EnumDeclarationNode -> String
   showEnumDeclarationNode style (MkEnumDeclarationNode docs attrs vis nm variants) =
-    docsPrefix docs ++ attrsPrefix attrs ++ visPrefix vis ++ "enum " ++ showName nm ++
+    docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "enum " ++ showName nm ++
       " " ++ braces (joinWith ", " (showEnumVariantList style variants))
 
   public export
@@ -888,7 +892,7 @@ mutual
 
   showQEnumDeclarationNode : PrettyStyle -> QEnumDeclarationNode -> String
   showQEnumDeclarationNode style (MkQEnumDeclarationNode docs attrs vis nm variants) =
-    docsPrefix docs ++ attrsPrefix attrs ++ visPrefix vis ++ "qenum " ++ showName nm ++
+    docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "qenum " ++ showName nm ++
       " " ++ braces (joinWith ", " (showQEnumVariantList style variants))
 
   public export
@@ -910,7 +914,7 @@ mutual
 
   showConstDeclarationNode : PrettyStyle -> ConstDeclarationNode -> String
   showConstDeclarationNode style (MkConstDeclarationNode docs vis nm ty val) =
-    docsPrefix docs ++ visPrefix vis ++ "const " ++ showName nm ++ ": " ++ showTy style ty ++
+    docsPrefix docs ++ optionalVisPrefix vis ++ "const " ++ showName nm ++ ": " ++ showTy style ty ++
       " = " ++ showExprAt style 0 val ++ ";"
 
   public export
@@ -919,7 +923,7 @@ mutual
 
   showUseDeclarationNode : PrettyStyle -> UseDeclarationNode -> String
   showUseDeclarationNode style (MkUseDeclarationNode docs vis path) =
-    docsPrefix docs ++ visPrefix vis ++ "use " ++ showPath path ++ ";"
+    docsPrefix docs ++ optionalVisPrefix vis ++ "use " ++ showPath path ++ ";"
 
   public export
   showUseDeclaration : PrettyStyle -> SurfaceUseDeclaration -> String
@@ -927,7 +931,7 @@ mutual
 
   showModuleDeclarationNode : PrettyStyle -> ModuleDeclarationNode -> String
   showModuleDeclarationNode style (MkModuleDeclarationNode docs vis nm body) =
-    docsPrefix docs ++ visPrefix vis ++ "mod " ++ showName nm ++ showModuleBody style body
+    docsPrefix docs ++ optionalVisPrefix vis ++ "mod " ++ showName nm ++ showModuleBody style body
 
   showModuleBody : PrettyStyle -> ModuleBody -> String
   showModuleBody style body =
