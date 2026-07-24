@@ -232,7 +232,7 @@ mutual
     let (borrowNodeId, afterBorrowNodeId) = reserveNodeId nodeId
         borrow = surfaceAstNode
           (MkAstInfo borrowNodeId (sourceSpan ampBounds)) SharedBorrow
-     in case assert_total $ parseType afterBorrowNodeId tokens acc of
+     in case parseType afterBorrowNodeId tokens acc of
           Fail0 err => Fail0 err
           Succ0 (inner, finalNodeId) finalTokens =>
             Succ0
@@ -337,7 +337,7 @@ mutual
       Succ0 (name, afterNameNodeId) afterName =>
         case afterName of
           (B (TokSym SymColon) colonBounds :: afterColon) =>
-            case succT $ assert_total $ parseType afterNameNodeId afterColon suffixAcc of
+            case succT $ parseType afterNameNodeId afterColon suffixAcc of
               Fail0 err => Fail0 err
               Succ0 (parameterType, finalNodeId) finalTokens =>
                 Succ0
@@ -842,7 +842,7 @@ mutual
   parseExpressionContinuation : SurfaceExpr -> Rule False SurfaceExpr
   parseExpressionContinuation primary nodeId tokens acc =
     let Succ0 (postfix, afterPostfixNodeId) afterPostfix @{postfixSuffix} :=
-              assert_total $ parsePostfixExpression primary nodeId tokens acc
+              parsePostfixExpression primary nodeId tokens acc
           | Fail0 err => Fail0 err
         Succ0 (cast, afterCastNodeId) afterCast @{castSuffix} :=
               parseCastExpressionRest postfix afterPostfixNodeId afterPostfix suffixAcc
@@ -1085,7 +1085,7 @@ mutual
     case assert_total $ parsePrimaryExpression nodeId tokens acc of
       Fail0 err => Fail0 err
       Succ0 (primary, afterPrimaryNodeId) afterPrimary =>
-        succT $ assert_total $
+        succT $
                    parsePostfixExpression primary afterPrimaryNodeId
                      afterPrimary suffixAcc
 
@@ -1170,7 +1170,7 @@ mutual
       ((B (TokSym SymDot) dotBounds) ::
        (B (TokBuiltin BuiltinApply) applyBounds) ::
        (B (TokSym SymLParen) openBounds) :: afterOpen) (SA recur) =
-    case succT $ assert_total $ parseExpression nodeId afterOpen recur of
+    case succT $ parseExpression nodeId afterOpen recur of
       Fail0 err => Fail0 err
       Succ0 (callable, afterCallableNodeId) afterCallable =>
         case afterCallable of
@@ -1219,7 +1219,7 @@ mutual
   parseAdjointExpression adjointBounds nodeId
       ((B (TokSym SymLParen) openBounds) :: afterOpen) (SA recur) =
     let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-     in case succT $ assert_total $
+     in case succT $
                parseExpression afterExpressionNodeId afterOpen recur of
           Fail0 err => Fail0 err
           Succ0 (callable, afterCallableNodeId) afterCallable =>
@@ -1265,8 +1265,7 @@ mutual
   parseParenOrTupleExpression openBounds nodeId tokens (SA recur) =
     let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
         Succ0 (first, afterFirstNodeId) afterFirst :=
-              assert_total $
-                parseExpression afterExpressionNodeId tokens (SA recur)
+              parseExpression afterExpressionNodeId tokens (SA recur)
           | Fail0 err => Fail0 err
      in case afterFirst of
           (B (TokSym SymRParen) closeBounds) :: finalTokens =>
@@ -1306,8 +1305,7 @@ mutual
   parseArrayExpression openBounds nodeId tokens (SA recur) =
     let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
         Succ0 (first, afterFirstNodeId) afterFirst :=
-              assert_total $
-                parseExpression afterExpressionNodeId tokens (SA recur)
+              parseExpression afterExpressionNodeId tokens (SA recur)
           | Fail0 err => Fail0 err
      in case afterFirst of
           (B (TokSym SymRBracket) closeBounds) :: finalTokens =>
@@ -1331,7 +1329,7 @@ mutual
                   finalTokens
           (B (TokSym SymSemi) _) :: afterSemi =>
             let Succ0 (count, finalNodeId) afterCount :=
-                      succT $ assert_total $
+                      succT $
                         parseExpression afterFirstNodeId afterSemi suffixAcc
                 | Fail0 err => Fail0 err
                 (B (TokSym SymRBracket) closeBounds) :: finalTokens := afterCount
@@ -1612,7 +1610,7 @@ mutual
   parseWhileExpression nodeId
       ((B (TokKw KwWhile) whileBounds) :: remaining) (SA recur) =
     let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-     in case succT $ assert_total $
+     in case succT $
                      parseExpression afterExpressionNodeId remaining recur of
           Fail0 err => Fail0 err
           Succ0 (condition, afterConditionNodeId) afterCondition =>
@@ -1642,7 +1640,7 @@ mutual
         (name, afterNameNodeId) = makeName binderText binderBounds afterPatternNodeId
         pattern = surfaceAstNode (MkAstInfo patternNodeId (sourceSpan binderBounds))
                                  (PatternName Nothing name)
-     in case succT $ assert_total $ parseExpression afterNameNodeId remaining recur of
+     in case succT $ parseExpression afterNameNodeId remaining recur of
           Fail0 err => Fail0 err
           Succ0 (iterable, afterIterableNodeId) afterIterable =>
             case succT $
@@ -1668,7 +1666,7 @@ mutual
     if nextTokenSatisfies isOptionalValueTerminator remaining
       then finishWithoutValue expressionNodeId afterExpressionNodeId
       else
-        case succT $ assert_total $
+        case succT $
                    parseExpression afterExpressionNodeId remaining recur of
           Fail0 err => Fail0 err
           Succ0 (value, finalNodeId) finalTokens =>
@@ -1716,7 +1714,7 @@ mutual
     if nextTokenSatisfies isOptionalValueTerminator remaining
       then finishWithoutValue expressionNodeId afterExpressionNodeId
       else
-        case succT $ assert_total $
+        case succT $
                    parseExpression afterExpressionNodeId remaining recur of
           Fail0 err => Fail0 err
           Succ0 (value, finalNodeId) finalTokens =>
@@ -1749,7 +1747,7 @@ mutual
     let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
         (ifNodeId, afterIfNodeId) = reserveNodeId afterExpressionNodeId
         Succ0 (condition, afterConditionNodeId) afterCondition :=
-              succT $ assert_total $ parseExpression afterIfNodeId remaining recur
+              succT $ parseExpression afterIfNodeId remaining recur
           | Fail0 err => Fail0 err
         Succ0 (thenBlock, afterThenNodeId) afterThen :=
               succT $ parseBracedBlock afterConditionNodeId afterCondition suffixAcc
@@ -1803,7 +1801,7 @@ parseLetInitializerValue markerValue markerBounds nodeId tokens acc =
   let (markerNodeId, nextNodeId) = reserveNodeId nodeId
       marker = surfaceAstNode (MkAstInfo markerNodeId (sourceSpan markerBounds))
                               markerValue
-   in case assert_total $ parseExpression nextNodeId tokens acc of
+   in case parseExpression nextNodeId tokens acc of
         Fail0 err => Fail0 err
         Succ0 (value, finalNodeId) finalTokens =>
           Succ0 (MkLetInitializerNode marker value, finalNodeId) finalTokens
@@ -1926,7 +1924,7 @@ parseAssignmentStatement targetExpression nodeId
             (MkAstInfo targetNodeId targetExpression.astInfo.span) targetValue
           locatedOperator = surfaceAstNode
             (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) operator
-       in case succT $ assert_total $
+       in case succT $
                  parseExpression afterOperatorNodeId afterOperator recur of
             Fail0 err => Fail0 err
             Succ0 (value, finalNodeId) afterValue =>
