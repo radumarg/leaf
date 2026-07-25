@@ -229,6 +229,18 @@ runLexerTests = runTests $ Test.do
     lexTokenValues "/// docs\r\nfn" `shouldBe`
       Right [TokOuterDoc "/// docs", TokKw KwFn, TokEOF]
 
+  test "a bare CR terminates line comments and is then skipped as whitespace" $
+    [ lexTokenValues "let // hidden\rx"
+    , lexTokenValues "/// docs\rfn"
+    ] `shouldBe`
+      [ Right [TokKw KwLet, TokIdent "x", TokEOF]
+      , Right [TokOuterDoc "/// docs", TokKw KwFn, TokEOF]
+      ]
+
+  test "a normal line comment may run to end of input" $
+    lexTokenValues "let // trailing comment" `shouldBe`
+      Right [TokKw KwLet, TokEOF]
+
   test "CRLF line endings inside an ordinary block comment are skipped" $
     lexTokenValues "let /* comment\r\n more */ x" `shouldBe`
       Right [TokKw KwLet, TokIdent "x", TokEOF]
@@ -297,6 +309,23 @@ runLexerTests = runTests $ Test.do
   test "keyword matching is case-sensitive" $
     lexTokenValues "Fn fn FN" `shouldBe`
       Right [TokIdent "Fn", TokKw KwFn, TokIdent "FN", TokEOF]
+
+  test "literal, type, state, and builtin classification is case-sensitive" $
+    lexTokenValues "True False Zero One Qubit QState Qalloc Measr" `shouldBe`
+      Right
+        [ TokIdent "True", TokIdent "False"
+        , TokIdent "Zero", TokIdent "One"
+        , TokIdent "Qubit", TokIdent "QState"
+        , TokIdent "Qalloc", TokIdent "Measr"
+        , TokEOF
+        ]
+
+  test "basis and byte literal prefixes remain identifiers when extended" $
+    lexTokenValues "bs_data byte_string b_value" `shouldBe`
+      Right
+        [ TokIdent "bs_data", TokIdent "byte_string", TokIdent "b_value"
+        , TokEOF
+        ]
 
   test "primitive types are primitive type tokens" $
     lexTokenValues "angle32 angle64 bit bool f32 f64 i8 i16 i32 i64 i128 param u8 u16 u32 u64 u128 qubit qstate" `shouldBe`
@@ -508,6 +537,10 @@ runLexerTests = runTests $ Test.do
           ]
      in lexTokenValues "( ) [ ] { } , ; : :: . -> = := += -= *= /= %= + - * / % == != > >= < <= => >> >>= << <<= ! && || & | ^ .. ..= &= |= ^= #" `shouldBe`
           Right (symbolTokens symbols)
+
+  test "punctuation outside the language's reserved token set is rejected" $
+    lexTokenValues "@" `shouldBe`
+      Left (LexUnexpectedInput [] "@")
 
   test "range forms tokenize structurally" $
     lexTokenValues "a..b a..=b 1.. ..5 ..=5 .." `shouldBe`
@@ -842,6 +875,27 @@ runLexerTests = runTests $ Test.do
         , TokEOF
         ]
 
+  test "slash remains an operator on both sides of comments" $
+    lexTokenValues "a/b; c/=d; e/* hidden */ /f; g// hidden\r/h" `shouldBe`
+      Right
+        [ TokIdent "a", TokSym SymSlash, TokIdent "b", TokSym SymSemi
+        , TokIdent "c", TokSym SymSlashEq, TokIdent "d", TokSym SymSemi
+        , TokIdent "e", TokSym SymSlash, TokIdent "f", TokSym SymSemi
+        , TokIdent "g", TokSym SymSlash, TokIdent "h"
+        , TokEOF
+        ]
+
+  test "integer and float examples from the language specification retain their raw spelling" $
+    lexTokenValues "1_000_000 0xff_u8 0o70_i16 0b1111_1111_1001_0000i64 12E+99_f64" `shouldBe`
+      Right
+        [ TokIntLitRaw "1_000_000"
+        , TokIntLitRaw "0xff_u8"
+        , TokIntLitRaw "0o70_i16"
+        , TokIntLitRaw "0b1111_1111_1001_0000i64"
+        , TokFloatLitRaw "12E+99_f64"
+        , TokEOF
+        ]
+
   ------------------------------------------------------------
   -- Strings and bytes.
   ------------------------------------------------------------
@@ -938,6 +992,10 @@ runLexerTests = runTests $ Test.do
         , TokByteStringLitRaw "b\"a\\n\\x41\""
         , TokEOF
         ]
+
+  test "the specification's hexadecimal byte-string example is one raw token" $
+    lexTokenValues "b\"ABC\\x41\"" `shouldBe`
+      Right [TokByteStringLitRaw "b\"ABC\\x41\"", TokEOF]
 
   test "empty byte string literal is valid" $
     lexTokenValues "b\"\"" `shouldBe` Right [TokByteStringLitRaw "b\"\"", TokEOF]
