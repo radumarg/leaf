@@ -24,28 +24,9 @@ import Frontend.Syntax.Type
 -- Type and Contract are parameterized over the expression type, and THIS
 -- module ties both knots:
 --
+--   TODO: unclear how type and contract clauses will be handled
 --   SurfaceTy             = LocatedTy             SurfaceExpr
 --   SurfaceContractClause = LocatedContractClause SurfaceExpr
---
--- Design rules carried through from the earlier modules:
---
---   * every important node is located (wrapped in SurfaceAstNode)
---   * operators and keyword-like leaves that diagnostics point AT are
---     individually located (assignment/unary/binary/range operators, the
---     := marker, storage qualifiers, effects, support kinds)
---   * raw literal spellings are preserved; nothing is normalized
---   * if / qif / sif are three node families, not one; likewise
---     match / qmatch / smatch
---   * `()` is LiteralUnit; tuples are List1 (>= 1 element, `(e,)` legal);
---     ExprParenthesized keeps `(e)` distinct from `(e,)`
---   * semantic rules stay representable (see per-node comments)
---
--- Spec-tracking omissions (parser rejections pending a language ruling):
---   * nested items inside blocks (the spec's top-level-items rule is read
---     as: items appear at top level and inside mod/impl only)
---   * `use path as alias;` and glob imports
---   * `pub` on struct fields
---   * labeled loops / labeled break
 --------------------------------------------------------------------------------
 
 mutual
@@ -131,7 +112,7 @@ mutual
     constructor MkFunctionDeclarationNode
     functionDocs       : List SurfaceDocComment
     functionAttributes : List SurfaceAttribute
-    functionVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
+    functionVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
     -- Nothing: ordinary `fn`. Just: the user explicitly wrote `const fn`.
     functionConstness  : Maybe (SurfaceAstNode FunctionConstness)
     -- Nothing: no effect written (treated as general later).
@@ -185,7 +166,7 @@ mutual
     constructor MkStructDeclarationNode
     structDocs       : List SurfaceDocComment
     structAttributes : List SurfaceAttribute
-    structVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
+    structVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
     structName       : SurfaceName
     structFields     : List (SurfaceAstNode StructFieldNode)
 
@@ -203,7 +184,7 @@ mutual
     constructor MkEnumDeclarationNode
     enumDocs       : List SurfaceDocComment
     enumAttributes : List SurfaceAttribute
-    enumVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
+    enumVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
     enumName       : SurfaceName
     enumVariants   : List (SurfaceAstNode EnumVariantNode)
 
@@ -232,7 +213,7 @@ mutual
     constructor MkQEnumDeclarationNode
     qenumDocs       : List SurfaceDocComment
     qenumAttributes : List SurfaceAttribute
-    qenumVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
+    qenumVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
     qenumName       : SurfaceName
     qenumVariants   : List (SurfaceAstNode QEnumVariantNode)
 
@@ -262,7 +243,7 @@ mutual
   record ConstDeclarationNode where
     constructor MkConstDeclarationNode
     constDocs       : List SurfaceDocComment
-    constVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
+    constVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
     constName       : SurfaceName
     constType       : SurfaceTy
     constValue      : SurfaceExpr
@@ -272,7 +253,7 @@ mutual
   record UseDeclarationNode where
     constructor MkUseDeclarationNode
     useDocs       : List SurfaceDocComment
-    useVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
+    useVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
     usePath       : SurfacePath
 
   -- Two source forms:
@@ -282,7 +263,7 @@ mutual
   record ModuleDeclarationNode where
     constructor MkModuleDeclarationNode
     moduleDocs       : List SurfaceDocComment
-    moduleVisibility : Maybe (SurfaceAstNode VisbilityQualifier)
+    moduleVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
     moduleName       : SurfaceName
     moduleBody       : ModuleBody
 

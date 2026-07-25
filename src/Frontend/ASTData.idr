@@ -37,6 +37,8 @@ record ScopeId where
 -- Desugaring / generation provenance
 --------------------------------------------------------------------------------
 
+-- TODO: tentative, will be clarified as we implement desugaring.
+
 -- Type of desugaring that 
 --was applied to a node.
 public export
@@ -94,6 +96,8 @@ record Scope where
 
 --------------------------------------------------------------------------------
 -- Helpers for AST nodes
+--
+-- Creates a NodeId with current Id, and returns the next Id for the next node.
 --------------------------------------------------------------------------------
 
 public export

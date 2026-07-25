@@ -277,7 +277,7 @@ digitsThenDotOperatorCandidate =
 normalStringBodyCandidate : RExp True
 normalStringBodyCandidate =
       ('\\' >> dot)
-  <|> (dot && not '"' && not '\n' && not '\r')
+  <|> (dot && not '"' && not '\\' && not '\n' && not '\r')
 
 export
 normalStringCandidate : RExp True
@@ -318,7 +318,7 @@ unterminatedByteStringCandidate =
 byteLiteralBodyCandidate : RExp True
 byteLiteralBodyCandidate =
       ('\\' >> dot)
-  <|> (dot && not '\'' && not '\n' && not '\r')
+  <|> (dot && not '\'' && not '\\' && not '\n' && not '\r')
 
 export
 byteLiteralCandidate : RExp True

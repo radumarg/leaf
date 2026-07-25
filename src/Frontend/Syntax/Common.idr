@@ -20,24 +20,22 @@ import Language.Reflection
 --------------------------------------------------------------------------------
 
 public export
-data VisbilityQualifier = VisibilityPublic
+data VisibilityQualifier = VisibilityPublic
 
-%runElab derive "VisbilityQualifier" [Eq]
+%runElab derive "VisibilityQualifier" [Eq]
 
 public export
-showVisibilityQualifierLeaf : VisbilityQualifier -> String
+showVisibilityQualifierLeaf : VisibilityQualifier -> String
 showVisibilityQualifierLeaf v = "pub"
 
 public export
-implementation Show VisbilityQualifier where
+implementation Show VisibilityQualifier where
   show = showVisibilityQualifierLeaf
 
 --------------------------------------------------------------------------------
 -- Function constness
---------------------------------------------------------------------------------
--- The optional `const` qualifier written before `fn`. Absence is represented by
--- `Nothing` on a function declaration so an explicitly written qualifier retains
--- its own source location.
+--
+-- The optional `const` qualifier written before `fn`.
 --------------------------------------------------------------------------------
 
 public export

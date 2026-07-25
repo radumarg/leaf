@@ -135,6 +135,13 @@ runLexerTests = runTests $ Test.do
         , TokKw KwFn, TokEOF
         ]
 
+  test "nested plain comment inside an inner block doc is captured verbatim" $
+    lexTokenValues "/*! inner /* nested */ done */fn" `shouldBe`
+      Right
+        [ TokInnerDoc "/*! inner /* nested */ done */"
+        , TokKw KwFn, TokEOF
+        ]
+
   test "four slash line comment is normal comment" $
     lexTokenValues "//// docs\nfn" `shouldBe` Right [TokKw KwFn, TokEOF]
 
@@ -145,6 +152,14 @@ runLexerTests = runTests $ Test.do
   test "slash slash bang slash is inner line doc" $
     lexTokenValues "//!/\nfn" `shouldBe`
       Right [TokInnerDoc "//!/", TokKw KwFn, TokEOF]
+
+  test "bare triple-slash line is still an outer doc token" $
+    lexTokenValues "///\nfn" `shouldBe`
+      Right [TokOuterDoc "///", TokKw KwFn, TokEOF]
+
+  test "four-slash-bang line is still a normal comment" $
+    lexTokenValues "////! docs\nfn" `shouldBe`
+      Right [TokKw KwFn, TokEOF]
 
   test "block comments can contain slash-slash doc-looking text" $
     lexTokenValues "/* /// not-a-doc */fn" `shouldBe`
@@ -213,6 +228,18 @@ runLexerTests = runTests $ Test.do
   test "CRLF line ending terminates an outer doc line comment" $
     lexTokenValues "/// docs\r\nfn" `shouldBe`
       Right [TokOuterDoc "/// docs", TokKw KwFn, TokEOF]
+
+  test "CRLF line endings inside an ordinary block comment are skipped" $
+    lexTokenValues "let /* comment\r\n more */ x" `shouldBe`
+      Right [TokKw KwLet, TokIdent "x", TokEOF]
+
+  test "outer block doc keeps an embedded CRLF line break in its raw text" $
+    lexTokenValues "/** line one\r\n    line two */fn" `shouldBe`
+      Right [TokOuterDoc "/** line one\r\n    line two */", TokKw KwFn, TokEOF]
+
+  test "a nested comment opener that looks like a doc opener does not change the outer plain comment's mode" $
+    lexTokenValues "let /* outer /** looks doc */ still plain */ x" `shouldBe`
+      Right [TokKw KwLet, TokIdent "x", TokEOF]
 
   ------------------------------------------------------------
   -- Identifiers and reserved words.
@@ -690,6 +717,13 @@ runLexerTests = runTests $ Test.do
         , TokEOF
         ]
 
+  test "uppercase radix prefixes are accepted" $
+    lexTokenValues "0B1010 0O77 0XFF" `shouldBe`
+      Right
+        [ TokIntLitRaw "0B1010", TokIntLitRaw "0O77"
+        , TokIntLitRaw "0XFF", TokEOF
+        ]
+
   test "decimal floats use the supported float forms" $
     lexTokenValues "0.1 1.0 1.0e+2 1.0_f64 1e10 1E-10f32 12E+99 12E+99_f64 5f32" `shouldBe`
       Right
@@ -701,6 +735,16 @@ runLexerTests = runTests $ Test.do
         , TokFloatLitRaw "5f32"
         , TokEOF
         ]
+
+  test "octal integer literals with no underscore or suffix are supported" $
+    lexTokenValues "0o77" `shouldBe` Right [TokIntLitRaw "0o77", TokEOF]
+
+  test "a fractional float with a type suffix directly after the fraction (no underscore) is one literal" $
+    lexTokenValues "1.0f64 0.1f32" `shouldBe`
+      Right [TokFloatLitRaw "1.0f64", TokFloatLitRaw "0.1f32", TokEOF]
+
+  test "a fractional float with a negative exponent tokenizes as one literal" $
+    lexTokenValues "1.0e-3" `shouldBe` Right [TokFloatLitRaw "1.0e-3", TokEOF]
 
   test "invalid numeric spellings are number literal errors" $
     [ lexTokenValues "0b102"
@@ -763,11 +807,24 @@ runLexerTests = runTests $ Test.do
     [ lexTokenValues "0b_"
     , lexTokenValues "1abc"
     , lexTokenValues "1u9"
+    , lexTokenValues "123_"
+    , lexTokenValues "1.0_"
     ] `shouldBe`
       [ Left (LexInvalidNumberLiteral "0b_")
       , Left (LexInvalidNumberLiteral "1abc")
       , Left (LexInvalidNumberLiteral "1u9")
+      , Left (LexInvalidNumberLiteral "123_")
+      , Left (LexInvalidNumberLiteral "1.0_")
       ]
+
+  test "digits before dot operator still split when followed by identifiers" $
+    lexTokenValues "1..x 2..=y 3.z" `shouldBe`
+      Right
+        [ TokIntLitRaw "1", TokSym SymDotDot, TokIdent "x"
+        , TokIntLitRaw "2", TokSym SymDotDotEq, TokIdent "y"
+        , TokIntLitRaw "3", TokSym SymDot, TokIdent "z"
+        , TokEOF
+        ]
 
   test "a bare inclusive range-from operator at end of input splits correctly" $
     lexTokenValues "1..=" `shouldBe`
@@ -855,6 +912,19 @@ runLexerTests = runTests $ Test.do
   test "closed byte literal with a truncated hex escape is a byte literal error" $
     lexTokenValues "b'\\x4'" `shouldBe` Left (LexInvalidByteLiteral "b'\\x4'")
 
+  test "byte literals support every simple escape sequence" $
+    lexTokenValues "b'\\r' b'\\t' b'\\0' b'\\\\' b'\\'' b'\\\"'" `shouldBe`
+      Right
+        [ TokByteLitRaw "b'\\r'", TokByteLitRaw "b'\\t'"
+        , TokByteLitRaw "b'\\0'", TokByteLitRaw "b'\\\\'"
+        , TokByteLitRaw "b'\\''", TokByteLitRaw "b'\\\"'"
+        , TokEOF
+        ]
+
+  test "a byte literal ending in an escaped backslash does not swallow the next byte literal" $
+    lexTokenValues "b'\\\\' b'\\''" `shouldBe`
+      Right [TokByteLitRaw "b'\\\\'", TokByteLitRaw "b'\\''", TokEOF]
+
   test "unterminated byte literal is an unterminated byte literal error" $
     lexTokenValues "b'\\n" `shouldBe` Left LexUnterminatedByteLiteral
 
@@ -871,6 +941,18 @@ runLexerTests = runTests $ Test.do
 
   test "empty byte string literal is valid" $
     lexTokenValues "b\"\"" `shouldBe` Right [TokByteStringLitRaw "b\"\"", TokEOF]
+
+  test "byte strings support simple escapes beyond hex escapes" $
+    lexTokenValues "b\"x\\ry\\tz\\0w\"" `shouldBe`
+      Right [TokByteStringLitRaw "b\"x\\ry\\tz\\0w\"", TokEOF]
+
+  test "byte strings support escaped backslash, single quote, and double quote" $
+    lexTokenValues "b\"a\\\\b\\'c\\\"d\"" `shouldBe`
+      Right [TokByteStringLitRaw "b\"a\\\\b\\'c\\\"d\"", TokEOF]
+
+  test "a byte string ending in an escaped backslash does not swallow the next byte string" $
+    lexTokenValues "b\"\\\\\" b\"y\"" `shouldBe`
+      Right [TokByteStringLitRaw "b\"\\\\\"", TokByteStringLitRaw "b\"y\"", TokEOF]
 
   test "invalid byte strings are byte string literal errors" $
     [ lexTokenValues "b\"bad\\q\""

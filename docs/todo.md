@@ -12,6 +12,7 @@ This document compiles the lists of features which are covered by the [language 
 - Quantum Contracts.
 - Lean 4 code generation.
 - Quantum Conditionals.
+  - `qif`+`qelse` & `qmatch`.
   - `sif`+`selse` & `smatch`.
 - Classical subroutines.
 - Prelude math functions.

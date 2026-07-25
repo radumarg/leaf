@@ -206,6 +206,18 @@ runExpressionParseTests = runTests $ Test.do
       Just
         "fn control() { if ready { work(); } loop { break; } while ready { continue; } for x in values { use_value(x); } finish() }"
 
+  test "block recursion terminates across every recursive continuation" $
+    parseAndPrettyPrint
+      "fn progress() {first(); if ready {second();} let x = third(); target.field = fourth(); loop {break;} last()}"
+      `shouldBe`
+      Just
+        "fn progress() { first(); if ready { second(); } let x = third(); target.field = fourth(); loop { break; } last() }"
+
+  test "block recursion terminates when a later statement is malformed" $
+    parseAndPrettyPrint
+      "fn progress() {first(); if ready {second();} let x = third(); fourth() let y = fifth();}"
+      `shouldBe` Nothing
+
   test "statement-leading block expressions stop before following expression tokens" $
     parseAndPrettyPrint
       "fn boundaries() {if ready {} -value; loop {} (value); while ready {} [0]; for x in values {} {1} ctrl(&q0) {} -other; adjoint {} [1]}"
@@ -330,6 +342,28 @@ runExpressionParseTests = runTests $ Test.do
   test "chained postfix expressions" $
     parseAndPrettyPrint "fn postfix() {values()[i].field.len()}" `shouldBe`
       Just "fn postfix() { values()[i].field.len() }"
+
+  test "postfix recursion terminates through a deep mixed chain" $
+    parseAndPrettyPrint
+      "fn postfix() {factory(a, b)[i].field.method(c)[j].0.next().value}"
+      `shouldBe`
+      Just
+        "fn postfix() { factory(a, b)[i].field.method(c)[j].0.next().value }"
+
+  test "postfix recursion terminates on an incomplete suffix" $
+    parseAndPrettyPrint "fn postfix() {factory(a)[i].field.method(c)[j" `shouldBe`
+      Nothing
+
+  test "comma-list recursion terminates for nested trailing commas" $
+    parseAndPrettyPrint
+      "fn commas() {outer(inner(a, b,), [first(), second(),], (x, y,),)}"
+      `shouldBe`
+      Just
+        "fn commas() { outer(inner(a, b), [first(), second()], (x, y)) }"
+
+  test "comma-list recursion terminates on a missing middle element" $
+    parseAndPrettyPrint "fn commas() {outer(first(),, third())}" `shouldBe`
+      Nothing
 
   test "index and field assignment targets" $
     parseAndPrettyPrint "fn assign() {a[i] = 1; p.x = 2;}" `shouldBe`

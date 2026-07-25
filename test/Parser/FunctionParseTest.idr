@@ -81,6 +81,16 @@ runFunctionParseTests = runTests $ Test.do
   test "duplicate scratch qualifiers in a type are rejected" $
     parseAndPrettyPrint "fn bad(q: scratch scratch qubit) {}" `shouldBe` Nothing
 
+  test "qualified type recursion terminates at a non-type keyword" $
+    parseAndPrettyPrint "fn bad(q: scratch linear if) {}" `shouldBe` Nothing
+
+  test "qualified type recursion terminates through nested type forms" $
+    parseAndPrettyPrint
+      "fn nested(q: scratch linear fn(value: affine qubit) -> (scratch qubit, [affine qubit])) {}"
+      `shouldBe`
+      Just
+        "fn nested(q: scratch linear fn(value: affine qubit) -> (scratch qubit, [affine qubit])) { }"
+
   test "higher-order function types" $
     parseAndPrettyPrint
       "general fn phase_kickback(oracle: unitary fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)) {}"

@@ -38,18 +38,17 @@ snocList1 (first ::: rest) value = first ::: (rest ++ [value])
 
 sourceStartPos : Position -> SourcePos
 sourceStartPos (P line column) =
-  MkSourcePos (S line) (S column) 0
+  MkSourcePos (S line) (S column)
 
 sourceEndPos : Position -> SourcePos
 sourceEndPos (P line column) =
-  MkSourcePos (S line) (S (S column)) 0
+  MkSourcePos (S line) (S (S column))
 
 public export
 sourceSpan : Bounds -> SourceSpan
 sourceSpan NoBounds =
-  let start = MkSourcePos 1 1 0
+  let start = MkSourcePos 1 1
   in MkSourceSpan "" start start
-
 sourceSpan (BS start end) =
   MkSourceSpan "" (sourceStartPos start) (sourceEndPos end)
 
@@ -62,7 +61,7 @@ lastItemSpan _ (item :: rest) =
 public export
 sourceFileInfo : String -> NodeId -> List SurfaceItem -> AstInfo
 sourceFileInfo sourceFileName nodeId [] =
-    let start = MkSourcePos 1 1 0 in
+    let start = MkSourcePos 1 1 in
         MkAstInfo nodeId (MkSourceSpan sourceFileName start start)
 sourceFileInfo _ nodeId (first :: rest) =
     let firstSpan = first.astInfo.span
@@ -75,13 +74,13 @@ sourceFileInfo _ nodeId (first :: rest) =
 ||| `const <effect> fn`; the reverse order is deliberately not constructible.
 public export
 data ItemPrefixState
-  = PrefixOrdinary (Maybe (SurfaceAstNode VisbilityQualifier))
-  | PrefixConst (Maybe (SurfaceAstNode VisbilityQualifier)) Bounds
+  = PrefixOrdinary (Maybe (SurfaceAstNode VisibilityQualifier))
+  | PrefixConst (Maybe (SurfaceAstNode VisibilityQualifier)) Bounds
   | PrefixEffect
-      (Maybe (SurfaceAstNode VisbilityQualifier))
+      (Maybe (SurfaceAstNode VisibilityQualifier))
       (SurfaceAstNode FunctionEffect)
   | PrefixConstEffect
-      (Maybe (SurfaceAstNode VisbilityQualifier))
+      (Maybe (SurfaceAstNode VisibilityQualifier))
       Bounds
       (SurfaceAstNode FunctionEffect)
 

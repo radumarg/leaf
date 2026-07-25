@@ -2089,7 +2089,7 @@ parseFunDecl :
     (itemNodeId : NodeId)
   -> (declarationStart : Bounds)
   -> (attributes : List SurfaceAttribute)
-  -> (visibility : Maybe (SurfaceAstNode VisbilityQualifier))
+  -> (visibility : Maybe (SurfaceAstNode VisibilityQualifier))
   -> (constness : Maybe (SurfaceAstNode FunctionConstness))
   -> (functionEffect : Maybe (SurfaceAstNode FunctionEffect))
   -> Rule True SurfaceItem
@@ -2151,7 +2151,7 @@ parseConstDecl :
     (itemNodeId : NodeId)
   -> (declarationStart : Bounds)
   -> (attributes : List SurfaceAttribute)
-  -> (visibility : Maybe (SurfaceAstNode VisbilityQualifier))
+  -> (visibility : Maybe (SurfaceAstNode VisibilityQualifier))
   -> Rule True SurfaceItem
 parseConstDecl _ _ _ _ _ [] _ = Fail0 (B EOI NoBounds)
 parseConstDecl itemNodeId declarationStart attributes visibility nodeId
@@ -2450,7 +2450,6 @@ parseItems items nextNodeId tokens acc@(SA recur) =
             succF $ parseItems (items :< item) followingNodeId remaining recur
 
 ||| Parses all items into a source-file AST associated with the supplied filename.
-||| Tested by the top-module input `const N: i64 = 4;`.
 parseModule : String -> Rule False SurfaceSourceFile
 parseModule fileName firstItemNodeId tokens acc =
     case parseItems [<] firstItemNodeId tokens acc of
@@ -2476,21 +2475,12 @@ locatedParseError : String -> Bounds -> ParseError -> Located ParseError
 locatedParseError fileName bounds parseError =
     MkLocated ({ file := fileName } (sourceSpan bounds)) parseError
 
-||| Converts an unexpected bounded token into a located parse failure.
-||| Tested by the top-level input `let i = 1;`.
-unexpectedLocated : String -> Bounded Token -> Either (Located ParseError) a
-unexpectedLocated fileName token =
-    case the (Either (Bounded ParseError) a) (Text.ParseError.unexpected token) of
-        Left (B err bounds) => Left (locatedParseError fileName bounds err)
-        Right result => Right result
-
 public export
 ||| Runs the module parser over a token stream and returns either a located error or source file.
 ||| Node ID zero is reserved for the source-file node, so item allocation begins at
-||| one. Parser failures are enriched with the filename here. A nominally successful
-||| parse is accepted only when it consumes the complete token stream; leftover
-||| tokens are converted into an unexpected-token error as a defensive fallback.
-||| Tested indirectly by every parser test, for example `fn empty() {}`.
+||| one. Parser failures are enriched with the filename here. `parseItems` consumes
+||| the complete token stream whenever it succeeds, so a successful module parse
+||| with leftover tokens indicates an internal parser invariant violation.
 parseFile : String -> List (Bounded Token) -> Either (Located ParseError) SurfaceSourceFile
 parseFile fileName tokens =
     case parseModule fileName 1 tokens suffixAcc of   -- first item node id is 1 (0 is source file node id)
@@ -2500,5 +2490,6 @@ parseFile fileName tokens =
         Succ0 (sourceFile, _) [] =>
             Right sourceFile
 
-        Succ0 _ ((B token bounds) :: remaining) =>
-            unexpectedLocated fileName (B token bounds)
+        Succ0 _ (_ :: _) =>
+            assert_total $ idris_crash
+                "parseFile: parseModule function succeeded without consuming the complete token stream."
