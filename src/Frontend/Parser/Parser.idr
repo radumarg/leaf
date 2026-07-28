@@ -98,20 +98,6 @@ parseBreakExpression : Rule True SurfaceExpr
 parseContinueExpression : Rule True SurfaceExpr
 parseReturnExpression : Rule True SurfaceExpr
 parseIfExpression : Rule True SurfaceExpr
-parseExpressionTupleTail : Rule True (CommaList SurfaceExpr)
-parseCallArguments : Rule True (CommaList SurfaceExpr)
-parseArrayElements : Rule True (CommaList SurfaceExpr)
-parseControlAfterControls :
-     NodeId
-  -> Bounds
-  -> List1 SurfaceExpr
-  -> Maybe (SurfaceAstNode String)
-  -> Rule True SurfaceExpr
-
--- Pattern parsing recurses through `parsePattern` for tuple and array
--- elements; these declarations expose that boundary the same way.
-parseTuplePatternTail : Rule True (CommaList SurfacePattern)
-parseArrayPatternElements : Rule True (CommaList SurfacePattern)
 
 ||| Parses an identifier into a named AST node with source bounds.
 ||| Tested by: `fn names() {value; result}`.
@@ -124,6 +110,57 @@ parseName expectedNameDescription nodeId ((B token bounds) :: remaining) acc =
 
         _ =>
             Fail0 (B (Expected [ expectedNameDescription ] (show token)) bounds)
+
+||| Parses the `::name` segments following the first name of a type path.
+||| The first segment is handled by `parsePathType`; this helper consumes only
+||| complete `:: identifier` pairs and deliberately succeeds without consuming
+||| anything when the next token is not another segment. Recursion returns the
+||| final segment's bounds so the caller can span the complete path. The explicit
+||| suffix composition proves that every returned token list is a suffix of the
+||| original input.
+||| Tested by: `fn use_types(config: my_module::Config) {}`.
+parseTypePathTail : Rule False TypePathTail
+parseTypePathTail nodeId
+    ((B (TokSym SymDoubleColon) colonBounds) ::
+     (B (TokIdent name) nameBounds) :: remaining) acc =
+  let (segmentNodeId, nextNodeId) = reserveNodeId nodeId
+      segment = surfaceAstNode
+        (MkAstInfo segmentNodeId (sourceSpan nameBounds))
+        (PathSegmentName name)
+   in case succF $ parseTypePathTail nextNodeId remaining suffixAcc of
+        Fail0 err => Fail0 err
+        Succ0 (MkTypePathTail segments lastBounds, finalNodeId) finalTokens =>
+          let finalBounds = case segments of
+                [] => nameBounds
+                _ => lastBounds
+           in Succ0 (MkTypePathTail (segment :: segments) finalBounds, finalNodeId)
+                finalTokens
+parseTypePathTail nodeId tokens _ =
+  Succ0 (MkTypePathTail [] NoBounds, nodeId) tokens @{Same}
+
+||| Builds a named or qualified path type from its first identifier and tail.
+||| Tested by: `fn use_types(person: Person, config: my_module::Config) {}`.
+parsePathType :
+     NodeId -> String -> Bounds -> Rule False SurfaceTy
+parsePathType typeNodeId firstName firstBounds nodeId tokens acc =
+  let (pathNodeId, afterPathNodeId) = reserveNodeId nodeId
+      (segmentNodeId, afterSegmentNodeId) = reserveNodeId afterPathNodeId
+      firstSegment = surfaceAstNode
+        (MkAstInfo segmentNodeId (sourceSpan firstBounds))
+        (PathSegmentName firstName)
+   in case parseTypePathTail afterSegmentNodeId tokens acc of
+        Fail0 err => Fail0 err
+        Succ0 (MkTypePathTail segments lastBounds, finalNodeId) finalTokens =>
+          let pathBounds = case segments of
+                [] => firstBounds
+                _ => firstBounds <+> lastBounds
+              path = surfaceAstNode
+                (MkAstInfo pathNodeId (sourceSpan pathBounds))
+                (MkPathNode firstSegment segments)
+              ty = surfaceAstNode
+                (MkAstInfo typeNodeId (sourceSpan pathBounds))
+                (TyPath path)
+           in Succ0 (ty, finalNodeId) finalTokens
 
 mutual
   ||| Dispatches to the parser for a primitive, path, reference, array, tuple,
@@ -171,57 +208,6 @@ mutual
                       nextNodeId remaining recur
                   _ => Fail0 (B (Expected ["a type declaration"] (show token)) bounds)
       _ => Fail0 (B (Expected ["a type declaration"] (show token)) bounds)
-
-  ||| Parses the `::name` segments following the first name of a type path.
-  ||| The first segment is handled by `parsePathType`; this helper consumes only
-  ||| complete `:: identifier` pairs and deliberately succeeds without consuming
-  ||| anything when the next token is not another segment. Recursion returns the
-  ||| final segment's bounds so the caller can span the complete path. The explicit
-  ||| suffix composition proves that every returned token list is a suffix of the
-  ||| original input.
-  ||| Tested by: `fn use_types(config: my_module::Config) {}`.
-  parseTypePathTail : Rule False TypePathTail
-  parseTypePathTail nodeId
-      ((B (TokSym SymDoubleColon) colonBounds) ::
-       (B (TokIdent name) nameBounds) :: remaining) acc =
-    let (segmentNodeId, nextNodeId) = reserveNodeId nodeId
-        segment = surfaceAstNode
-          (MkAstInfo segmentNodeId (sourceSpan nameBounds))
-          (PathSegmentName name)
-     in case succF $ parseTypePathTail nextNodeId remaining suffixAcc of
-          Fail0 err => Fail0 err
-          Succ0 (MkTypePathTail segments lastBounds, finalNodeId) finalTokens =>
-            let finalBounds = case segments of
-                  [] => nameBounds
-                  _ => lastBounds
-             in Succ0 (MkTypePathTail (segment :: segments) finalBounds, finalNodeId)
-              finalTokens
-  parseTypePathTail nodeId tokens _ =
-    Succ0 (MkTypePathTail [] NoBounds, nodeId) tokens @{Same}
-
-  ||| Builds a named or qualified path type from its first identifier and tail.
-  ||| Tested by: `fn use_types(person: Person, config: my_module::Config) {}`.
-  parsePathType :
-       NodeId -> String -> Bounds -> Rule False SurfaceTy
-  parsePathType typeNodeId firstName firstBounds nodeId tokens acc =
-    let (pathNodeId, afterPathNodeId) = reserveNodeId nodeId
-        (segmentNodeId, afterSegmentNodeId) = reserveNodeId afterPathNodeId
-        firstSegment = surfaceAstNode
-          (MkAstInfo segmentNodeId (sourceSpan firstBounds))
-          (PathSegmentName firstName)
-     in case parseTypePathTail afterSegmentNodeId tokens acc of
-          Fail0 err => Fail0 err
-          Succ0 (MkTypePathTail segments lastBounds, finalNodeId) finalTokens =>
-            let pathBounds = case segments of
-                  [] => firstBounds
-                  _ => firstBounds <+> lastBounds
-                path = surfaceAstNode
-                  (MkAstInfo pathNodeId (sourceSpan pathBounds))
-                  (MkPathNode firstSegment segments)
-                ty = surfaceAstNode
-                  (MkAstInfo typeNodeId (sourceSpan pathBounds))
-                  (TyPath path)
-             in Succ0 (ty, finalNodeId) finalTokens
 
   ||| Parses shared and mutable reference types beginning with `&`.
   ||| Tested by: `fn borrow(person: &Person, mutable: &mut Person) {}`.
@@ -672,108 +658,111 @@ parseLetQualifiers qualifiers nodeId
 parseLetQualifiers qualifiers nodeId tokens _ =
   Succ0 (qualifiers.ordered <>> [], nodeId) tokens @{Same}
 
-||| Parses name, wildcard, tuple, and array patterns used by `let`.
-||| Tested by:
-||| `fn destructure() {let (a, b, c) = (1, 2, 3); let (x, _, z) = (1, 2, 3);}`.
-parsePattern : Rule True SurfacePattern
-parsePattern _ [] _ = Fail0 (B EOI NoBounds)
-parsePattern nodeId ((B TokUnderscore bounds) :: remaining) _ =
-  let (patternNodeId, nextNodeId) = reserveNodeId nodeId
-   in Succ0
-        (surfaceAstNode (MkAstInfo patternNodeId (sourceSpan bounds))
-          PatternWildcard,
-         nextNodeId)
-        remaining
-parsePattern nodeId ((B (TokIdent text) bounds) :: remaining) _ =
-  let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
-      (name, nextNodeId) = makeName text bounds afterPatternNodeId
-   in Succ0
-        (surfaceAstNode (MkAstInfo patternNodeId (sourceSpan bounds))
-          (PatternName Nothing name),
-         nextNodeId)
-        remaining
-parsePattern nodeId
-    ((B (TokKw KwMut) mutBounds) ::
-     (B (TokIdent text) nameBounds) :: remaining) _ =
-  let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
-      (name, nextNodeId) = makeName text nameBounds afterPatternNodeId
-   in Succ0
-        (surfaceAstNode
-          (MkAstInfo patternNodeId (sourceSpan (mutBounds <+> nameBounds)))
-          (PatternName (Just Mutable) name),
-         nextNodeId)
-        remaining
-parsePattern _ ((B (TokKw KwMut) mutBounds) :: _) _ =
-  failWithCustomError
-    (ParseErrorWithMessage "`mut` must be followed by a binder name.")
-    mutBounds
-parsePattern nodeId
-    ((B (TokSym SymLParen) openBounds) ::
-     (B (TokSym SymRParen) closeBounds) :: remaining) _ =
-  let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
-      (literalNodeId, nextNodeId) = reserveNodeId afterPatternNodeId
-      span = sourceSpan (openBounds <+> closeBounds)
-      literal = surfaceAstNode (MkAstInfo literalNodeId span) LiteralUnit
-   in Succ0
-        (surfaceAstNode (MkAstInfo patternNodeId span)
-          (PatternLiteral literal),
-         nextNodeId)
-        remaining
-parsePattern nodeId
-    ((B (TokSym SymLParen) openBounds) :: remaining) (SA recur) =
-  let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
-   in case succT $ parsePattern afterPatternNodeId remaining recur of
-        Fail0 err => Fail0 err
-        Succ0 (first, afterFirstNodeId) afterFirst =>
-          case afterFirst of
-            (B (TokSym SymRParen) closeBounds) :: finalTokens =>
-              Succ0
-                (surfaceAstNode
-                  (MkAstInfo patternNodeId
-                    (sourceSpan (openBounds <+> closeBounds)))
-                  (PatternParenthesized first),
-                 afterFirstNodeId)
-                finalTokens
-            (B (TokSym SymComma) commaBounds) :: afterComma =>
-              case succT $
-                         parseTuplePatternTail afterFirstNodeId afterComma suffixAcc of
-                Fail0 err => Fail0 err
-                Succ0 (tail, finalNodeId) finalTokens =>
-                  Succ0
-                    (surfaceAstNode
-                      (MkAstInfo patternNodeId
-                        (sourceSpan (openBounds <+> tail.closeBounds)))
-                      (PatternTuple (first ::: tail.values)),
-                     finalNodeId)
-                    finalTokens
-            (B unexpected bounds) :: _ =>
-              Fail0 (B (Expected [",", ")"] (show unexpected)) bounds)
-            [] => Fail0 (B EOI NoBounds)
-parsePattern nodeId
-    ((B (TokSym SymLBracket) openBounds) :: remaining) (SA recur) =
-  let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
-   in case succT $ parseArrayPatternElements afterPatternNodeId remaining recur of
-        Fail0 err => Fail0 err
-        Succ0 (elements, finalNodeId) finalTokens =>
-          Succ0
-            (surfaceAstNode
-              (MkAstInfo patternNodeId
-                (sourceSpan (openBounds <+> elements.closeBounds)))
-              (PatternArray elements.values),
-             finalNodeId)
-            finalTokens
-parsePattern _ ((B token bounds) :: _) _ =
-  Fail0 (B (Expected ["a pattern"] (show token)) bounds)
+mutual
+  ||| Parses name, wildcard, tuple, and array patterns used by `let`.
+  ||| Tested by:
+  ||| `fn destructure() {let (a, b, c) = (1, 2, 3); let (x, _, z) = (1, 2, 3);}`.
+  parsePattern : Rule True SurfacePattern
+  parsePattern _ [] _ = Fail0 (B EOI NoBounds)
+  parsePattern nodeId ((B TokUnderscore bounds) :: remaining) _ =
+    let (patternNodeId, nextNodeId) = reserveNodeId nodeId
+     in Succ0
+          (surfaceAstNode (MkAstInfo patternNodeId (sourceSpan bounds))
+            PatternWildcard,
+           nextNodeId)
+          remaining
+  parsePattern nodeId ((B (TokIdent text) bounds) :: remaining) _ =
+    let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
+        (name, nextNodeId) = makeName text bounds afterPatternNodeId
+     in Succ0
+          (surfaceAstNode (MkAstInfo patternNodeId (sourceSpan bounds))
+            (PatternName Nothing name),
+           nextNodeId)
+          remaining
+  parsePattern nodeId
+      ((B (TokKw KwMut) mutBounds) ::
+       (B (TokIdent text) nameBounds) :: remaining) _ =
+    let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
+        (name, nextNodeId) = makeName text nameBounds afterPatternNodeId
+     in Succ0
+          (surfaceAstNode
+            (MkAstInfo patternNodeId (sourceSpan (mutBounds <+> nameBounds)))
+            (PatternName (Just Mutable) name),
+           nextNodeId)
+          remaining
+  parsePattern _ ((B (TokKw KwMut) mutBounds) :: _) _ =
+    failWithCustomError
+      (ParseErrorWithMessage "`mut` must be followed by a binder name.")
+      mutBounds
+  parsePattern nodeId
+      ((B (TokSym SymLParen) openBounds) ::
+       (B (TokSym SymRParen) closeBounds) :: remaining) _ =
+    let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
+        (literalNodeId, nextNodeId) = reserveNodeId afterPatternNodeId
+        span = sourceSpan (openBounds <+> closeBounds)
+        literal = surfaceAstNode (MkAstInfo literalNodeId span) LiteralUnit
+     in Succ0
+          (surfaceAstNode (MkAstInfo patternNodeId span)
+            (PatternLiteral literal),
+           nextNodeId)
+          remaining
+  parsePattern nodeId
+      ((B (TokSym SymLParen) openBounds) :: remaining) (SA recur) =
+    let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
+     in case succT $ parsePattern afterPatternNodeId remaining recur of
+          Fail0 err => Fail0 err
+          Succ0 (first, afterFirstNodeId) afterFirst =>
+            case afterFirst of
+              (B (TokSym SymRParen) closeBounds) :: finalTokens =>
+                Succ0
+                  (surfaceAstNode
+                    (MkAstInfo patternNodeId
+                      (sourceSpan (openBounds <+> closeBounds)))
+                    (PatternParenthesized first),
+                   afterFirstNodeId)
+                  finalTokens
+              (B (TokSym SymComma) commaBounds) :: afterComma =>
+                case succT $
+                           parseTuplePatternTail afterFirstNodeId afterComma suffixAcc of
+                  Fail0 err => Fail0 err
+                  Succ0 (tail, finalNodeId) finalTokens =>
+                    Succ0
+                      (surfaceAstNode
+                        (MkAstInfo patternNodeId
+                          (sourceSpan (openBounds <+> tail.closeBounds)))
+                        (PatternTuple (first ::: tail.values)),
+                       finalNodeId)
+                      finalTokens
+              (B unexpected bounds) :: _ =>
+                Fail0 (B (Expected [",", ")"] (show unexpected)) bounds)
+              [] => Fail0 (B EOI NoBounds)
+  parsePattern nodeId
+      ((B (TokSym SymLBracket) openBounds) :: remaining) (SA recur) =
+    let (patternNodeId, afterPatternNodeId) = reserveNodeId nodeId
+     in case succT $ parseArrayPatternElements afterPatternNodeId remaining recur of
+          Fail0 err => Fail0 err
+          Succ0 (elements, finalNodeId) finalTokens =>
+            Succ0
+              (surfaceAstNode
+                (MkAstInfo patternNodeId
+                  (sourceSpan (openBounds <+> elements.closeBounds)))
+                (PatternArray elements.values),
+               finalNodeId)
+              finalTokens
+  parsePattern _ ((B token bounds) :: _) _ =
+    Fail0 (B (Expected ["a pattern"] (show token)) bounds)
 
--- Parses the remaining elements and closing `)` of a tuple pattern.
--- Tested by: `fn destructure() {let (a, b, c) = (1, 2, 3);}`.
-parseTuplePatternTail nodeId tokens acc =
-  assert_total $ parseCommaList SymRParen ")" parsePattern [<] nodeId tokens acc
+  ||| Parses the remaining elements and closing `)` of a tuple pattern.
+  ||| Tested by: `fn destructure() {let (a, b, c) = (1, 2, 3);}`.
+  parseTuplePatternTail : Rule True (CommaList SurfacePattern)
+  parseTuplePatternTail nodeId tokens acc =
+    assert_total $ parseCommaList SymRParen ")" parsePattern [<] nodeId tokens acc
 
--- Parses the comma-separated elements and closing `]` of an array pattern.
--- Tested by: `fn measure() {let [b0, b1, b2]: [bit; 3] = measr(qs);}`.
-parseArrayPatternElements nodeId tokens acc =
-  assert_total $ parseCommaList SymRBracket "]" parsePattern [<] nodeId tokens acc
+  ||| Parses the comma-separated elements and closing `]` of an array pattern.
+  ||| Tested by: `fn measure() {let [b0, b1, b2]: [bit; 3] = measr(qs);}`.
+  parseArrayPatternElements : Rule True (CommaList SurfacePattern)
+  parseArrayPatternElements nodeId tokens acc =
+    assert_total $ parseCommaList SymRBracket "]" parsePattern [<] nodeId tokens acc
 
 ||| Parses statements and an optional trailing expression until a block's closing brace.
 ||| A semicolon turns an expression into `StatementSemiExpression`; an expression
@@ -800,185 +789,92 @@ parseBlockContents :
 ||| Tested by: `fn empty() {}`.
 parseBracedBlock : Rule True SurfaceBlock
 
+||| Falls through to primary and postfix parsing once no unary prefix
+||| operator is present. Shared by the operator dispatch below and by the
+||| final catch-all clause, so the fallback is written exactly once.
+||| Tested by: `fn postfix() {values()[i].field.len()}`.
+parsePrimaryAndPostfix : Rule True SurfaceExpr
+parsePrimaryAndPostfix nodeId tokens acc =
+  case assert_total $ parsePrimaryExpression nodeId tokens acc of
+    Fail0 err => Fail0 err
+    Succ0 (primary, afterPrimaryNodeId) afterPrimary =>
+      succT $
+                 parsePostfixExpression primary afterPrimaryNodeId
+                   afterPrimary suffixAcc
+
 mutual
-  parseExpression = parseRangeExpression
-
-  ||| Parses an expression at the start of a statement.
-  ||| Unparenthesized expressions with blocks are complete statements in Leaf, so
-  ||| this entry point parses them directly and does not let the general postfix,
-  ||| cast, binary, or range parsers consume following statement tokens.
-  ||| Callable `ctrl` and `adjoint` forms are not block statements; after inspecting
-  ||| their AST form, they resume through `parseExpressionContinuation`.
-  parseStatementExpression : Rule True SurfaceExpr
-  parseStatementExpression nodeId
-      tokens@((B (TokSym SymLBrace) _) :: _) acc =
-    parseBlockExpression nodeId tokens acc
-  parseStatementExpression nodeId
-      tokens@((B (TokKw KwIf) _) :: _) acc =
-    parseIfExpression nodeId tokens acc
-  parseStatementExpression nodeId
-      tokens@((B (TokKw KwLoop) _) :: _) acc =
-    parseLoopExpression nodeId tokens acc
-  parseStatementExpression nodeId
-      tokens@((B (TokKw KwWhile) _) :: _) acc =
-    parseWhileExpression nodeId tokens acc
-  parseStatementExpression nodeId
-      tokens@((B (TokKw KwFor) _) :: _) acc =
-    parseForExpression nodeId tokens acc
-  parseStatementExpression nodeId
-      ((B (TokBuiltin BuiltinCtrl) bounds) :: remaining) (SA recur) =
-    case succT $ parseControlExpression bounds nodeId remaining recur of
-      Fail0 err => Fail0 err
-      Succ0 (control, afterControlNodeId) afterControl =>
-        if isBlockLikeExpression control
-          then Succ0 (control, afterControlNodeId) afterControl
-          else succT $ parseExpressionContinuation control afterControlNodeId
-                   afterControl suffixAcc
-  parseStatementExpression nodeId
-      ((B (TokKw KwAdjoint) bounds) :: remaining) (SA recur) =
-    case succT $ parseAdjointExpression bounds nodeId remaining recur of
-      Fail0 err => Fail0 err
-      Succ0 (adjoint, afterAdjointNodeId) afterAdjoint =>
-        if isBlockLikeExpression adjoint
-          then Succ0 (adjoint, afterAdjointNodeId) afterAdjoint
-          else succT $ parseExpressionContinuation adjoint afterAdjointNodeId
-                   afterAdjoint suffixAcc
-  parseStatementExpression nodeId tokens acc =
-    parseExpression nodeId tokens acc
-
-  ||| Continues an expression whose primary node has already been parsed.
-  ||| Postfix operations bind first, followed by casts, binary operators, and
-  ||| finally a possible range. Statement parsing uses this for callable `ctrl` and
-  ||| `adjoint` forms only; their block forms deliberately bypass continuation.
-  parseExpressionContinuation : SurfaceExpr -> Rule False SurfaceExpr
-  parseExpressionContinuation primary nodeId tokens acc =
-    let Succ0 (postfix, afterPostfixNodeId) afterPostfix @{postfixSuffix} :=
-              parsePostfixExpression primary nodeId tokens acc
-          | Fail0 err => Fail0 err
-        Succ0 (cast, afterCastNodeId) afterCast @{castSuffix} :=
-              parseCastExpressionRest postfix afterPostfixNodeId afterPostfix suffixAcc
-          | Fail0 err => Fail0 err
-        Succ0 (binary, afterBinaryNodeId) afterBinary @{binarySuffix} :=
-              parseBinaryExpressionRest 0 cast afterCastNodeId afterCast suffixAcc
-          | Fail0 err => Fail0 err
-        Succ0 result finalTokens @{rangeSuffix} :=
-              parseRangeExpressionRest binary afterBinaryNodeId afterBinary suffixAcc
-          | Fail0 err => Fail0 err
-     in Succ0 result finalTokens
-          @{trans rangeSuffix $ trans binarySuffix $ trans castSuffix postfixSuffix}
-
-  ||| Parses a range expression or delegates to binary-expression parsing.
-  ||| Tested by: `fn ranges() {1..5; 1..; ..5; ..=5; ..}`.
-  parseRangeExpression : Rule True SurfaceExpr
-  parseRangeExpression nodeId
-      ((B (TokSym SymDotDot) operatorBounds) :: remaining) acc@(SA recur) =
+  ||| Builds a unary-operator expression node around an already-classified
+  ||| operator and recurses to parse its operand. Shared by every unary
+  ||| prefix form so each `parseUnaryExpression` clause only has to say which
+  ||| operator it matched and how many tokens that took.
+  ||| Tested by: `fn unary() {-x; !x; &x; &mut x}`.
+  parseUnaryOperand : Bounds -> UnaryOperator -> Rule True SurfaceExpr
+  parseUnaryOperand operatorBounds operatorValue nodeId remaining recur =
     let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
         (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
         operator = surfaceAstNode
-          (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) RangeExclusive
-     in if nextTokenSatisfies isOpenRangeTerminator remaining
-          then
-            Succ0
-              (surfaceAstNode
-                (MkAstInfo expressionNodeId (sourceSpan operatorBounds))
-                (ExprRange Nothing operator Nothing),
-               afterOperatorNodeId)
-              remaining
-          else
-            case succT $ parseBinaryExpression 0 afterOperatorNodeId remaining recur of
-              Fail0 err => Fail0 err
-              Succ0 (end, finalNodeId) finalTokens =>
-                Succ0
-                  (surfaceAstNode
-                    (MkAstInfo expressionNodeId
-                      (mergeSpans (sourceSpan operatorBounds) end.astInfo.span))
-                    (ExprRange Nothing operator (Just end)),
-                   finalNodeId)
-                  finalTokens
-  parseRangeExpression nodeId
-      ((B (TokSym SymDotDotEq) operatorBounds) :: remaining) (SA recur) =
-    let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-        (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
-        operator = surfaceAstNode
-          (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) RangeInclusive
-     in case succT $ parseBinaryExpression 0 afterOperatorNodeId remaining recur of
+          (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) operatorValue
+     in case parseUnaryExpression afterOperatorNodeId remaining recur of
           Fail0 err => Fail0 err
-          Succ0 (end, finalNodeId) finalTokens =>
+          Succ0 (operand, finalNodeId) finalTokens =>
             Succ0
               (surfaceAstNode
                 (MkAstInfo expressionNodeId
-                  (mergeSpans (sourceSpan operatorBounds) end.astInfo.span))
-                (ExprRange Nothing operator (Just end)),
+                  (mergeSpans (sourceSpan operatorBounds) operand.astInfo.span))
+                (ExprUnary operator operand),
                finalNodeId)
               finalTokens
-  parseRangeExpression nodeId tokens acc =
-    case parseBinaryExpression 0 nodeId tokens acc of
-      Fail0 err => Fail0 err
-      Succ0 (start, afterStartNodeId) afterStart =>
-        succT $ parseRangeExpressionRest start afterStartNodeId afterStart suffixAcc
 
-  ||| Parses an optional range operator and endpoint after an existing start expression.
-  ||| The caller has already parsed the possible left endpoint. This helper consumes
-  ||| `..` or `..=` and then decides whether the following token can terminate an
-  ||| open range. Otherwise it parses the right endpoint at binary-expression
-  ||| precedence. If no range operator is present, it returns the original expression
-  ||| and token stream unchanged.
-  ||| Tested by: `fn ranges() {1 + 2..3 * 4}`.
-  parseRangeExpressionRest : SurfaceExpr -> Rule False SurfaceExpr
-  parseRangeExpressionRest start nodeId
-      ((B (TokSym SymDotDot) operatorBounds) :: remaining) (SA recur) =
-    let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-        (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
-        operator = surfaceAstNode
-          (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) RangeExclusive
-     in if nextTokenSatisfies isOpenRangeTerminator remaining
-          then finishOpenRange expressionNodeId afterOperatorNodeId operator
-          else
-            case succF $ parseBinaryExpression 0 afterOperatorNodeId remaining recur of
-              Fail0 err => Fail0 err
-              Succ0 (end, finalNodeId) finalTokens =>
-                Succ0
-                  (surfaceAstNode
-                    (MkAstInfo expressionNodeId
-                      (mergeSpans start.astInfo.span end.astInfo.span))
-                    (ExprRange (Just start) operator (Just end)),
-                   finalNodeId)
-                  finalTokens
-    where
-      -- Builds an open-ended range after its operator has been consumed.
-      -- Tested by: `fn ranges() {1..; ..}`.
-      finishOpenRange :
-           NodeId
-        -> Nat
-        -> SurfaceAstNode RangeOperator
-        -> Res False Token
-             (B (TokSym SymDotDot) operatorBounds :: remaining)
-             CustomParseError (SurfaceExpr, Nat)
-      finishOpenRange expressionNodeId afterOperatorNodeId operator =
-        let expression = surfaceAstNode
-              (MkAstInfo expressionNodeId
-                (mergeSpans start.astInfo.span (sourceSpan operatorBounds)))
-              (ExprRange (Just start) operator Nothing)
-         in Succ0 (expression, afterOperatorNodeId) remaining
-  parseRangeExpressionRest start nodeId
-      ((B (TokSym SymDotDotEq) operatorBounds) :: remaining) (SA recur) =
-    let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-        (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
-        operator = surfaceAstNode
-          (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) RangeInclusive
-     in case succF $ parseBinaryExpression 0 afterOperatorNodeId remaining recur of
-          Fail0 err => Fail0 err
-          Succ0 (end, finalNodeId) finalTokens =>
-            Succ0
-              (surfaceAstNode
+  ||| Parses prefix negation, logical not, shared borrow, mutable borrow, or a postfix expression.
+  ||| `&mut` is matched here directly since it is the only two-token prefix;
+  ||| every single-token prefix operator is dispatched through `unaryOperator`.
+  ||| Tested by: `fn unary() {-x; !x; &x; &mut x}`.
+  parseUnaryExpression : Rule True SurfaceExpr
+  parseUnaryExpression _ [] _ = Fail0 (B EOI NoBounds)
+  parseUnaryExpression nodeId
+      ((B (TokSym SymAmp) ampBounds) ::
+       (B (TokKw KwMut) mutBounds) :: remaining) (SA recur) =
+    succT $ parseUnaryOperand (ampBounds <+> mutBounds)
+              (UnaryBorrow MutableBorrow) nodeId remaining recur
+  parseUnaryExpression nodeId
+      ((B (TokSym symbol) operatorBounds) :: remaining) (SA recur) =
+    case unaryOperator symbol of
+      Just operatorValue =>
+        succT $ parseUnaryOperand operatorBounds operatorValue nodeId remaining recur
+      Nothing =>
+        parsePrimaryAndPostfix nodeId
+          (B (TokSym symbol) operatorBounds :: remaining) (SA recur)
+  parseUnaryExpression nodeId tokens acc =
+    parsePrimaryAndPostfix nodeId tokens acc
+
+||| Repeatedly attaches `as type` casts to an existing operand.
+||| Tested by: `fn casts() {value as i32 as i64}`.
+parseCastExpressionRest : SurfaceExpr -> Rule False SurfaceExpr
+parseCastExpressionRest operand nodeId
+    ((B (TokKw KwAs) asBounds) :: afterAs) (SA recur) =
+  let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
+   in case succT $ parseType afterExpressionNodeId afterAs recur of
+        Fail0 err => Fail0 err
+        Succ0 (targetType, afterTypeNodeId) afterType =>
+          let expression = surfaceAstNode
                 (MkAstInfo expressionNodeId
-                  (mergeSpans start.astInfo.span end.astInfo.span))
-                (ExprRange (Just start) operator (Just end)),
-               finalNodeId)
-              finalTokens
-  parseRangeExpressionRest start nodeId tokens _ =
-    Succ0 (start, nodeId) tokens @{Same}
+                  (mergeSpans operand.astInfo.span targetType.astInfo.span))
+                (ExprCast operand targetType)
+           in succF $ assert_total $
+                     parseCastExpressionRest expression afterTypeNodeId afterType suffixAcc
+parseCastExpressionRest operand nodeId tokens _ =
+  Succ0 (operand, nodeId) tokens @{Same}
 
+||| Parses a unary expression followed by zero or more `as type` casts.
+||| Tested by: `fn casts() {x as i32; value as i32 as i64}`.
+parseCastExpression : Rule True SurfaceExpr
+parseCastExpression nodeId tokens acc =
+  case parseUnaryExpression nodeId tokens acc of
+    Fail0 err => Fail0 err
+    Succ0 (operand, afterOperandNodeId) afterOperand =>
+      succT $ parseCastExpressionRest operand afterOperandNodeId afterOperand suffixAcc
+
+mutual
   ||| Parses a precedence-climbing binary expression at the requested minimum precedence.
   ||| It first parses the tighter cast/unary/postfix operand, then asks
   ||| `parseBinaryExpressionRest` to extend that operand. The minimum-precedence
@@ -1038,118 +934,253 @@ mutual
   parseBinaryExpressionRest _ left nodeId tokens _ =
     Succ0 (left, nodeId) tokens @{Same}
 
-  ||| Parses a unary expression followed by zero or more `as type` casts.
-  ||| Tested by: `fn casts() {x as i32; value as i32 as i64}`.
-  parseCastExpression : Rule True SurfaceExpr
-  parseCastExpression nodeId tokens acc =
-    case parseUnaryExpression nodeId tokens acc of
-      Fail0 err => Fail0 err
-      Succ0 (operand, afterOperandNodeId) afterOperand =>
-        succT $ parseCastExpressionRest operand afterOperandNodeId afterOperand suffixAcc
-
-  ||| Repeatedly attaches `as type` casts to an existing operand.
-  ||| Tested by: `fn casts() {value as i32 as i64}`.
-  parseCastExpressionRest : SurfaceExpr -> Rule False SurfaceExpr
-  parseCastExpressionRest operand nodeId
-      ((B (TokKw KwAs) asBounds) :: afterAs) (SA recur) =
-    let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-     in case succT $ parseType afterExpressionNodeId afterAs recur of
-          Fail0 err => Fail0 err
-          Succ0 (targetType, afterTypeNodeId) afterType =>
-            let expression = surfaceAstNode
-                  (MkAstInfo expressionNodeId
-                    (mergeSpans operand.astInfo.span targetType.astInfo.span))
-                  (ExprCast operand targetType)
-             in succF $ assert_total $
-                       parseCastExpressionRest expression afterTypeNodeId afterType suffixAcc
-  parseCastExpressionRest operand nodeId tokens _ =
-    Succ0 (operand, nodeId) tokens @{Same}
-
-  ||| Builds a unary-operator expression node around an already-classified
-  ||| operator and recurses to parse its operand. Shared by every unary
-  ||| prefix form so each `parseUnaryExpression` clause only has to say which
-  ||| operator it matched and how many tokens that took.
-  ||| Tested by: `fn unary() {-x; !x; &x; &mut x}`.
-  parseUnaryOperand : Bounds -> UnaryOperator -> Rule True SurfaceExpr
-  parseUnaryOperand operatorBounds operatorValue nodeId remaining recur =
-    let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-        (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
-        operator = surfaceAstNode
-          (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) operatorValue
-     in case parseUnaryExpression afterOperatorNodeId remaining recur of
-          Fail0 err => Fail0 err
-          Succ0 (operand, finalNodeId) finalTokens =>
-            Succ0
-              (surfaceAstNode
-                (MkAstInfo expressionNodeId
-                  (mergeSpans (sourceSpan operatorBounds) operand.astInfo.span))
-                (ExprUnary operator operand),
-               finalNodeId)
-              finalTokens
-
-  ||| Falls through to primary and postfix parsing once no unary prefix
-  ||| operator is present. Shared by the operator dispatch below and by the
-  ||| final catch-all clause, so the fallback is written exactly once.
-  ||| Tested by: `fn postfix() {values()[i].field.len()}`.
-  parsePrimaryAndPostfix : Rule True SurfaceExpr
-  parsePrimaryAndPostfix nodeId tokens acc =
-    case assert_total $ parsePrimaryExpression nodeId tokens acc of
-      Fail0 err => Fail0 err
-      Succ0 (primary, afterPrimaryNodeId) afterPrimary =>
-        succT $
-                   parsePostfixExpression primary afterPrimaryNodeId
-                     afterPrimary suffixAcc
-
-  ||| Parses prefix negation, logical not, shared borrow, mutable borrow, or a postfix expression.
-  ||| `&mut` is matched here directly since it is the only two-token prefix;
-  ||| every single-token prefix operator is dispatched through `unaryOperator`.
-  ||| Tested by: `fn unary() {-x; !x; &x; &mut x}`.
-  parseUnaryExpression : Rule True SurfaceExpr
-  parseUnaryExpression _ [] _ = Fail0 (B EOI NoBounds)
-  parseUnaryExpression nodeId
-      ((B (TokSym SymAmp) ampBounds) ::
-       (B (TokKw KwMut) mutBounds) :: remaining) (SA recur) =
-    succT $ parseUnaryOperand (ampBounds <+> mutBounds)
-              (UnaryBorrow MutableBorrow) nodeId remaining recur
-  parseUnaryExpression nodeId
-      ((B (TokSym symbol) operatorBounds) :: remaining) (SA recur) =
-    case unaryOperator symbol of
-      Just operatorValue =>
-        succT $ parseUnaryOperand operatorBounds operatorValue nodeId remaining recur
-      Nothing =>
-        parsePrimaryAndPostfix nodeId
-          (B (TokSym symbol) operatorBounds :: remaining) (SA recur)
-  parseUnaryExpression nodeId tokens acc =
-    parsePrimaryAndPostfix nodeId tokens acc
-
--- Parses `ctrl(...)`, including its controls and optional basis clause.
--- Tested by: `fn f() {ctrl(&q0, &q1).on(bs"10").apply(H)(&q2)}`.
-parseControlExpression _ _ [] _ = Fail0 (B EOI NoBounds)
-parseControlExpression ctrlBounds nodeId
-    ((B (TokSym SymLParen) openBounds) :: afterOpen) (SA recur) =
+||| Parses an optional range operator and endpoint after an existing start expression.
+||| The caller has already parsed the possible left endpoint. This helper consumes
+||| `..` or `..=` and then decides whether the following token can terminate an
+||| open range. Otherwise it parses the right endpoint at binary-expression
+||| precedence. If no range operator is present, it returns the original expression
+||| and token stream unchanged.
+||| Tested by: `fn ranges() {1 + 2..3 * 4}`.
+parseRangeExpressionRest : SurfaceExpr -> Rule False SurfaceExpr
+parseRangeExpressionRest start nodeId
+    ((B (TokSym SymDotDot) operatorBounds) :: remaining) (SA recur) =
   let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
-   in case succT $ parseCallArguments afterExpressionNodeId afterOpen recur of
+      (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
+      operator = surfaceAstNode
+        (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) RangeExclusive
+   in if nextTokenSatisfies isOpenRangeTerminator remaining
+        then finishOpenRange expressionNodeId afterOperatorNodeId operator
+        else
+          case succF $ parseBinaryExpression 0 afterOperatorNodeId remaining recur of
+            Fail0 err => Fail0 err
+            Succ0 (end, finalNodeId) finalTokens =>
+              Succ0
+                (surfaceAstNode
+                  (MkAstInfo expressionNodeId
+                    (mergeSpans start.astInfo.span end.astInfo.span))
+                  (ExprRange (Just start) operator (Just end)),
+                 finalNodeId)
+                finalTokens
+  where
+    -- Builds an open-ended range after its operator has been consumed.
+    -- Tested by: `fn ranges() {1..; ..}`.
+    finishOpenRange :
+         NodeId
+      -> Nat
+      -> SurfaceAstNode RangeOperator
+      -> Res False Token
+           (B (TokSym SymDotDot) operatorBounds :: remaining)
+           CustomParseError (SurfaceExpr, Nat)
+    finishOpenRange expressionNodeId afterOperatorNodeId operator =
+      let expression = surfaceAstNode
+            (MkAstInfo expressionNodeId
+              (mergeSpans start.astInfo.span (sourceSpan operatorBounds)))
+            (ExprRange (Just start) operator Nothing)
+       in Succ0 (expression, afterOperatorNodeId) remaining
+parseRangeExpressionRest start nodeId
+    ((B (TokSym SymDotDotEq) operatorBounds) :: remaining) (SA recur) =
+  let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
+      (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
+      operator = surfaceAstNode
+        (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) RangeInclusive
+   in case succF $ parseBinaryExpression 0 afterOperatorNodeId remaining recur of
         Fail0 err => Fail0 err
-        Succ0 (MkCommaList [] closeBounds, _) _ =>
-          failWithCustomError
-            (ParseErrorWithMessage
-              "`ctrl` requires at least one control qubit.")
-            (ctrlBounds <+> closeBounds)
-        Succ0 (MkCommaList (first :: rest) closeBounds, afterControlsNodeId)
-              afterControls =>
-          succT $ parseControlAfterControls expressionNodeId ctrlBounds
-                   (first ::: rest) Nothing afterControlsNodeId
-                   afterControls suffixAcc
-parseControlExpression _ _ ((B token bounds) :: _) _ =
-  Fail0 (B (Expected ["`(` after `ctrl`"] (show token)) bounds)
+        Succ0 (end, finalNodeId) finalTokens =>
+          Succ0
+            (surfaceAstNode
+              (MkAstInfo expressionNodeId
+                (mergeSpans start.astInfo.span end.astInfo.span))
+              (ExprRange (Just start) operator (Just end)),
+             finalNodeId)
+            finalTokens
+parseRangeExpressionRest start nodeId tokens _ =
+  Succ0 (start, nodeId) tokens @{Same}
 
--- Finishes a control expression as either `.apply(callable)` or a controlled block.
--- At this point the controls, and possibly `.on(basis)`, have already been parsed.
--- `.apply(...)` parses exactly one callable inside its own parentheses and builds
--- an expression that can still receive ordinary postfix calls. A leading `{`
--- instead produces the block form. Keeping these two continuations here avoids
--- treating the control-list parentheses as normal call arguments.
--- Tested by: `fn f() {ctrl(&q0, &q1) {H(&q2);}}`.
+||| Parses a range expression or delegates to binary-expression parsing.
+||| Tested by: `fn ranges() {1..5; 1..; ..5; ..=5; ..}`.
+parseRangeExpression : Rule True SurfaceExpr
+parseRangeExpression nodeId
+    ((B (TokSym SymDotDot) operatorBounds) :: remaining) acc@(SA recur) =
+  let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
+      (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
+      operator = surfaceAstNode
+        (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) RangeExclusive
+   in if nextTokenSatisfies isOpenRangeTerminator remaining
+        then
+          Succ0
+            (surfaceAstNode
+              (MkAstInfo expressionNodeId (sourceSpan operatorBounds))
+              (ExprRange Nothing operator Nothing),
+             afterOperatorNodeId)
+            remaining
+        else
+          case succT $ parseBinaryExpression 0 afterOperatorNodeId remaining recur of
+            Fail0 err => Fail0 err
+            Succ0 (end, finalNodeId) finalTokens =>
+              Succ0
+                (surfaceAstNode
+                  (MkAstInfo expressionNodeId
+                    (mergeSpans (sourceSpan operatorBounds) end.astInfo.span))
+                  (ExprRange Nothing operator (Just end)),
+                 finalNodeId)
+                finalTokens
+parseRangeExpression nodeId
+    ((B (TokSym SymDotDotEq) operatorBounds) :: remaining) (SA recur) =
+  let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
+      (operatorNodeId, afterOperatorNodeId) = reserveNodeId afterExpressionNodeId
+      operator = surfaceAstNode
+        (MkAstInfo operatorNodeId (sourceSpan operatorBounds)) RangeInclusive
+   in case succT $ parseBinaryExpression 0 afterOperatorNodeId remaining recur of
+        Fail0 err => Fail0 err
+        Succ0 (end, finalNodeId) finalTokens =>
+          Succ0
+            (surfaceAstNode
+              (MkAstInfo expressionNodeId
+                (mergeSpans (sourceSpan operatorBounds) end.astInfo.span))
+              (ExprRange Nothing operator (Just end)),
+             finalNodeId)
+            finalTokens
+parseRangeExpression nodeId tokens acc =
+  case parseBinaryExpression 0 nodeId tokens acc of
+    Fail0 err => Fail0 err
+    Succ0 (start, afterStartNodeId) afterStart =>
+      succT $ parseRangeExpressionRest start afterStartNodeId afterStart suffixAcc
+
+parseExpression = parseRangeExpression
+
+||| Continues an expression whose primary node has already been parsed.
+||| Postfix operations bind first, followed by casts, binary operators, and
+||| finally a possible range. Statement parsing uses this for callable `ctrl` and
+||| `adjoint` forms only; their block forms deliberately bypass continuation.
+parseExpressionContinuation : SurfaceExpr -> Rule False SurfaceExpr
+parseExpressionContinuation primary nodeId tokens acc =
+  let Succ0 (postfix, afterPostfixNodeId) afterPostfix @{postfixSuffix} :=
+            parsePostfixExpression primary nodeId tokens acc
+        | Fail0 err => Fail0 err
+      Succ0 (cast, afterCastNodeId) afterCast @{castSuffix} :=
+            parseCastExpressionRest postfix afterPostfixNodeId afterPostfix suffixAcc
+        | Fail0 err => Fail0 err
+      Succ0 (binary, afterBinaryNodeId) afterBinary @{binarySuffix} :=
+            parseBinaryExpressionRest 0 cast afterCastNodeId afterCast suffixAcc
+        | Fail0 err => Fail0 err
+      Succ0 result finalTokens @{rangeSuffix} :=
+            parseRangeExpressionRest binary afterBinaryNodeId afterBinary suffixAcc
+        | Fail0 err => Fail0 err
+   in Succ0 result finalTokens
+        @{trans rangeSuffix $ trans binarySuffix $ trans castSuffix postfixSuffix}
+
+||| Parses an expression at the start of a statement.
+||| Unparenthesized expressions with blocks are complete statements in Leaf, so
+||| this entry point parses them directly and does not let the general postfix,
+||| cast, binary, or range parsers consume following statement tokens.
+||| Callable `ctrl` and `adjoint` forms are not block statements; after inspecting
+||| their AST form, they resume through `parseExpressionContinuation`.
+parseStatementExpression : Rule True SurfaceExpr
+parseStatementExpression nodeId
+    tokens@((B (TokSym SymLBrace) _) :: _) acc =
+  parseBlockExpression nodeId tokens acc
+parseStatementExpression nodeId
+    tokens@((B (TokKw KwIf) _) :: _) acc =
+  parseIfExpression nodeId tokens acc
+parseStatementExpression nodeId
+    tokens@((B (TokKw KwLoop) _) :: _) acc =
+  parseLoopExpression nodeId tokens acc
+parseStatementExpression nodeId
+    tokens@((B (TokKw KwWhile) _) :: _) acc =
+  parseWhileExpression nodeId tokens acc
+parseStatementExpression nodeId
+    tokens@((B (TokKw KwFor) _) :: _) acc =
+  parseForExpression nodeId tokens acc
+parseStatementExpression nodeId
+    ((B (TokBuiltin BuiltinCtrl) bounds) :: remaining) (SA recur) =
+  case succT $ parseControlExpression bounds nodeId remaining recur of
+    Fail0 err => Fail0 err
+    Succ0 (control, afterControlNodeId) afterControl =>
+      if isBlockLikeExpression control
+        then Succ0 (control, afterControlNodeId) afterControl
+        else succT $ parseExpressionContinuation control afterControlNodeId
+                 afterControl suffixAcc
+parseStatementExpression nodeId
+    ((B (TokKw KwAdjoint) bounds) :: remaining) (SA recur) =
+  case succT $ parseAdjointExpression bounds nodeId remaining recur of
+    Fail0 err => Fail0 err
+    Succ0 (adjoint, afterAdjointNodeId) afterAdjoint =>
+      if isBlockLikeExpression adjoint
+        then Succ0 (adjoint, afterAdjointNodeId) afterAdjoint
+        else succT $ parseExpressionContinuation adjoint afterAdjointNodeId
+                 afterAdjoint suffixAcc
+parseStatementExpression nodeId tokens acc =
+  parseExpression nodeId tokens acc
+
+||| Builds a supported literal primary after its token has been consumed.
+parseLiteralExpression : Token -> Bounds -> Rule False SurfaceExpr
+parseLiteralExpression token bounds nodeId tokens _ =
+  case token of
+    TokIntLitRaw rawText =>
+      Succ0 (makeLiteralExpression (LiteralIntegerRaw rawText) bounds nodeId) tokens
+    TokFloatLitRaw rawText =>
+      Succ0 (makeLiteralExpression (LiteralFloatRaw rawText) bounds nodeId) tokens
+    TokBoolLit value =>
+      Succ0 (makeLiteralExpression (LiteralBoolean value) bounds nodeId) tokens
+    TokStringLitRaw rawText =>
+      Succ0 (makeLiteralExpression (LiteralStringRaw rawText) bounds nodeId) tokens
+    TokBasisStringLitRaw rawText =>
+      Succ0
+        (makeLiteralExpression (LiteralBasisStringRaw rawText) bounds nodeId)
+        tokens
+    _ => Fail0 (B (Expected ["a literal expression"] (show token)) bounds)
+
+||| Reports unsupported primary forms and the general primary-expression error.
+parseUnsupportedPrimary : Token -> Bounds -> Rule False SurfaceExpr
+parseUnsupportedPrimary token bounds _ tokens _ =
+  case token of
+    TokKw KwQif =>
+      unsupported "Quantum if expressions are not yet supported."
+    TokKw KwMatch =>
+      unsupported "Match expressions are not yet supported."
+    TokKw KwQmatch =>
+      unsupported "Quantum match expressions are not yet supported."
+    TokKw KwSif =>
+      unsupported "State if expressions are not yet supported."
+    TokKw KwSmatch =>
+      unsupported "State match expressions are not yet supported."
+    TokKw KwSelf =>
+      unsupported "Self expressions are not yet supported."
+    TokByteLitRaw _ =>
+      unsupported "Byte literals are not yet supported."
+    TokByteStringLitRaw _ =>
+      unsupported "Byte string literals are not yet supported."
+    TokStateLit _ =>
+      unsupported "State literals are not yet supported."
+    _ => Fail0 (B (Expected ["an expression"] (show token)) bounds)
+  where
+    unsupported : String -> Res False Token tokens CustomParseError (SurfaceExpr, Nat)
+    unsupported message =
+      failWithCustomError (UnsupportedFeature message) bounds
+
+||| Parses comma-separated call arguments and their closing parenthesis.
+||| Empty argument lists succeed on an immediate `)`. Otherwise each expression
+||| must be followed by `,` or `)`; after a comma recursion also permits a trailing
+||| comma. The closing bounds are returned with the values so the call node can
+||| cover its full source range.
+||| Tested by: `fn calls() {f(); f(x, y)}`.
+parseCallArguments : Rule True (CommaList SurfaceExpr)
+parseCallArguments nodeId tokens acc =
+  assert_total $ parseCommaList SymRParen ")" parseExpression [<] nodeId tokens acc
+
+||| Finishes a control expression as either `.apply(callable)` or a controlled block.
+||| At this point the controls, and possibly `.on(basis)`, have already been parsed.
+||| `.apply(...)` parses exactly one callable inside its own parentheses and builds
+||| an expression that can still receive ordinary postfix calls. A leading `{`
+||| instead produces the block form. Keeping these two continuations here avoids
+||| treating the control-list parentheses as normal call arguments.
+||| Tested by: `fn f() {ctrl(&q0, &q1) {H(&q2);}}`.
+parseControlAfterControls :
+     NodeId
+  -> Bounds
+  -> List1 SurfaceExpr
+  -> Maybe (SurfaceAstNode String)
+  -> Rule True SurfaceExpr
 parseControlAfterControls _ _ _ (Just _) _
     ((B (TokSym SymDot) _) ::
      (B (TokBuiltin BuiltinOn) onBounds) :: _) _ =
@@ -1209,6 +1240,27 @@ parseControlAfterControls _ _ _ _ _
       (Expected ["`.apply(...)` or a controlled block"] (show token))
       bounds)
 
+-- Parses `ctrl(...)`, including its controls and optional basis clause.
+-- Tested by: `fn f() {ctrl(&q0, &q1).on(bs"10").apply(H)(&q2)}`.
+parseControlExpression _ _ [] _ = Fail0 (B EOI NoBounds)
+parseControlExpression ctrlBounds nodeId
+    ((B (TokSym SymLParen) openBounds) :: afterOpen) (SA recur) =
+  let (expressionNodeId, afterExpressionNodeId) = reserveNodeId nodeId
+   in case succT $ parseCallArguments afterExpressionNodeId afterOpen recur of
+        Fail0 err => Fail0 err
+        Succ0 (MkCommaList [] closeBounds, _) _ =>
+          failWithCustomError
+            (ParseErrorWithMessage
+              "`ctrl` requires at least one control qubit.")
+            (ctrlBounds <+> closeBounds)
+        Succ0 (MkCommaList (first :: rest) closeBounds, afterControlsNodeId)
+              afterControls =>
+          succT $ parseControlAfterControls expressionNodeId ctrlBounds
+                   (first ::: rest) Nothing afterControlsNodeId
+                   afterControls suffixAcc
+parseControlExpression _ _ ((B token bounds) :: _) _ =
+  Fail0 (B (Expected ["`(` after `ctrl`"] (show token)) bounds)
+
 -- Parses adjoint callable syntax `adjoint(f)` or an `adjoint { ... }` block.
 -- Tested by: `fn f() {adjoint(f)(q1, q2, q3)}` and
 -- `fn f() {adjoint {H(&q1); CT(&q1, &q2)}}`.
@@ -1259,6 +1311,12 @@ parseAdjointExpression _ _ ((B token bounds) :: _) _ =
       (Expected ["`(` or `{` after `adjoint`"] (show token))
       bounds)
 
+||| Parses the remaining comma-separated values and closing `)` of a tuple expression.
+||| Tested by: `fn tuples() {(1, true); (1, (2, 3),)}`.
+parseExpressionTupleTail : Rule True (CommaList SurfaceExpr)
+parseExpressionTupleTail nodeId tokens acc =
+  parseCommaList SymRParen ")" parseExpression [<] nodeId tokens acc
+
 ||| Parses unit, parenthesized, and tuple expressions after their opening `(`.
 parseParenOrTupleExpression : Bounds -> Rule True SurfaceExpr
 parseParenOrTupleExpression _ _ [] _ = Fail0 (B EOI NoBounds)
@@ -1295,6 +1353,15 @@ parseParenOrTupleExpression openBounds nodeId tokens (SA recur) =
         (B unexpected unexpectedBounds) :: _ =>
           Fail0 (B (Expected [",", ")"] (show unexpected)) unexpectedBounds)
         [] => Fail0 (B EOI NoBounds)
+
+||| Parses comma-separated array elements and their closing bracket.
+||| Its delimiter protocol mirrors `parseCallArguments`: an immediate `]` is an
+||| empty array, commas recurse and allow a trailing comma, and the closing bounds
+||| are retained for the array expression's span.
+||| Tested by: `fn arrays() {[]; [1, 2, 3]; [1, 2, 3,]}`.
+parseArrayElements : Rule True (CommaList SurfaceExpr)
+parseArrayElements nodeId tokens acc =
+  parseCommaList SymRBracket "]" parseExpression [<] nodeId tokens acc
 
 ||| Parses array and repeated-array expressions after their opening `[`.
 parseArrayExpression : Bounds -> Rule True SurfaceExpr
@@ -1350,52 +1417,6 @@ parseArrayExpression openBounds nodeId tokens (SA recur) =
         (B unexpected unexpectedBounds) :: _ =>
           Fail0 (B (Expected [",", ";", "]"] (show unexpected)) unexpectedBounds)
         [] => Fail0 (B EOI NoBounds)
-
-||| Builds a supported literal primary after its token has been consumed.
-parseLiteralExpression : Token -> Bounds -> Rule False SurfaceExpr
-parseLiteralExpression token bounds nodeId tokens _ =
-    case token of
-      TokIntLitRaw rawText =>
-        Succ0 (makeLiteralExpression (LiteralIntegerRaw rawText) bounds nodeId) tokens
-      TokFloatLitRaw rawText =>
-        Succ0 (makeLiteralExpression (LiteralFloatRaw rawText) bounds nodeId) tokens
-      TokBoolLit value =>
-        Succ0 (makeLiteralExpression (LiteralBoolean value) bounds nodeId) tokens
-      TokStringLitRaw rawText =>
-        Succ0 (makeLiteralExpression (LiteralStringRaw rawText) bounds nodeId) tokens
-      TokBasisStringLitRaw rawText =>
-        Succ0
-          (makeLiteralExpression (LiteralBasisStringRaw rawText) bounds nodeId)
-          tokens
-      _ => Fail0 (B (Expected ["a literal expression"] (show token)) bounds)
-
-||| Reports unsupported primary forms and the general primary-expression error.
-parseUnsupportedPrimary : Token -> Bounds -> Rule False SurfaceExpr
-parseUnsupportedPrimary token bounds _ tokens _ =
-    case token of
-      TokKw KwQif =>
-        unsupported "Quantum if expressions are not yet supported."
-      TokKw KwMatch =>
-        unsupported "Match expressions are not yet supported."
-      TokKw KwQmatch =>
-        unsupported "Quantum match expressions are not yet supported."
-      TokKw KwSif =>
-        unsupported "State if expressions are not yet supported."
-      TokKw KwSmatch =>
-        unsupported "State match expressions are not yet supported."
-      TokKw KwSelf =>
-        unsupported "Self expressions are not yet supported."
-      TokByteLitRaw _ =>
-        unsupported "Byte literals are not yet supported."
-      TokByteStringLitRaw _ =>
-        unsupported "Byte string literals are not yet supported."
-      TokStateLit _ =>
-        unsupported "State literals are not yet supported."
-      _ => Fail0 (B (Expected ["an expression"] (show token)) bounds)
-  where
-    unsupported : String -> Res False Token tokens CustomParseError (SurfaceExpr, Nat)
-    unsupported message =
-      failWithCustomError (UnsupportedFeature message) bounds
 
 -- Dispatches literals, names, builtins, grouped values, collections, control flow,
 -- quantum modifiers, and other primary expression forms.
@@ -1464,11 +1485,6 @@ parsePrimaryExpression nodeId
       succT $ parseLiteralExpression token bounds nodeId remaining suffixAcc
     _ => succT $
            parseUnsupportedPrimary token bounds nodeId remaining suffixAcc
-
--- Parses the remaining comma-separated values and closing `)` of a tuple expression.
--- Tested by: `fn tuples() {(1, true); (1, (2, 3),)}`.
-parseExpressionTupleTail nodeId tokens acc =
-  parseCommaList SymRParen ")" parseExpression [<] nodeId tokens acc
 
 ||| Resumes postfix parsing from a newly constructed receiver.
 ||| This is the single totality boundary for postfix-chain recursion; callers
@@ -1553,22 +1569,18 @@ parsePostfixExpression receiver nodeId
 parsePostfixExpression callee nodeId tokens _ =
   Succ0 (callee, nodeId) tokens @{Same}
 
--- Parses comma-separated call arguments and their closing parenthesis.
--- Empty argument lists succeed on an immediate `)`. Otherwise each expression
--- must be followed by `,` or `)`; after a comma recursion also permits a trailing
--- comma. The closing bounds are returned with the values so the call node can
--- cover its full source range.
--- Tested by: `fn calls() {f(); f(x, y)}`.
-parseCallArguments nodeId tokens acc =
-  assert_total $ parseCommaList SymRParen ")" parseExpression [<] nodeId tokens acc
-
--- Parses comma-separated array elements and their closing bracket.
--- Its delimiter protocol mirrors `parseCallArguments`: an immediate `]` is an
--- empty array, commas recurse and allow a trailing comma, and the closing bounds
--- are retained for the array expression's span.
--- Tested by: `fn arrays() {[]; [1, 2, 3]; [1, 2, 3,]}`.
-parseArrayElements nodeId tokens acc =
-  parseCommaList SymRBracket "]" parseExpression [<] nodeId tokens acc
+-- Parses a value-less `continue` expression.
+-- Tested by: `fn exits() {break 1; continue; return; return value}`.
+parseContinueExpression _ [] _ = Fail0 (B EOI NoBounds)
+parseContinueExpression nodeId
+    ((B (TokKw KwContinue) bounds) :: remaining) _ =
+  let (expressionNodeId, nextNodeId) = reserveNodeId nodeId in
+  Succ0
+    (surfaceAstNode (MkAstInfo expressionNodeId (sourceSpan bounds)) ExprContinue,
+     nextNodeId)
+    remaining
+parseContinueExpression _ ((B unexpected unexpectedBounds) :: _) _ =
+  Fail0 (B (Expected ["continue"] (show unexpected)) unexpectedBounds)
 
 -- Wraps a parsed braced block as an expression node.
 -- Tested by: `fn block() {{1}}`.
@@ -1691,19 +1703,6 @@ parseBreakExpression nodeId
         remaining
 parseBreakExpression _ ((B unexpected unexpectedBounds) :: _) _ =
   Fail0 (B (Expected ["break"] (show unexpected)) unexpectedBounds)
-
--- Parses a value-less `continue` expression.
--- Tested by: `fn exits() {break 1; continue; return; return value}`.
-parseContinueExpression _ [] _ = Fail0 (B EOI NoBounds)
-parseContinueExpression nodeId
-    ((B (TokKw KwContinue) bounds) :: remaining) _ =
-  let (expressionNodeId, nextNodeId) = reserveNodeId nodeId in
-  Succ0
-    (surfaceAstNode (MkAstInfo expressionNodeId (sourceSpan bounds)) ExprContinue,
-     nextNodeId)
-    remaining
-parseContinueExpression _ ((B unexpected unexpectedBounds) :: _) _ =
-  Fail0 (B (Expected ["continue"] (show unexpected)) unexpectedBounds)
 
 -- Parses `return` with an optional value.
 -- Tested by: `fn exits() {return; return value}`.
@@ -2483,8 +2482,7 @@ public export
 ||| with leftover tokens indicates an internal parser invariant violation.
 parseFile : String -> List (Bounded Token) -> Either (Located ParseError) SurfaceSourceFile
 parseFile fileName tokens =
-    let firstNodeId = 1
-    in case parseModule fileName firstNodeId tokens suffixAcc of
+    case parseModule fileName 1 tokens suffixAcc of   -- first item node id is 1 (0 is source file node id)
         Fail0 (B err bounds) =>
             Left (locatedParseError fileName bounds err)
 
