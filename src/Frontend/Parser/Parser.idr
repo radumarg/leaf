@@ -1131,7 +1131,7 @@ parseLiteralExpression token bounds nodeId tokens _ =
     _ => Fail0 (B (Expected ["a literal expression"] (show token)) bounds)
 
 ||| Reports unsupported primary forms and the general primary-expression error.
-parseUnsupportedPrimary : Token -> Bounds -> Rule False SurfaceExpr
+parseUnsupportedPrimary : Token -> Bounds -> Rule True SurfaceExpr
 parseUnsupportedPrimary token bounds _ tokens _ =
   case token of
     TokKw KwQif =>
@@ -1154,7 +1154,7 @@ parseUnsupportedPrimary token bounds _ tokens _ =
       unsupported "State literals are not yet supported."
     _ => Fail0 (B (Expected ["an expression"] (show token)) bounds)
   where
-    unsupported : String -> Res False Token tokens CustomParseError (SurfaceExpr, Nat)
+    unsupported : String -> Res True Token tokens CustomParseError (SurfaceExpr, Nat)
     unsupported message =
       failWithCustomError (UnsupportedFeature message) bounds
 
@@ -2433,7 +2433,7 @@ parseItem nodeId ((B firstToken startBounds) :: remaining) acc =
 ||| EOF are rejected. Each iteration resumes with both the remaining suffix and the
 ||| next free node ID returned by `parseItem`.
 ||| Tested by: `const N: i64 = 4;\nfn arrays() { let c: [i32; N]; }`.
-parseItems : SnocList SurfaceItem -> Rule False (List SurfaceItem)
+parseItems : SnocList SurfaceItem -> Rule True (List SurfaceItem)
 parseItems items nextNodeId [] _ =
     Fail0 (B EOI NoBounds)  -- every valid token stream must contain TokEOF
 parseItems items nextNodeId [B TokEOF _] (SA recur) =
@@ -2446,10 +2446,10 @@ parseItems items nextNodeId tokens acc@(SA recur) =
             Fail0 err
 
         Succ0 (item, followingNodeId) remaining =>
-            succF $ parseItems (items :< item) followingNodeId remaining recur
+            succT $ parseItems (items :< item) followingNodeId remaining recur
 
 ||| Parses all items into a source-file AST associated with the supplied filename.
-parseModule : String -> Rule False SurfaceSourceFile
+parseModule : String -> Rule True SurfaceSourceFile
 parseModule fileName firstItemNodeId tokens acc =
     case parseItems [<] firstItemNodeId tokens acc of
         Fail0 err =>
