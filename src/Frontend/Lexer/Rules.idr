@@ -24,7 +24,7 @@ import Frontend.Lexer.Regex
 
 --------------------------------------------------------------------------------
 -- A known limitation of this pinned ilex version, worked around below for
--- three distinct grammar shapes. If you hit a case that doesn't fit any of
+-- four distinct grammar shapes. If you hit a case that doesn't fit any of
 -- these, it's likely the same underlying bug -- read this first rather than
 -- re-deriving it from scratch (or, worse, "simplifying" away one of the
 -- workarounds below because it looks redundant; that's exactly what almost
@@ -58,6 +58,16 @@ import Frontend.Lexer.Regex
 --         would have closed or become a doc comment -- e.g. a file truncated
 --         right after `/***`. Falls back to an (eventually unterminated)
 --         plain block comment, same as a bare `/*` at true end of input.
+--       - `unterminatedNormalStringTrailingBackslashCandidate` /
+--         `unterminatedByteStringTrailingBackslashCandidate` /
+--         `unterminatedByteLiteralTrailingBackslashCandidate` (`Regex.idr`,
+--         wired into `initialRules` below): without these, `"abc\`, `b"abc\`,
+--         and `b'\` (a string/byte-string/byte-literal body ending in a bare
+--         backslash cut off by true end of input) hard-fail instead of
+--         falling back to their respective unterminated-literal errors,
+--         because the node reached after the lone backslash extends toward a
+--         two-character escape but isn't itself an accept. Basis strings
+--         have no escape syntax, so they don't share this dead end.
 --     If you add a new rule whose prefix overlaps an existing shorter rule
 --     with a possible dead end in between, test that overlap directly; don't
 --     assume maximal munch alone covers it.
@@ -547,6 +557,14 @@ initialRules =
   , string unterminatedByteStringCandidate emitUnterminatedByteStringLiteral
   , string unterminatedByteLiteralCandidate emitUnterminatedByteLiteral
   , string unterminatedNormalStringCandidate emitUnterminatedStringLiteral
+
+  -- Trailing-backslash sub-cases of the three candidates just above (see the
+  -- known-limitation note (a) at the top of this file): only ever the
+  -- longest match when the escape is cut off by true end of input, since
+  -- maximal munch prefers the longer complete-escape match otherwise.
+  , string unterminatedByteStringTrailingBackslashCandidate emitUnterminatedByteStringLiteral
+  , string unterminatedByteLiteralTrailingBackslashCandidate emitUnterminatedByteLiteral
+  , string unterminatedNormalStringTrailingBackslashCandidate emitUnterminatedStringLiteral
   , string ordinaryCharLiteralCandidate emitOrdinaryCharLiteralError
 
   , string numberCandidate emitNumberLiteral

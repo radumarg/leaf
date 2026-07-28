@@ -920,6 +920,9 @@ runLexerTests = runTests $ Test.do
   test "a normal string literal cannot span a real line break" $
     lexTokenValues "\"abc\ndef\"" `shouldBe` Left LexUnterminatedStringLiteral
 
+  test "a string body ending in a bare backslash at end of input is unterminated" $
+    lexTokenValues "\"abc\\" `shouldBe` Left LexUnterminatedStringLiteral
+
   test "basis strings from multiple forms are emitted as raw basis string tokens" $
     lexTokenValues "bs\"01+-iI\" bs\"++----++\" bs\"iiiiIIIII\"" `shouldBe`
       Right
@@ -985,6 +988,9 @@ runLexerTests = runTests $ Test.do
   test "unterminated byte literal error has bounds" $
     lexErrorHasBounds "b'\\n" `shouldBe` Just True
 
+  test "a byte literal body ending in a bare backslash at end of input is unterminated" $
+    lexTokenValues "b'\\" `shouldBe` Left LexUnterminatedByteLiteral
+
   test "byte strings are emitted as raw byte string tokens" $
     lexTokenValues "b\"abc\" b\"a\\n\\x41\"" `shouldBe`
       Right
@@ -1028,6 +1034,9 @@ runLexerTests = runTests $ Test.do
 
   test "a byte string literal cannot span a real line break" $
     lexTokenValues "b\"ab\ncd\"" `shouldBe` Left LexUnterminatedByteStringLiteral
+
+  test "a byte string body ending in a bare backslash at end of input is unterminated" $
+    lexTokenValues "b\"abc\\" `shouldBe` Left LexUnterminatedByteStringLiteral
 
   test "ordinary character literals request a dedicated token" $
     lexTokenValues "'a'" `shouldBe` Left LexOrdinaryCharLiteralNeedsToken

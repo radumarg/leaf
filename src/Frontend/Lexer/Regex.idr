@@ -289,6 +289,18 @@ unterminatedNormalStringCandidate : RExp True
 unterminatedNormalStringCandidate =
   '"' >> star normalStringBodyCandidate
 
+-- Covers a body ending in a bare backslash cut off by true end of input,
+-- before the escape's second character ever arrives -- the same class of
+-- backtracking dead end as `bareOuterBlockCommentOpen` above, just for an
+-- escape-introducing backslash instead of a doc-comment star run. Without
+-- this, `"abc\` hard-fails instead of falling back to an unterminated
+-- string, because the node reached after the lone backslash extends toward
+-- a two-character escape but isn't itself an accept.
+export
+unterminatedNormalStringTrailingBackslashCandidate : RExp True
+unterminatedNormalStringTrailingBackslashCandidate =
+  '"' >> star normalStringBodyCandidate >> '\\'
+
 export
 basisStringCandidate : RExp True
 basisStringCandidate =
@@ -315,6 +327,13 @@ unterminatedByteStringCandidate : RExp True
 unterminatedByteStringCandidate =
   'b' >> '"' >> star byteStringBodyCandidate
 
+-- Same dead end as `unterminatedNormalStringTrailingBackslashCandidate`
+-- above, for byte strings: `b"abc\` at true end of input.
+export
+unterminatedByteStringTrailingBackslashCandidate : RExp True
+unterminatedByteStringTrailingBackslashCandidate =
+  'b' >> '"' >> star byteStringBodyCandidate >> '\\'
+
 byteLiteralBodyCandidate : RExp True
 byteLiteralBodyCandidate =
       ('\\' >> dot)
@@ -329,6 +348,13 @@ export
 unterminatedByteLiteralCandidate : RExp True
 unterminatedByteLiteralCandidate =
   'b' >> '\'' >> star byteLiteralBodyCandidate
+
+-- Same dead end as `unterminatedNormalStringTrailingBackslashCandidate`
+-- above, for byte literals: `b'\` at true end of input.
+export
+unterminatedByteLiteralTrailingBackslashCandidate : RExp True
+unterminatedByteLiteralTrailingBackslashCandidate =
+  'b' >> '\'' >> star byteLiteralBodyCandidate >> '\\'
 
 export
 ordinaryCharLiteralCandidate : RExp True
