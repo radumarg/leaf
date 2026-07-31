@@ -15,6 +15,7 @@ import Frontend.Token
 
 %default total
 
+export
 lexThenParse : String -> String -> Maybe SurfaceSourceFile
 lexThenParse fileName inputProgram =
   case lexFile inputProgram of

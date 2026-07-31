@@ -52,7 +52,7 @@ runTopModuleParseTests = runTests $ Test.do
 
   test "impl blocks are not yet supported" $
     parseErrorDetails "impl Point {}" `shouldBe`
-      Just ("Impls blocks and structs are not yet supported.", "test-fixture.rs", (1, 1), (1, 5))
+      Just ("Impl blocks and structs are not yet supported.", "test-fixture.rs", (1, 1), (1, 5))
 
   test "outer doc comments are not yet supported" $
     parseErrorDetails "/// docs\n" `shouldBe`
@@ -64,7 +64,7 @@ runTopModuleParseTests = runTests $ Test.do
 
   test "unexpected top-level tokens report the token" $
     parseErrorDetails "let i = 1;" `shouldBe`
-      Just ( "Unexpected token: `let` at top level in source file. At module level only only function declarations are allowed for now."
+      Just ( "Unexpected token: `let` at top level in source file. At module level, only function and constant declarations are allowed for now."
            , "test-fixture.rs"
            , (1, 1)
            , (1, 4)

@@ -112,13 +112,13 @@ runFunctionParseTests = runTests $ Test.do
     parseErrorDetails "#[qasm_gate]\nlet i = 1;" `shouldBe`
       Just ("Expected function declaration after attribute, found instead: `let`.", "test-fixture.rs", (2, 1), (2, 4))
 
-  test "function expected after pub visibility modifier" $
+  test "function or constant expected after pub visibility modifier" $
     parseErrorDetails "pub let i = 1;" `shouldBe`
-      Just ("Expected function declaration after `pub` visibility modifier, found instead: `let`.", "test-fixture.rs", (1, 5), (1, 8))
+      Just ("Expected function or constant declaration after `pub` visibility modifier, found instead: `let`.", "test-fixture.rs", (1, 5), (1, 8))
 
   test "function keyword expected after function effect" $
     parseErrorDetails "pub general let i = 1;" `shouldBe`
-      Just ("Expected `fun` after `general` effect modifier, found instead: `let`.", "test-fixture.rs", (1, 13), (1, 16))
+      Just ("Expected `fn` after `general` effect modifier, found instead: `let`.", "test-fixture.rs", (1, 13), (1, 16))
 
   test "malformed attribute, missing closing bracket" $
     parseErrorDetails "#[qasm_gate \nfn empty() -> () {}" `shouldBe`
@@ -138,7 +138,7 @@ runFunctionParseTests = runTests $ Test.do
 
   test "function without opening brace" $
     parseErrorDetails "fn empty(); }" `shouldBe`
-      Just ("Expected a function body declaration starting with `{`, found instead: `;`.", "test-fixture.rs", (1, 11), (1, 12))
+      Just ("Expected a braced block starting with `{`, found instead: `;`.", "test-fixture.rs", (1, 11), (1, 12))
 
   test "function with statement missing semicolon" $
     parseErrorDetails "fn simple() { let i: i32 = 1; 2 let j = 3;" `shouldBe`
