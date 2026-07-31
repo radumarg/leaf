@@ -370,10 +370,9 @@ implementation Show Symbol where
   show = showSymbolLeaf
 
 ----------------------------------------------------------------------------------------------------------
--- The symbol table the lexer builds its rules from, derived from `showSymbolLeaf` plus every `Symbol`
--- value (via `Finite`) so there is exactly one hand-written spelling per symbol, not two. Table order
--- does not affect lexing: symbol matching is longest-match-first by construction (the lexer merges every
--- entry into one DFA), not by list order.
+-- Convenience table for consumers that need every symbol spelling. It is derived from `showSymbolLeaf`
+-- and `Finite Symbol`, so there is exactly one hand-written spelling per symbol. The lexer generates its
+-- rules directly with ilex's `vals` helper from the same two sources of truth.
 ----------------------------------------------------------------------------------------------------------
 public export
 symbolTable : List (String, Symbol)

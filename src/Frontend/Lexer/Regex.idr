@@ -10,7 +10,8 @@ import Text.ILex.RExp.Unicode as Uni
 --------------------------------------------------------------------------------
 -- Whitespace and line structure.
 --
--- The prompt explicitly asks us to skip CRLF, LF, CR, tab, and spaces.
+-- Leaf accepts CRLF, LF, and bare CR as line breaks, and spaces and tabs as
+-- horizontal whitespace.
 --------------------------------------------------------------------------------
 lineBreak : RExp True
 lineBreak =
@@ -27,9 +28,18 @@ leafWhitespace : RExp True
 leafWhitespace =
   plus (horizontalWhitespace <|> lineBreak)
 
+-- In ilex, `dot` means a printable (non-control) code point, not an arbitrary
+-- character. Comments and broad literal candidates must also consume tabs and
+-- other control code points so that they cannot terminate a match prematurely.
+-- `range32` intersects this range with Unicode's valid scalar values when the
+-- DFA is generated.
+validCodePoint : RExp True
+validCodePoint =
+  range32 0x0 0x10ffff
+
 notLineBreakChar : RExp True
 notLineBreakChar =
-  dot && not '\n' && not '\r'
+  validCodePoint && not '\n' && not '\r'
 
 --------------------------------------------------------------------------------
 -- ASCII helpers used by string and number candidates.
@@ -56,7 +66,7 @@ asciiAlphaNumUnderscore = asciiAlphaNum <|> '_'
 -- Frontend.Token owns the classification into TokUnderscore, booleans,
 -- keywords, primitive types, state literals, builtins, and ordinary identifiers.
 --
--- Leaf follows the prompt's rule:
+-- Leaf identifier syntax is:
 --   start = Unicode alphabetic or '_'
 --   rest  = Unicode alphabetic, Unicode digit, '_', or apostrophe
 --
@@ -190,7 +200,7 @@ integerLiteral =
   <|> decimalIntegerLiteral
 
 --------------------------------------------------------------------------------
--- Required float union from the prompt:
+-- Supported float forms:
 --
 --   digit+ '.' digit+ exp? suf?
 --   digit+ exp suf?
@@ -253,14 +263,13 @@ numberCandidate =
   <|> plainDecimalNumberCandidate
 
 --------------------------------------------------------------------------------
--- Digits immediately followed by `.`, `..`, or `..=` with no further digit.
+-- Digits immediately followed by `.`, `..`, or `..=`.
 --
--- `dottedDecimalNumberCandidate` only consumes a `.` when a digit follows, by
--- design (see above), so the underlying lexer engine never has to choose
--- between treating that `.` as the start of a float or as a separate `.`/`..`/
--- `..=` symbol. This candidate covers exactly the complementary case: digits
--- followed by one or two dots (optionally `..=`) with no digit after the dot,
--- so `1..2` still lexes as `1`, `..`, `2` and `1.` still lexes as `1`, `.`.
+-- This regex also matches the prefix of a dotted float such as `1.2`, but
+-- `dottedDecimalNumberCandidate` consumes the longer span and wins by ilex's
+-- maximal-munch rule. When no digit follows the first dot, this candidate wins
+-- instead and the action splits the match into an integer plus `.`, `..`, or
+-- `..=`; thus `1..2` lexes as `1`, `..`, `2` and `1.` as `1`, `.`.
 --------------------------------------------------------------------------------
 export
 digitsThenDotOperatorCandidate : RExp True
@@ -276,8 +285,8 @@ digitsThenDotOperatorCandidate =
 --------------------------------------------------------------------------------
 normalStringBodyCandidate : RExp True
 normalStringBodyCandidate =
-      ('\\' >> dot)
-  <|> (dot && not '"' && not '\\' && not '\n' && not '\r')
+      ('\\' >> notLineBreakChar)
+  <|> (notLineBreakChar && not '"' && not '\\')
 
 export
 normalStringCandidate : RExp True
@@ -291,7 +300,7 @@ unterminatedNormalStringCandidate =
 
 -- Covers a body ending in a bare backslash cut off by true end of input,
 -- before the escape's second character ever arrives -- the same class of
--- backtracking dead end as `bareOuterBlockCommentOpen` above, just for an
+-- backtracking dead end as `bareOuterBlockCommentOpen` below, just for an
 -- escape-introducing backslash instead of a doc-comment star run. Without
 -- this, `"abc\` hard-fails instead of falling back to an unterminated
 -- string, because the node reached after the lone backslash extends toward
@@ -304,12 +313,12 @@ unterminatedNormalStringTrailingBackslashCandidate =
 export
 basisStringCandidate : RExp True
 basisStringCandidate =
-  'b' >> 's' >> '"' >> star (dot && not '"' && not '\n' && not '\r') >> '"'
+  'b' >> 's' >> '"' >> star (notLineBreakChar && not '"') >> '"'
 
 export
 unterminatedBasisStringCandidate : RExp True
 unterminatedBasisStringCandidate =
-  'b' >> 's' >> '"' >> star (dot && not '"' && not '\n' && not '\r')
+  'b' >> 's' >> '"' >> star (notLineBreakChar && not '"')
 
 -- Byte strings allow the same body characters as normal strings (anything
 -- but '"', a line break, or a bare backslash); the two candidates share one
@@ -336,8 +345,8 @@ unterminatedByteStringTrailingBackslashCandidate =
 
 byteLiteralBodyCandidate : RExp True
 byteLiteralBodyCandidate =
-      ('\\' >> dot)
-  <|> (dot && not '\'' && not '\\' && not '\n' && not '\r')
+      ('\\' >> notLineBreakChar)
+  <|> (notLineBreakChar && not '\'' && not '\\')
 
 export
 byteLiteralCandidate : RExp True
@@ -419,7 +428,7 @@ lineCommentTail = star notLineBreakChar
 
 outerDocLineBody : RExp False
 outerDocLineBody =
-  opt ((dot && not '/' && not '\n' && not '\r') >> lineCommentTail)
+  opt ((notLineBreakChar && not '/') >> lineCommentTail)
 
 export
 outerDocLineComment : RExp True
@@ -439,45 +448,46 @@ normalLineComment =
 --------------------------------------------------------------------------------
 -- Block comments.
 --
--- Outer block docs are classified by the opening delimiter.  A run of two or
--- more `*` right after `/*` is a *candidate* outer doc opener: it becomes a
--- doc comment if real content (or a line break) follows the star run, and an
--- ordinary comment if the star run is immediately closed instead -- so
--- `/**/`, `/***/`, `/****/`, and so on are all ordinary comments regardless of
--- how many stars, not docs.  Inner block docs may be empty, so `/*!*/` is a
+-- Rust classifies `/**` as an outer documentation-comment opener only when the
+-- following character is neither `*` nor `/`. Thus `/** text */` is a doc
+-- comment, while `/**/`, `/***/`, and banner-style `/*** text */` comments are
+-- ordinary block comments. Inner block docs may be empty, so `/*!*/` is a
 -- valid inner doc comment.
+--
+-- ilex has no lookahead assertion, so `outerBlockDocOpen` consumes the first
+-- body character along with `/**`. The block-comment action preserves that
+-- character as part of the raw documentation text.
 --------------------------------------------------------------------------------
 outerBlockDocFirstBodyChar : RExp True
 outerBlockDocFirstBodyChar =
-      (dot && not '*' && not '/' && not '\n' && not '\r')
+      (notLineBreakChar && not '*' && not '/')
   <|> lineBreak
 
--- One or more stars beyond the single mandatory `*` in `/*`: what turns a
--- plain `/*` into a candidate outer doc opener.
-outerDocStarRun : RExp True
-outerDocStarRun = plus '*'
+-- One or more stars beyond the mandatory `*` in `/*`. Under Rust's convention,
+-- more than one additional star always begins an ordinary block comment.
+additionalBlockCommentStars : RExp True
+additionalBlockCommentStars = plus '*'
 
 export
 allStarsOuterBlockComment : RExp True
 allStarsOuterBlockComment =
-  '/' >> '*' >> outerDocStarRun >> '/'
+  '/' >> '*' >> additionalBlockCommentStars >> '/'
 
 export
 outerBlockDocOpen : RExp True
 outerBlockDocOpen =
-  '/' >> '*' >> outerDocStarRun >> outerBlockDocFirstBodyChar
+  '/' >> '*' >> '*' >> outerBlockDocFirstBodyChar
 
--- Covers a star run that is cut off by true end of input before anything
--- disambiguates it as closed (`allStarsOuterBlockComment`) or as a doc
--- comment (`outerBlockDocOpen`) -- e.g. a file truncated right after `/***`.
--- Without this, that dead end hard-fails instead of falling back to an
--- (eventually unterminated) plain block comment, the same class of bug as
--- workaround (a) at the top of `Rules.idr`, just for a star run of any
--- length instead of the two fixed lengths it used to special-case.
+-- Covers additional-star runs that should begin an ordinary Rust block comment,
+-- including a run cut off at true end of input (for example `/***`). Without
+-- this explicit accept, the pinned ilex DFA can lose its shorter `/*` match at
+-- the extend-only states in the run and hard-fail instead of reporting an
+-- unterminated block comment. It also lets banner-style comments enter the
+-- block-comment state after their complete opening star run.
 export
 bareOuterBlockCommentOpen : RExp True
 bareOuterBlockCommentOpen =
-  '/' >> '*' >> outerDocStarRun
+  '/' >> '*' >> additionalBlockCommentStars
 
 export
 innerBlockDocOpen : RExp True
@@ -497,7 +507,7 @@ blockCommentClose =
 export
 blockCommentBodyChunk : RExp True
 blockCommentBodyChunk =
-  plus (dot && not '*' && not '/' && not '\n' && not '\r')
+  plus (notLineBreakChar && not '*' && not '/')
 
 export
 blockCommentLineBreak : RExp True

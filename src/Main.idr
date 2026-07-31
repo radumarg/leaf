@@ -36,7 +36,7 @@ main = let programFile = "program.rs" in
       Left fileErr => putStrLn $ "Failed to read \{programFile}: " ++ show fileErr
       Right sampleProgram =>
         case lexFile sampleProgram of
-          Left err => putStrLn $ "Lexer error: " ++ show err
+          Left err => putStrLn $ renderLexerError err
           Right tokens => do
             putStrLn "Tokens:"
             traverse_ (putStrLn . show) tokens

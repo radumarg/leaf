@@ -21,7 +21,7 @@ compileLeafFile programFile = do
     Left fileErr => pure $ Left $ "Failed to read \{programFile}: " ++ show fileErr
     Right sampleProgram =>
       case lexFile sampleProgram of
-        Left err => pure $ Left $ "Lexer error in \{programFile}: " ++ show err
+        Left err => pure $ Left $ "In \{programFile}: " ++ renderLexerError err
         Right tokens => pure $ Right ()
         --   case parseFile programFile tokens of
         --     Left err => pure $ Left $ "Parse error in \{programFile} at: " ++ show err.bounds ++ ", " ++ renderParseError err.val

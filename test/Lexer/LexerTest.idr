@@ -30,6 +30,12 @@ lexErrorHasBounds input =
     Right _ =>
       Nothing
 
+lexErrorBounds : String -> Maybe Bounds
+lexErrorBounds input =
+  case lexFile input of
+    Left boundedError => Just boundedError.bounds
+    Right _ => Nothing
+
 finalEofHasZeroWidthBounds : String -> Maybe Bool
 finalEofHasZeroWidthBounds input =
   case lexFile input of
@@ -81,6 +87,11 @@ runLexerTests = runTests $ Test.do
 
   test "end of file token has zero-width bounds" $
     finalEofHasZeroWidthBounds "fn\n" `shouldBe` Just True
+
+  test "lexer errors have a human-readable bounded rendering" $
+    renderLexerError
+      (B LexUnterminatedStringLiteral (BS (P 0 1) (P 0 4))) `shouldBe`
+        "Lexer error at 1:2--1:5: Unterminated string literal"
 
   test "whitespace is skipped" $
     lexTokenValues " \t\n\r\n\rfn" `shouldBe`
@@ -174,17 +185,17 @@ runLexerTests = runTests $ Test.do
   test "four-star block comment is skipped regardless of star-run length" $
     lexTokenValues "/****/fn" `shouldBe` Right [TokKw KwFn, TokEOF]
 
-  test "three stars followed by real content is still an outer block doc" $
+  test "three-star block comment with content is not an outer doc" $
     lexTokenValues "/*** docs */fn" `shouldBe`
-      Right [TokOuterDoc "/*** docs */", TokKw KwFn, TokEOF]
+      Right [TokKw KwFn, TokEOF]
 
-  test "four stars followed by real content is still an outer block doc" $
+  test "four-star block comment with content is not an outer doc" $
     lexTokenValues "/**** docs */fn" `shouldBe`
-      Right [TokOuterDoc "/**** docs */", TokKw KwFn, TokEOF]
+      Right [TokKw KwFn, TokEOF]
 
-  test "banner-style outer block doc opener with an embedded newline" $
+  test "banner-style block comment is not an outer doc" $
     lexTokenValues "/***\n * banner\n */fn" `shouldBe`
-      Right [TokOuterDoc "/***\n * banner\n */", TokKw KwFn, TokEOF]
+      Right [TokKw KwFn, TokEOF]
 
   test "inner block doc can be empty" $
     lexTokenValues "/*!*/fn" `shouldBe`
@@ -221,6 +232,26 @@ runLexerTests = runTests $ Test.do
     lexTokenValues "let /* one /* two /* three */ two */ one */ x" `shouldBe`
       Right [TokKw KwLet, TokIdent "x", TokEOF]
 
+  test "tabs remain inside line comments" $
+    [ lexTokenValues "let // hidden\tx\ny"
+    , lexTokenValues "/// doc\tcontinued\nfn"
+    , lexTokenValues "//! doc\tcontinued\nfn"
+    ] `shouldBe`
+      [ Right [TokKw KwLet, TokIdent "y", TokEOF]
+      , Right [TokOuterDoc "/// doc\tcontinued", TokKw KwFn, TokEOF]
+      , Right [TokInnerDoc "//! doc\tcontinued", TokKw KwFn, TokEOF]
+      ]
+
+  test "tabs remain inside block comments" $
+    [ lexTokenValues "let /* hidden\tx */ y"
+    , lexTokenValues "/** doc\tcontinued */fn"
+    , lexTokenValues "/*! doc\tcontinued */fn"
+    ] `shouldBe`
+      [ Right [TokKw KwLet, TokIdent "y", TokEOF]
+      , Right [TokOuterDoc "/** doc\tcontinued */", TokKw KwFn, TokEOF]
+      , Right [TokInnerDoc "/*! doc\tcontinued */", TokKw KwFn, TokEOF]
+      ]
+
   test "CRLF line ending terminates a normal line comment" $
     lexTokenValues "let // comment\r\nx" `shouldBe`
       Right [TokKw KwLet, TokIdent "x", TokEOF]
@@ -236,6 +267,34 @@ runLexerTests = runTests $ Test.do
       [ Right [TokKw KwLet, TokIdent "x", TokEOF]
       , Right [TokOuterDoc "/// docs", TokKw KwFn, TokEOF]
       ]
+
+  test "bare CR advances token and EOF coordinates" $
+    lexFile "a\rb" `shouldBe`
+      Right
+        [ B (TokIdent "a") (BS (P 0 0) (P 0 0))
+        , B (TokIdent "b") (BS (P 1 0) (P 1 0))
+        , B TokEOF (BS (P 1 1) (P 1 1))
+        ]
+
+  test "CRLF coordinates are unchanged" $
+    lexFile "a\r\nb" `shouldBe`
+      Right
+        [ B (TokIdent "a") (BS (P 0 0) (P 0 0))
+        , B (TokIdent "b") (BS (P 1 0) (P 1 0))
+        , B TokEOF (BS (P 1 1) (P 1 1))
+        ]
+
+  test "bare CR in a block doc is preserved while advancing coordinates" $
+    lexFile "/** a\rb */fn" `shouldBe`
+      Right
+        [ B (TokOuterDoc "/** a\rb */") (BS (P 0 0) (P 1 3))
+        , B (TokKw KwFn) (BS (P 1 4) (P 1 5))
+        , B TokEOF (BS (P 1 6) (P 1 6))
+        ]
+
+  test "an error after bare CR starts on the next line" $
+    lexErrorBounds "// c\r@" `shouldBe`
+      Just (BS (P 1 0) (P 1 0))
 
   test "a normal line comment may run to end of input" $
     lexTokenValues "let // trailing comment" `shouldBe`
@@ -542,6 +601,11 @@ runLexerTests = runTests $ Test.do
     lexTokenValues "@" `shouldBe`
       Left (LexUnexpectedInput [] "@")
 
+  test "unsupported valid Unicode is not diagnosed as malformed UTF-8" $
+    let combiningAcuteAccent = "́" -- U+0301, which cannot start an identifier.
+    in lexTokenValues combiningAcuteAccent `shouldBe`
+      Left (LexUnexpectedOrInvalidByte 0xcc)
+
   test "range forms tokenize structurally" $
     lexTokenValues "a..b a..=b 1.. ..5 ..=5 .." `shouldBe`
       Right
@@ -823,6 +887,24 @@ runLexerTests = runTests $ Test.do
         , TokEOF
         ]
 
+  test "integer and dot-operator tokens have disjoint exact bounds" $
+    [ lexFile "1..2"
+    , lexFile "12..=3"
+    ] `shouldBe`
+      [ Right
+          [ B (TokIntLitRaw "1") (BS (P 0 0) (P 0 0))
+          , B (TokSym SymDotDot) (BS (P 0 1) (P 0 2))
+          , B (TokIntLitRaw "2") (BS (P 0 3) (P 0 3))
+          , B TokEOF (BS (P 0 4) (P 0 4))
+          ]
+      , Right
+          [ B (TokIntLitRaw "12") (BS (P 0 0) (P 0 1))
+          , B (TokSym SymDotDotEq) (BS (P 0 2) (P 0 4))
+          , B (TokIntLitRaw "3") (BS (P 0 5) (P 0 5))
+          , B TokEOF (BS (P 0 6) (P 0 6))
+          ]
+      ]
+
   test "malformed integers before dot operators are number literal errors" $
     [ lexTokenValues "1_.x"
     , lexTokenValues "1_..2"
@@ -832,6 +914,13 @@ runLexerTests = runTests $ Test.do
       , Left (LexInvalidNumberLiteral "1_")
       , Left (LexInvalidNumberLiteral "1_")
       ]
+
+  test "malformed integer before a dot operator excludes the operator from its bounds" $
+    lexFile "1_..2" `shouldBe`
+      Left
+        (B
+          (LexInvalidNumberLiteral "1_")
+          (BS (P 0 0) (P 0 1)))
 
   test "leading zeros are preserved in decimal integer literals" $
     lexTokenValues "007" `shouldBe` Right [TokIntLitRaw "007", TokEOF]
@@ -912,6 +1001,18 @@ runLexerTests = runTests $ Test.do
     ] `shouldBe`
       [ Left (LexInvalidStringLiteral "\"hello world\"")
       , Left (LexInvalidStringLiteral "\"line\\nbreak\"")
+      ]
+
+  test "closed literals containing raw tabs are invalid rather than unterminated" $
+    [ lexTokenValues "\"a\tb\""
+    , lexTokenValues "bs\"0\t1\""
+    , lexTokenValues "b'a\t'"
+    , lexTokenValues "b\"a\tb\""
+    ] `shouldBe`
+      [ Left (LexInvalidStringLiteral "\"a\tb\"")
+      , Left (LexInvalidBasisStringLiteral "bs\"0\t1\"")
+      , Left (LexInvalidByteLiteral "b'a\t'")
+      , Left (LexInvalidByteStringLiteral "b\"a\tb\"")
       ]
 
   test "unterminated normal string is an unterminated string error" $

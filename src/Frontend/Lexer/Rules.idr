@@ -3,6 +3,7 @@ module Frontend.Lexer.Rules
 import Data.List
 import Data.Linear.Ref1
 import Data.String
+import Derive.Finite
 import Syntax.T1
 import Text.ILex
 import Text.ILex.Derive
@@ -23,12 +24,11 @@ import Frontend.Lexer.Regex
 %hide Prelude.not
 
 --------------------------------------------------------------------------------
--- A known limitation of this pinned ilex version, worked around below for
--- four distinct grammar shapes. If you hit a case that doesn't fit any of
--- these, it's likely the same underlying bug -- read this first rather than
--- re-deriving it from scratch (or, worse, "simplifying" away one of the
--- workarounds below because it looks redundant; that's exactly what almost
--- happened to the block-comment-opener rules).
+-- A known limitation of the ilex version pinned by collection
+-- `nightly-260629` (ilex commit fffa455256465705891761a61e37d95c26f0f50e),
+-- worked around below for four distinct grammar shapes. If you hit a case
+-- that doesn't fit any of these, it is likely the same underlying bug: read
+-- this first rather than removing a workaround that appears redundant.
 --
 -- (a) Backtrack memory is lost across a node that is extensible but not
 --     itself an accept. Concretely: if the lexer has already matched a
@@ -44,20 +44,15 @@ import Frontend.Lexer.Regex
 --         of lexing as `1`, `..`, `2`, because the node reached after `1.`
 --         extends (a digit could follow) but isn't itself an accept.
 --       - `allStarsOuterBlockComment` (`Regex.idr`, wired into `initialRules`
---         below): without it, `/**/`, `/***/`, `/****/`, and so on hard-fail
---         instead of lexing as ordinary (non-doc) comments, for the same
---         reason -- the node after a run of `*` extends toward a doc
---         comment's first body character but isn't an accept there. A real
---         `/***`-style banner comment opener (any run of two or more stars
---         not immediately followed by a closing `/`) hit the exact same dead
---         end, so the rule is now generalized to any run length via
---         `outerDocStarRun` instead of special-cased per exact length.
+--         below): consumes `/**/`, `/***/`, `/****/`, and so on as complete
+--         ordinary comments. The star-run fallback below is already accepting,
+--         but would otherwise consume the final `*` as part of the opener and
+--         leave the closing `/` stranded in block-comment state.
 --       - `bareOuterBlockCommentOpen` (`Regex.idr`, wired into `initialRules`
---         below): the sub-case of the same dead end where the star run is
---         cut off by true end of input, with nothing left to say whether it
---         would have closed or become a doc comment -- e.g. a file truncated
---         right after `/***`. Falls back to an (eventually unterminated)
---         plain block comment, same as a bare `/*` at true end of input.
+--         below): accepts the additional-star run used by ordinary Rust
+--         banner comments, including the same dead end at true end of input
+--         -- e.g. a file truncated right after `/***`. It falls back to an
+--         (eventually unterminated) plain block comment, like a bare `/*`.
 --       - `unterminatedNormalStringTrailingBackslashCandidate` /
 --         `unterminatedByteStringTrailingBackslashCandidate` /
 --         `unterminatedByteLiteralTrailingBackslashCandidate` (`Regex.idr`,
@@ -83,7 +78,7 @@ import Frontend.Lexer.Regex
 --------------------------------------------------------------------------------
 -- Lexer states.
 --
--- The prompt requires exactly two states:
+-- The lexer uses exactly two states:
 --   * Initial        ordinary Leaf source text
 --   * InBlockComment counting state for nested block comments
 --
@@ -102,11 +97,6 @@ data CommentMode
   = NormalBlockComment
   | OuterBlockDocComment
   | InnerBlockDocComment
-
-isDocCommentMode : CommentMode -> Bool
-isDocCommentMode NormalBlockComment = False
-isDocCommentMode OuterBlockDocComment = True
-isDocCommentMode InnerBlockDocComment = True
 
 commentModeToToken : CommentMode -> String -> Maybe Token
 commentModeToToken NormalBlockComment _ = Nothing
@@ -158,22 +148,16 @@ oldestOpenPosition (olderPositions :< openPosition) =
 
 -- At true end-of-input ilex's own `endPos` can report a byte position past
 -- the end of the input (a known quirk of this ilex version's EOI bookkeeping
--- inside a custom multi-state lexer). That overshoot is harmless here: it
--- gets clamped to the input's actual length in `Frontend.Lexer.Lexer.lexFile`
--- before being converted to a line/column position, so there's no need to
--- special-case or pre-validate the bound this function returns.
+-- inside a custom multi-state lexer). That overshoot is harmless here: it is
+-- clamped to the input's actual length in `Frontend.Lexer.Lexer.lexFile`
+-- before being converted to a line/column position.
 unterminatedCommentBounds :
-     LeafLexerStack q
+     (sk : LeafLexerStack q)
+  => BytePos
   -> F1 q ByteBounds
-unterminatedCommentBounds stackValue = T1.do
+unterminatedCommentBounds openPosition = T1.do
   endPosition <- endPos
-  openPositions <- read1 (positions stackValue)
-  case oldestOpenPosition openPositions of
-    Just openPosition =>
-      pure (BB openPosition endPosition)
-
-    Nothing =>
-      pure NoBB
+  pure (BB openPosition endPosition)
 
 --------------------------------------------------------------------------------
 -- Suffix-stripping helper, used by `classifyDotOperatorSuffix` below to split
@@ -307,6 +291,17 @@ rememberFatalError lexerError = T1.do
     Just _ => pure Initial
     Nothing => failHere (Custom lexerError) Initial
 
+rememberFatalErrorAt :
+     (sk : LeafLexerStack q)
+  => ByteBounds
+  -> LexerError
+  -> F1 q LeafState
+rememberFatalErrorAt errorBounds lexerError = T1.do
+  existingError <- read1 (error sk)
+  case existingError of
+    Just _ => pure Initial
+    Nothing => failWith (B (Custom lexerError) errorBounds) Initial
+
 emitValidatedLiteral :
      (sk : LeafLexerStack q)
   => (String -> Bool)
@@ -386,64 +381,33 @@ emitDigitsThenDotOperator rawText = T1.do
       let digitsLength = length digitChars
       tokenStart <- startPos
       tokenEnd <- endPos
-      let digitsEnd = incLen digitsLength tokenStart
-      _ <- emitBoundedToken (B (TokIntLitRaw digitText) (BB tokenStart digitsEnd))
-      emitBoundedToken (B (TokSym dotSymbol) (BB digitsEnd tokenEnd))
+      let integerEnd = incLen digitsLength tokenStart
+      let operatorStart = incLen (S digitsLength) tokenStart
+      _ <- emitBoundedToken (B (TokIntLitRaw digitText) (BB tokenStart integerEnd))
+      emitBoundedToken (B (TokSym dotSymbol) (BB operatorStart tokenEnd))
 
-    _ =>
-      rememberFatalError (LexInvalidNumberLiteral digitText)
-
-emitUnterminatedStringLiteral :
-     (sk : LeafLexerStack q)
-  => String
-  -> F1 q LeafState
-emitUnterminatedStringLiteral _ =
-  rememberFatalError LexUnterminatedStringLiteral
-
-emitUnterminatedBasisStringLiteral :
-     (sk : LeafLexerStack q)
-  => String
-  -> F1 q LeafState
-emitUnterminatedBasisStringLiteral _ =
-  rememberFatalError LexUnterminatedBasisStringLiteral
-
-emitUnterminatedByteStringLiteral :
-     (sk : LeafLexerStack q)
-  => String
-  -> F1 q LeafState
-emitUnterminatedByteStringLiteral _ =
-  rememberFatalError LexUnterminatedByteStringLiteral
-
-emitUnterminatedByteLiteral :
-     (sk : LeafLexerStack q)
-  => String
-  -> F1 q LeafState
-emitUnterminatedByteLiteral _ =
-  rememberFatalError LexUnterminatedByteLiteral
-
-emitOrdinaryCharLiteralError :
-     (sk : LeafLexerStack q)
-  => String
-  -> F1 q LeafState
-emitOrdinaryCharLiteralError _ =
-  rememberFatalError LexOrdinaryCharLiteralNeedsToken
+    _ => T1.do
+      tokenStart <- startPos
+      let integerEnd = incLen (length digitChars) tokenStart
+      rememberFatalErrorAt
+        (BB tokenStart integerEnd)
+        (LexInvalidNumberLiteral digitText)
 
 --------------------------------------------------------------------------------
 -- Block-comment actions.
 --
--- `blockComment` lives on `LeafStack`; doc-comment text pieces are
--- accumulated using the built-in string-literal accumulator
--- (`pushStr'`/`getStr`) instead of a hand-rolled SnocList field.
+-- The block-comment depth and mode live on `LeafStack`; doc-comment text
+-- pieces are accumulated with ilex's built-in string-literal accumulator
+-- (`pushStr'`/`getStr`).
 --------------------------------------------------------------------------------
 appendTextIfDoc :
      (sk : LeafLexerStack q)
   => CommentMode
   -> String
   -> F1' q
-appendTextIfDoc mode rawText =
-  case isDocCommentMode mode of
-    False => pure ()
-    True => pushStr' rawText
+appendTextIfDoc NormalBlockComment _ = pure ()
+appendTextIfDoc OuterBlockDocComment rawText = pushStr' rawText
+appendTextIfDoc InnerBlockDocComment rawText = pushStr' rawText
 
 beginBlockComment :
      (sk : LeafLexerStack q)
@@ -482,18 +446,16 @@ finishOutermostBlockComment mode fullCommentBounds = T1.do
 
 closeBlockComment :
      (sk : LeafLexerStack q)
-  => String
+  => ByteBounds
   -> F1 q LeafState
-closeBlockComment rawText = T1.do
+closeBlockComment fullCommentBounds = T1.do
   st <- getStack
-  appendTextIfDoc st.commentMode rawText
+  appendTextIfDoc st.commentMode "*/"
   case st.commentDepth of
-    Z => T1.do
-      fullCommentBounds <- closeBounds
+    Z =>
       finishOutermostBlockComment st.commentMode fullCommentBounds
 
     S remainingDepth => T1.do
-      popPosition
       putStack ({ commentDepth := remainingDepth } st)
       pure InBlockComment
 
@@ -506,31 +468,23 @@ consumeBlockCommentText rawText = T1.do
   appendTextIfDoc st.commentMode rawText
   pure InBlockComment
 
---------------------------------------------------------------------------------
--- Symbol rule generation.
---------------------------------------------------------------------------------
-symbolRuleFromTableEntry :
-     (String, Symbol)
-  -> Maybe (LeafRule q)
-symbolRuleFromTableEntry (symbolText, symbol) =
-  case unpack symbolText of
-    [] => Nothing
-    symbolChars@(_ :: _) =>
-      Just (string (chars symbolChars) (\_ => emitToken (TokSym symbol)))
-
 symbolRules : List (LeafRule q)
 symbolRules =
-  mapMaybe symbolRuleFromTableEntry symbolTable
+  vals
+    showSymbolLeaf
+    (\symbol, stackValue => emitToken {sk = stackValue} (TokSym symbol))
+    values
 
 --------------------------------------------------------------------------------
 -- Initial-state rules.
 --
--- Ordering is intentional:
+-- Overlapping rules are ordered intentionally; ilex still uses maximal munch,
+-- so order matters only when alternatives match the same longest prefix:
 --   1. documentation comments before ordinary comments and before `/`
 --   2. broad literal candidates before identifiers
 --   3. broad number candidate before identifier-like suffixes
 --   4. single identifier rule through `tokenFromIdentLike`
---   5. generated symbol rules from `symbolTable`
+--   5. generated symbol rules from the finite `Symbol` values
 --------------------------------------------------------------------------------
 initialRules : List (LeafRule q)
 initialRules =
@@ -553,19 +507,27 @@ initialRules =
   -- Unterminated candidates come after closed-literal candidates, so a valid
   -- string wins by maximal munch. They come before identifiers so `bs"bad` is
   -- not split into `bs` and a string fragment.
-  , string unterminatedBasisStringCandidate emitUnterminatedBasisStringLiteral
-  , string unterminatedByteStringCandidate emitUnterminatedByteStringLiteral
-  , string unterminatedByteLiteralCandidate emitUnterminatedByteLiteral
-  , string unterminatedNormalStringCandidate emitUnterminatedStringLiteral
+  , step unterminatedBasisStringCandidate
+      (rememberFatalError LexUnterminatedBasisStringLiteral)
+  , step unterminatedByteStringCandidate
+      (rememberFatalError LexUnterminatedByteStringLiteral)
+  , step unterminatedByteLiteralCandidate
+      (rememberFatalError LexUnterminatedByteLiteral)
+  , step unterminatedNormalStringCandidate
+      (rememberFatalError LexUnterminatedStringLiteral)
 
   -- Trailing-backslash sub-cases of the three candidates just above (see the
   -- known-limitation note (a) at the top of this file): only ever the
   -- longest match when the escape is cut off by true end of input, since
   -- maximal munch prefers the longer complete-escape match otherwise.
-  , string unterminatedByteStringTrailingBackslashCandidate emitUnterminatedByteStringLiteral
-  , string unterminatedByteLiteralTrailingBackslashCandidate emitUnterminatedByteLiteral
-  , string unterminatedNormalStringTrailingBackslashCandidate emitUnterminatedStringLiteral
-  , string ordinaryCharLiteralCandidate emitOrdinaryCharLiteralError
+  , step unterminatedByteStringTrailingBackslashCandidate
+      (rememberFatalError LexUnterminatedByteStringLiteral)
+  , step unterminatedByteLiteralTrailingBackslashCandidate
+      (rememberFatalError LexUnterminatedByteLiteral)
+  , step unterminatedNormalStringTrailingBackslashCandidate
+      (rememberFatalError LexUnterminatedStringLiteral)
+  , step ordinaryCharLiteralCandidate
+      (rememberFatalError LexOrdinaryCharLiteralNeedsToken)
 
   , string numberCandidate emitNumberLiteral
   , string digitsThenDotOperatorCandidate emitDigitsThenDotOperator
@@ -581,7 +543,7 @@ initialRules =
 blockCommentRules : List (LeafRule q)
 blockCommentRules =
   [ string normalBlockCommentOpen beginNestedBlockComment
-  , string blockCommentClose closeBlockComment
+  , closeWithBounds blockCommentClose closeBlockComment
   , string blockCommentBodyChunk consumeBlockCommentText
   , string blockCommentLineBreak consumeBlockCommentText
   , string blockCommentSingleStar consumeBlockCommentText
@@ -598,33 +560,39 @@ leafLexerSteps =
     , E InBlockComment (dfa blockCommentRules)
     ]
 
-makeUnterminatedBlockCommentError :
-     LeafLexerStack q
-  -> F1 q (BBErr LexerError)
-makeUnterminatedBlockCommentError stackValue = T1.do
-  unclosedBounds <- unterminatedCommentBounds stackValue
-  pure (B (Custom LexUnterminatedBlockComment) unclosedBounds)
-
 leafLexerEOI :
      LeafState
   -> LeafLexerStack q
   -> F1 q (Either (BBErr LexerError) (List (ByteBounded Token)))
-leafLexerEOI _ stackValue = T1.do
+leafLexerEOI lexerState stackValue = T1.do
   storedError <- read1 (error stackValue)
   case storedError of
     Just existingError =>
       pure (Left existingError)
 
-    Nothing => T1.do
-      openPositions <- read1 (positions stackValue)
-      st <- read1 (stack stackValue)
-      case oldestOpenPosition openPositions of
-        Just _ =>
-          Left <$> makeUnterminatedBlockCommentError stackValue
-
-        Nothing => T1.do
+    Nothing =>
+      case lexerState == Initial of
+        True => T1.do
+          st <- read1 (stack stackValue)
           eofPosition <- endPos
           pure (Right (st.outputTokens <>> [B TokEOF (BB eofPosition eofPosition)]))
+
+        False => T1.do
+          openPositions <- read1 (positions stackValue)
+          case oldestOpenPosition openPositions of
+            Just openPosition => T1.do
+              unclosedBounds <- unterminatedCommentBounds openPosition
+              pure (Left (B (Custom LexUnterminatedBlockComment) unclosedBounds))
+
+            Nothing => T1.do
+              eofPosition <- endPos
+              pure
+                (Left
+                  (B
+                    (Custom
+                      (LexInternalLexerError
+                        "InBlockComment at end of input without an opening position"))
+                    (BB eofPosition eofPosition)))
 
 export
 leafLexer : Lexer LexerError Token

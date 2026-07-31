@@ -13,14 +13,17 @@ import Frontend.Lexer.Rules
 --------------------------------------------------------------------------------
 -- Translating ilex native errors into Leaf's public LexerError.
 --
--- Latest idris2-ilex exposes `BoundedErr e`, i.e. a `Bounded (InnerError e)`.
--- The prompt asks `lexFile` to expose only `Bounded LexerError`, so this
--- module is the single place where native ilex failures are translated.
+-- `runString leafLexer` returns an `Either (BBErr LexerError) ...`, where an
+-- `BBErr e` is a byte-bounded `InnerError e`. This module is the single place
+-- where those native ilex failures are translated so `lexFile` exposes only
+-- `Bounded LexerError`.
 --------------------------------------------------------------------------------
-public export
 translateInnerLexerError : InnerError LexerError -> LexerError
 translateInnerLexerError (Custom lexerError) =
   lexerError
+
+translateInnerLexerError EOI =
+  LexUnexpectedEndOfInput
 
 translateInnerLexerError (Expected expectedTokens actualText) =
   LexUnexpectedInput expectedTokens actualText
@@ -40,14 +43,14 @@ translateInnerLexerError InvalidEscape =
 translateInnerLexerError (OutOfBounds rawText) =
   LexInternalLexerError ("Out-of-bounds value reported by ilex: " ++ rawText)
 
+translateInnerLexerError (Unclosed description) =
+  LexUnclosed description
+
 translateInnerLexerError (Unknown actualText) =
   LexUnexpectedInput [] actualText
 
 translateInnerLexerError (InvalidByte byteValue) =
-  LexInvalidUtf8Byte byteValue
-
-translateInnerLexerError _ =
-  LexInternalLexerError "Unexpected ilex internal error"
+  LexUnexpectedOrInvalidByte byteValue
 
 --------------------------------------------------------------------------------
 -- Clamping byte positions to the input.
@@ -80,6 +83,30 @@ clampByteBounded inputByteLength (B val bounds) =
   B val (clampByteBounds inputByteLength bounds)
 
 --------------------------------------------------------------------------------
+-- Position-map input
+--
+-- Leaf treats a bare carriage return as a line break, but ilex's position map
+-- advances lines only for line-feed bytes. Replace only bare carriage returns
+-- in the text used to build the map. Both characters occupy one UTF-8 byte, so
+-- all byte offsets still refer to the original input. CRLF pairs stay intact,
+-- avoiding an extra line advance. The original text is always passed unchanged
+-- to `runString`, preserving token contents.
+--------------------------------------------------------------------------------
+positionMapInput : String -> String
+positionMapInput =
+  pack . replaceBareCarriageReturns . unpack
+  where
+    replaceBareCarriageReturns : List Char -> List Char
+    replaceBareCarriageReturns [] =
+      []
+    replaceBareCarriageReturns ('\r' :: '\n' :: remaining) =
+      '\r' :: '\n' :: replaceBareCarriageReturns remaining
+    replaceBareCarriageReturns ('\r' :: remaining) =
+      '\n' :: replaceBareCarriageReturns remaining
+    replaceBareCarriageReturns (character :: remaining) =
+      character :: replaceBareCarriageReturns remaining
+
+--------------------------------------------------------------------------------
 -- Main entry point: lexFile
 --
 -- The installed ilex tracks positions as raw byte offsets while lexing and only
@@ -91,7 +118,7 @@ clampByteBounded inputByteLength (B val bounds) =
 public export
 lexFile : String -> Either (Bounded LexerError) (List (Bounded Token))
 lexFile inputString =
-  let pm := stringPositionMap inputString
+  let pm := stringPositionMap (positionMapInput inputString)
       inputByteLength := pred pm.size
   in case runString leafLexer inputString of
     Left byteBoundedError =>

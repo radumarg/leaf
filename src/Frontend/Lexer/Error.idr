@@ -3,6 +3,7 @@ module Frontend.Lexer.Error
 import Data.Bits
 import Derive.Prelude
 import Language.Reflection
+import Text.Bounds
 import Text.ParseError
 
 %default total
@@ -13,14 +14,16 @@ import Text.ParseError
 --
 -- This is the public, user-facing Leaf lexer error type.  The ilex runtime
 -- still uses `InnerError LexerError` internally, because native ilex failures
--- such as unexpected input and invalid UTF-8 bytes are represented by
+-- such as unexpected input and unexpected or invalid bytes are represented by
 -- `InnerError`.  `Frontend.Lexer.Lexer` translates those native failures into
 -- the constructors below so `lexFile` exposes exactly `Bounded LexerError`.
 --------------------------------------------------------------------------------
 public export
 data LexerError
-  = LexUnexpectedInput (List String) String
-  | LexInvalidUtf8Byte Bits8
+  = LexUnexpectedEndOfInput
+  | LexUnexpectedInput (List String) String
+  | LexUnclosed String
+  | LexUnexpectedOrInvalidByte Bits8
   | LexUnterminatedBlockComment
   | LexInvalidBasisStringLiteral String
   | LexInvalidByteLiteral String
@@ -41,6 +44,9 @@ data LexerError
 --------------------------------------------------------------------------------
 export
 Interpolation LexerError where
+  interpolate LexUnexpectedEndOfInput =
+    "Unexpected end of input"
+
   interpolate (LexUnexpectedInput expected actual) =
     case expected of
       [] =>
@@ -50,8 +56,11 @@ Interpolation LexerError where
         "Expected " ++ show (firstExpected :: remainingExpected) ++
         ", but got " ++ actual
 
-  interpolate (LexInvalidUtf8Byte byteValue) =
-    "Invalid UTF-8 byte in Leaf source: " ++ show byteValue
+  interpolate (LexUnclosed description) =
+    "Unclosed " ++ description
+
+  interpolate (LexUnexpectedOrInvalidByte byteValue) =
+    "Unexpected or invalid byte in Leaf source: 0x" ++ toHex byteValue
 
   interpolate LexUnterminatedBlockComment =
     "Unterminated block comment"
@@ -93,3 +102,11 @@ Interpolation LexerError where
 
   interpolate (LexInternalLexerError message) =
     "Internal Leaf lexer error: " ++ message
+
+||| Render a lexer error together with its source bounds.
+public export
+renderLexerError : Bounded LexerError -> String
+renderLexerError (B lexerError NoBounds) =
+  "Lexer error: " ++ interpolate lexerError
+renderLexerError (B lexerError bounds) =
+  "Lexer error at " ++ interpolate bounds ++ ": " ++ interpolate lexerError
