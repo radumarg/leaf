@@ -443,6 +443,27 @@ Interpolation Token where
       TokUnderscore                => "_"
       TokEOF                       => "end of input"
 
+public export
+describeToken : Token -> String
+describeToken (TokIdent name)             = "identifier " ++ show name
+describeToken (TokIntLitRaw text)         = "raw integer literal " ++ show text
+describeToken (TokFloatLitRaw text)       = "raw float literal " ++ show text
+describeToken (TokByteLitRaw text)        = "raw byte literal " ++ show text
+describeToken (TokByteStringLitRaw text)  = "raw byte string literal " ++ show text
+describeToken (TokBasisStringLitRaw text) = "raw basis string literal " ++ show text
+describeToken (TokStringLitRaw text)      = "raw string literal " ++ show text
+describeToken (TokOuterDoc text)          = "outer doc comment " ++ show text
+describeToken (TokInnerDoc text)          = "inner doc comment " ++ show text
+describeToken (TokBoolLit True)           = "boolean literal true"
+describeToken (TokBoolLit False)          = "boolean literal false"
+describeToken (TokStateLit state)         = "state literal " ++ show state
+describeToken (TokKw keyword)             = "keyword " ++ show keyword
+describeToken (TokTypPrim typ)            = "primitive type " ++ show typ
+describeToken (TokSym symbol)             = "symbol " ++ show symbol
+describeToken (TokBuiltin builtin)        = "builtin " ++ show builtin
+describeToken TokUnderscore               = "underscore"
+describeToken TokEOF                      = "end of input"
+
 ----------------------------------------------------------------------
 -- Boolean literals. Only two spellings, spelled out directly rather than
 -- routed through `findByShow`: Leaf's `true`/`false` spelling differs from

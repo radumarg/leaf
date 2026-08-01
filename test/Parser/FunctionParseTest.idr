@@ -13,6 +13,15 @@ runFunctionParseTests = runTests $ Test.do
   test "empty function" $
     parseAndPrettyPrint "fn empty() {}" `shouldBe` Just "fn empty() { }"
 
+  test "a raw integer literal in place of a function name is described by kind" $
+    parseErrorDetails "fn 5() {}" `shouldBe`
+      Just
+        ( "Parse error: expected [\"function name\"], but got raw integer literal \"5\""
+        , "test-fixture.rs"
+        , (1, 4)
+        , (1, 5)
+        )
+
   test "pub empty function" $
     parseAndPrettyPrint "pub fn empty() {}" `shouldBe` Just "pub fn empty() { }"
 
@@ -35,6 +44,10 @@ runFunctionParseTests = runTests $ Test.do
     parseAndPrettyPrint
       "pub const classical fn multBy2(i: i32) -> i32 { 2 * i }" `shouldBe`
       Just "pub const classical fn multBy2(i: i32) -> i32 { (2 * i) }"
+
+  test "public const function without an effect" $
+    parseAndPrettyPrint "pub const fn square(x: i64) -> i64 { x * x }" `shouldBe`
+      Just "pub const fn square(x: i64) -> i64 { (x * x) }"
 
   test "pub unitary empty function with unit output" $
     parseAndPrettyPrint "pub unitary fn empty() -> () {}" `shouldBe` Just "pub unitary fn empty() -> () { }"
@@ -68,12 +81,42 @@ runFunctionParseTests = runTests $ Test.do
     parseAndPrettyPrint "fn use_types(person: Person, config: my_module::Config) {}"
       `shouldBe` Just "fn use_types(person: Person, config: my_module::Config) { }"
 
+  test "path types with more than two segments" $
+    parseAndPrettyPrint "fn use_types(value: root::inner::Leaf) {}"
+      `shouldBe` Just "fn use_types(value: root::inner::Leaf) { }"
+
   test "reference and slice types" $
     parseAndPrettyPrint
       "fn borrow(q: &qubit, person: &Person, mutable: &mut Person, values: &[i32], output: &mut [i32]) {}"
       `shouldBe`
       Just
         "fn borrow(q: &qubit, person: &Person, mutable: &mut Person, values: &[i32], output: &mut [i32]) { }"
+
+  test "reference types require an inner type" $
+    parseErrorDetails "fn f(x: &) {}" `shouldBe`
+      Just
+        ( "Parse error: expected [\"a type declaration\"], but got symbol )"
+        , "test-fixture.rs"
+        , (1, 10)
+        , (1, 11)
+        )
+
+  test "a builtin in place of a type is described by kind" $
+    parseErrorDetails "fn f(x: measr) {}" `shouldBe`
+      Just
+        ( "Parse error: expected [\"a type declaration\"], but got builtin measr"
+        , "test-fixture.rs"
+        , (1, 9)
+        , (1, 14)
+        )
+
+  test "array parameter types accept expression lengths" $
+    parseAndPrettyPrint "fn f(a: [i32; 2 + 2]) {}" `shouldBe`
+      Just "fn f(a: [i32; (2 + 2)]) { }"
+
+  test "node identifiers follow source order through parameter types" $
+    parseAndListNodeIds "fn f(c: a::b::c, r: &mut P) {}" `shouldBe`
+      Just [0, 1, 3, 5, 10, 12, 14, 17]
 
   test "qualified types" $
     parseAndPrettyPrint
@@ -109,6 +152,42 @@ runFunctionParseTests = runTests $ Test.do
     parseAndPrettyPrint "fn callback(f: fn(value: i32)) {}"
       `shouldBe` Just "fn callback(f: fn(value: i32)) { }"
 
+  test "function parameter outer doc comments are not yet supported" $
+    parseErrorDetails "fn f(\n/// docs\nx: i32) {}" `shouldBe`
+      Just
+        ( "Documentation comments on function parameters are not yet supported."
+        , "test-fixture.rs"
+        , (2, 1)
+        , (2, 9)
+        )
+
+  test "function supports clauses are not yet supported" $
+    parseErrorDetails "fn f() supports adjoint {}" `shouldBe`
+      Just
+        ( "Function `supports` clauses are not yet supported."
+        , "test-fixture.rs"
+        , (1, 8)
+        , (1, 16)
+        )
+
+  test "requires contract clauses are not yet supported" $
+    parseErrorDetails "fn f() requires clean(q) {}" `shouldBe`
+      Just
+        ( "Quantum contracts `requires` and/or `ensures` are not yet supported."
+        , "test-fixture.rs"
+        , (1, 8)
+        , (1, 16)
+        )
+
+  test "ensures contract clauses are not yet supported" $
+    parseErrorDetails "fn f() ensures basis(q, X) {}" `shouldBe`
+      Just
+        ( "Quantum contracts `requires` and/or `ensures` are not yet supported."
+        , "test-fixture.rs"
+        , (1, 8)
+        , (1, 15)
+        )
+
   test "function with a simple statement" $
     parseAndPrettyPrint "fn simple() {let i: i32 = 1;}" `shouldBe` Just "fn simple() { let i: i32 = 1; }"
 
@@ -118,6 +197,15 @@ runFunctionParseTests = runTests $ Test.do
   test "annotation applied to a statement instead to a function declaration" $
     parseErrorDetails "#[qasm_gate]\nlet i = 1;" `shouldBe`
       Just ("Expected function declaration after attribute, found instead: `let`.", "test-fixture.rs", (2, 1), (2, 4))
+
+  test "attributes on const declarations are not yet supported" $
+    parseErrorDetails "#[qasm_gate]\nconst N: i64 = 4;" `shouldBe`
+      Just
+        ( "Attributes on const declarations are not yet supported."
+        , "test-fixture.rs"
+        , (2, 7)
+        , (2, 8)
+        )
 
   test "function or constant expected after pub visibility modifier" $
     parseErrorDetails "pub let i = 1;" `shouldBe`

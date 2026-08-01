@@ -84,6 +84,23 @@ data ItemPrefixState
       Bounds
       (SurfaceAstNode FunctionEffect)
 
+||| Decomposes an accumulated prefix state into its visibility, `const`
+||| bounds, and effect components for uniform `fn` dispatch.
+public export
+prefixComponents :
+     ItemPrefixState
+  -> ( Maybe (SurfaceAstNode VisibilityQualifier)
+     , Maybe Bounds
+     , Maybe (SurfaceAstNode FunctionEffect))
+prefixComponents (PrefixOrdinary visibility) =
+  (visibility, Nothing, Nothing)
+prefixComponents (PrefixConst visibility constBounds) =
+  (visibility, Just constBounds, Nothing)
+prefixComponents (PrefixEffect visibility effect) =
+  (visibility, Nothing, Just effect)
+prefixComponents (PrefixConstEffect visibility constBounds effect) =
+  (visibility, Just constBounds, Just effect)
+
 public export
 record CommaList a where
   constructor MkCommaList
@@ -163,6 +180,18 @@ binaryOperator SymOrOr   = Just (BinaryLogicalOr, 40)
 binaryOperator _         = Nothing
 
 public export
+rangeOperator : Symbol -> Maybe RangeOperator
+rangeOperator SymDotDot   = Just RangeExclusive
+rangeOperator SymDotDotEq = Just RangeInclusive
+rangeOperator _           = Nothing
+
+public export
+initializerMarker : Symbol -> Maybe InitializerMarker
+initializerMarker SymEq       = Just InitializerEquals
+initializerMarker SymWalrusEq = Just InitializerAutoUncompute
+initializerMarker _           = Nothing
+
+public export
 functionEffectFromKeyword : Keyword -> Maybe FunctionEffect
 functionEffectFromKeyword KwClassical  = Just EffectClassical
 functionEffectFromKeyword KwUncompsafe = Just EffectUncompsafe
@@ -189,6 +218,8 @@ unsupportedTopLevelItem KwEnum =
   Just (UnsupportedFeature "Enums are not yet supported.")
 unsupportedTopLevelItem KwQenum =
   Just (UnsupportedFeature "Qenums are not yet supported.")
+unsupportedTopLevelItem KwImpl =
+  Just (UnsupportedFeature "Impl blocks and structs are not yet supported.")
 unsupportedTopLevelItem KwStruct =
   Just (UnsupportedFeature "Structs are not yet supported.")
 unsupportedTopLevelItem _ = Nothing
