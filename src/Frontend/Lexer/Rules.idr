@@ -24,55 +24,52 @@ import Frontend.Lexer.Regex
 %hide Prelude.not
 
 --------------------------------------------------------------------------------
--- A known limitation of the ilex version pinned by collection
--- `nightly-260629` (ilex commit fffa455256465705891761a61e37d95c26f0f50e),
--- worked around below for four distinct grammar shapes. If you hit a case
--- that doesn't fit any of these, it is likely the same underlying bug: read
--- this first rather than removing a workaround that appears redundant.
+-- A known limitation of ilex: backtrack memory is lost across a node that is
+-- extensible but not itself an accept. Concretely: if the lexer has already
+-- matched a shorter valid token, then continues into a longer candidate that
+-- turns out not to be a real accept anywhere along the way, it hard-fails
+-- instead of falling back to the shorter match -- but *only* if some byte in
+-- between led to a state with further transitions and no accept of its own.
+-- A shorter match followed immediately by a dead end backtracks fine; a
+-- shorter match, then one or more such "extend-only" bytes, then a dead end,
+-- does not. Worked around below for four distinct grammar shapes; if you hit
+-- a case that doesn't fit any of these, it is likely the same underlying
+-- bug: read this first rather than removing a workaround that appears
+-- redundant.
 --
--- (a) Backtrack memory is lost across a node that is extensible but not
---     itself an accept. Concretely: if the lexer has already matched a
---     shorter valid token, then continues into a longer candidate that turns
---     out not to be a real accept anywhere along the way, it hard-fails
---     instead of falling back to the shorter match -- but *only* if some byte
---     in between led to a state with further transitions and no accept of
---     its own. A shorter match followed immediately by a dead end backtracks
---     fine; a shorter match, then one or more such "extend-only" bytes, then
---     a dead end, does not.
---       - `digitsThenDotOperatorCandidate` / `emitDigitsThenDotOperator`
---         (this file and `Regex.idr`): without it, `1..2` hard-fails instead
---         of lexing as `1`, `..`, `2`, because the node reached after `1.`
---         extends (a digit could follow) but isn't itself an accept.
---       - `allStarsOuterBlockComment` (`Regex.idr`, wired into `initialRules`
---         below): consumes `/**/`, `/***/`, `/****/`, and so on as complete
---         ordinary comments. The star-run fallback below is already accepting,
---         but would otherwise consume the final `*` as part of the opener and
---         leave the closing `/` stranded in block-comment state.
---       - `bareOuterBlockCommentOpen` (`Regex.idr`, wired into `initialRules`
---         below): accepts the additional-star run used by ordinary Rust
---         banner comments, including the same dead end at true end of input
---         -- e.g. a file truncated right after `/***`. It falls back to an
---         (eventually unterminated) plain block comment, like a bare `/*`.
---       - `unterminatedNormalStringTrailingBackslashCandidate` /
---         `unterminatedByteStringTrailingBackslashCandidate` /
---         `unterminatedByteLiteralTrailingBackslashCandidate` (`Regex.idr`,
---         wired into `initialRules` below): without these, `"abc\`, `b"abc\`,
---         and `b'\` (a string/byte-string/byte-literal body ending in a bare
---         backslash cut off by true end of input) hard-fail instead of
---         falling back to their respective unterminated-literal errors,
---         because the node reached after the lone backslash extends toward a
---         two-character escape but isn't itself an accept. Basis strings
---         have no escape syntax, so they don't share this dead end.
---     If you add a new rule whose prefix overlaps an existing shorter rule
---     with a possible dead end in between, test that overlap directly; don't
---     assume maximal munch alone covers it.
+-- Confirmed still present as of collection `nightly-260731` (ilex commit
+-- 6c0c590035fdba3a4b6cfaff9dd9deb2791e4aff) by disabling each workaround in
+-- turn and reproducing the exact failure described below; first observed
+-- under `nightly-260629` (ilex commit fffa455256465705891761a61e37d95c26f0f50e).
 --
--- (b) At true end-of-input, ilex's own `endPos` can report a byte position
---     past the end of the input, inside a custom multi-state lexer like this
---     one. Worked around by `unterminatedCommentBounds` below, whose result
---     gets clamped to the input's actual length in
---     `Frontend.Lexer.Lexer.lexFile` (`clampByteBounded`) before being
---     converted to a line/column position.
+--   - `digitsThenDotOperatorCandidate` / `emitDigitsThenDotOperator`
+--     (this file and `Regex.idr`): without it, `1..2` hard-fails instead
+--     of lexing as `1`, `..`, `2`, because the node reached after `1.`
+--     extends (a digit could follow) but isn't itself an accept.
+--   - `allStarsOuterBlockComment` (`Regex.idr`, wired into `initialRules`
+--     below): consumes `/**/`, `/***/`, `/****/`, and so on as complete
+--     ordinary comments. The star-run fallback below is already accepting,
+--     but would otherwise consume the final `*` as part of the opener and
+--     leave the closing `/` stranded in block-comment state.
+--   - `bareOuterBlockCommentOpen` (`Regex.idr`, wired into `initialRules`
+--     below): accepts the additional-star run used by ordinary Rust
+--     banner comments, including the same dead end at true end of input
+--     -- e.g. a file truncated right after `/***`. It falls back to an
+--     (eventually unterminated) plain block comment, like a bare `/*`.
+--   - `unterminatedNormalStringTrailingBackslashCandidate` /
+--     `unterminatedByteStringTrailingBackslashCandidate` /
+--     `unterminatedByteLiteralTrailingBackslashCandidate` (`Regex.idr`,
+--     wired into `initialRules` below): without these, `"abc\`, `b"abc\`,
+--     and `b'\` (a string/byte-string/byte-literal body ending in a bare
+--     backslash cut off by true end of input) hard-fail instead of
+--     falling back to their respective unterminated-literal errors,
+--     because the node reached after the lone backslash extends toward a
+--     two-character escape but isn't itself an accept. Basis strings
+--     have no escape syntax, so they don't share this dead end.
+--
+-- If you add a new rule whose prefix overlaps an existing shorter rule with
+-- a possible dead end in between, test that overlap directly; don't assume
+-- maximal munch alone covers it.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -146,11 +143,6 @@ oldestOpenPosition (olderPositions :< openPosition) =
     _ =>
       oldestOpenPosition olderPositions
 
--- At true end-of-input ilex's own `endPos` can report a byte position past
--- the end of the input (a known quirk of this ilex version's EOI bookkeeping
--- inside a custom multi-state lexer). That overshoot is harmless here: it is
--- clamped to the input's actual length in `Frontend.Lexer.Lexer.lexFile`
--- before being converted to a line/column position.
 unterminatedCommentBounds :
      (sk : LeafLexerStack q)
   => BytePos
@@ -281,26 +273,25 @@ emitToken token = T1.do
   boundedToken <- bounded' token
   emitBoundedToken boundedToken
 
+||| Remembers the first fatal error only. `failHere` itself now keeps the
+||| first error and ignores later ones (ilex commit ee97414 onward), so this
+||| is just the domain-named entry point Rules.idr's call sites use.
 rememberFatalError :
      (sk : LeafLexerStack q)
   => LexerError
   -> F1 q LeafState
-rememberFatalError lexerError = T1.do
-  existingError <- read1 (error sk)
-  case existingError of
-    Just _ => pure Initial
-    Nothing => failHere (Custom lexerError) Initial
+rememberFatalError lexerError =
+  failHere (Custom lexerError) Initial
 
+||| As `rememberFatalError`, but at an explicit span rather than the current
+||| position.
 rememberFatalErrorAt :
      (sk : LeafLexerStack q)
   => ByteBounds
   -> LexerError
   -> F1 q LeafState
-rememberFatalErrorAt errorBounds lexerError = T1.do
-  existingError <- read1 (error sk)
-  case existingError of
-    Just _ => pure Initial
-    Nothing => failWith (B (Custom lexerError) errorBounds) Initial
+rememberFatalErrorAt errorBounds lexerError =
+  failWith (B (Custom lexerError) errorBounds) Initial
 
 emitValidatedLiteral :
      (sk : LeafLexerStack q)
@@ -491,13 +482,13 @@ initialRules =
   [ string outerDocLineComment (\rawText => emitToken (TokOuterDoc rawText))
   , string innerDocLineComment (\rawText => emitToken (TokInnerDoc rawText))
 
-  , ignore' allStarsOuterBlockComment
+  , ignore allStarsOuterBlockComment
   , string outerBlockDocOpen (beginBlockComment OuterBlockDocComment)
   , string innerBlockDocOpen (beginBlockComment InnerBlockDocComment)
   , string bareOuterBlockCommentOpen (beginBlockComment NormalBlockComment)
-  , ignore' normalLineComment
+  , ignore normalLineComment
   , string normalBlockCommentOpen (beginBlockComment NormalBlockComment)
-  , ignore' leafWhitespace
+  , ignore leafWhitespace
 
   , string basisStringCandidate emitBasisStringLiteral
   , string byteStringCandidate emitByteStringLiteral
@@ -517,9 +508,9 @@ initialRules =
       (rememberFatalError LexUnterminatedStringLiteral)
 
   -- Trailing-backslash sub-cases of the three candidates just above (see the
-  -- known-limitation note (a) at the top of this file): only ever the
-  -- longest match when the escape is cut off by true end of input, since
-  -- maximal munch prefers the longer complete-escape match otherwise.
+  -- known-limitation note at the top of this file): only ever the longest
+  -- match when the escape is cut off by true end of input, since maximal
+  -- munch prefers the longer complete-escape match otherwise.
   , step unterminatedByteStringTrailingBackslashCandidate
       (rememberFatalError LexUnterminatedByteStringLiteral)
   , step unterminatedByteLiteralTrailingBackslashCandidate
