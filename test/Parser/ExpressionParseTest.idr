@@ -71,6 +71,15 @@ runExpressionParseTests = runTests $ Test.do
       "const N: i64 = 4;\nfn arrays() { let c: [i32; N]; }" `shouldBe`
       Just "const N: i64 = 4;\nfn arrays() { let c: [i32; N]; }"
 
+  test "array type reports valid continuations after its element type" $
+    parseErrorDetails "fn arrays() { let b: [i32 value]; }" `shouldBe`
+      Just
+        ( "Parse error: expected [\"]\", \";\"], but got TokIdent \"value\""
+        , "test-fixture.rs"
+        , (1, 27)
+        , (1, 32)
+        )
+
   test "quantum storage qualifiers on let bindings" $
     parseAndPrettyPrint
       "fn allocate() {let linear q: qubit = qalloc(); let affine a: qubit = qalloc(); let scratch linear qs: [qubit; 2] = qalloc(2); let affine scratch t: qubit = qalloc();}" `shouldBe`

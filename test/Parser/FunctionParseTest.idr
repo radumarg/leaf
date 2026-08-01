@@ -53,6 +53,13 @@ runFunctionParseTests = runTests $ Test.do
   test "empty function with parameters" $
     parseAndPrettyPrint "fn add(i : i32, point : (i32, i32)) {}" `shouldBe` Just "fn add(i: i32, point: (i32, i32)) { }"
 
+  test "function parameters accept a trailing comma" $
+    parseAndPrettyPrint "fn add(i: i32, point: (i32, i32),) {}" `shouldBe`
+      Just "fn add(i: i32, point: (i32, i32)) { }"
+
+  test "function parameters reject a missing middle parameter" $
+    parseAndPrettyPrint "fn add(i: i32,, point: i32) {}" `shouldBe` Nothing
+
   test "mutable function parameter" $
     parseAndPrettyPrint "fn increment(mut x: i32) -> i32 { x += 1; x }"
       `shouldBe` Just "fn increment(mut x: i32) -> i32 { x += 1; x }"
