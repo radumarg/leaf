@@ -1,4 +1,4 @@
-module Frontend.Validate
+module Frontend.PostParseValidation
 
 import Data.List
 import Data.List1

@@ -35,7 +35,7 @@ import Frontend.Syntax.Type
 -- re-parse to the same tree.
 --
 -- TOTALITY: this module follows the discipline documented at the top of
--- Frontend.Validate ("learned the hard way"): Idris 2's size-change checker
+-- Frontend.PostParseValidation ("learned the hard way"): Idris 2's size-change checker
 -- credits CONSTRUCTOR PATTERNS ONLY. Every record is destructured via its
 -- constructor in the pattern head (never through a `.field` projection) when
 -- the projected value feeds a recursive call, and every List/List1 that is
@@ -45,7 +45,7 @@ import Frontend.Syntax.Type
 -- through). Expressions and types are mutually recursive (casts embed types,
 -- array-size positions embed expressions), and blocks/statements/items hang
 -- off of them, so the whole family below is ONE mutual block -- exactly the
--- shape validated by Frontend.Validate, and, like that module, it needs no
+-- shape validated by Frontend.PostParseValidation, and, like that module, it needs no
 -- fuel parameter to be accepted as total.
 --
 -- Patterns (Frontend.Syntax.Pattern) do not depend on expressions, so they
