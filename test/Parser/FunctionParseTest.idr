@@ -120,6 +120,14 @@ runFunctionParseTests = runTests $ Test.do
     parseErrorDetails "pub general let i = 1;" `shouldBe`
       Just ("Expected `fn` after `general` effect modifier, found instead: `let`.", "test-fixture.rs", (1, 13), (1, 16))
 
+  test "function keyword expected before a non-keyword after function effect" $
+    parseErrorDetails "general foo" `shouldBe`
+      Just ("Expected `fn` after `general` effect modifier, found instead: `foo`.", "test-fixture.rs", (1, 9), (1, 12))
+
+  test "function keyword expected after const and function effect" $
+    parseErrorDetails "const general let i = 1;" `shouldBe`
+      Just ("Expected `fn` after `general` effect modifier, found instead: `let`.", "test-fixture.rs", (1, 15), (1, 18))
+
   test "malformed attribute, missing closing bracket" $
     parseErrorDetails "#[qasm_gate \nfn empty() -> () {}" `shouldBe`
       Just ("Malformed attribute.", "test-fixture.rs", (1, 1), (1, 2))
