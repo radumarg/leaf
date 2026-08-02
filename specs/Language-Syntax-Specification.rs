@@ -1739,6 +1739,9 @@ let p = Person { height: 10, age: 20 };
 // (68) Function annotations (only qasm_gate/qasm_def is supported for now):
 /////////////////////////////////////////////////////////////////////////////
 
+// qasm_gate and qasm_def are mutually exclusive: a function may have at most
+// one of these annotations.
+
 // this function is compiled to a OpenQASM3 subroutine representing an unitary operation
 #[qasm_gate]
 unitary fn myfun(q: qubit) -> qubit {

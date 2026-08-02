@@ -29,6 +29,10 @@ import Frontend.Syntax.Type
 --       SHAPE is not checked here: `parseAttribute` already accepts
 --       nothing but `#[name]` or `#[name("string")]`, so every attribute
 --       reaching this pass is already well-shaped.
+--   * duplicate/conflicting attributes on one item -- the same name written
+--       twice, or two distinct KNOWN kinds together (today: qasm_gate and
+--       qasm_def, which name mutually exclusive compilation targets)
+--   * duplicate parameter names in one function's parameter list
 --   * `&mut` on a SYNTACTICALLY-qubit type (&mut qubit, &mut [qubit],
 --       &mut [qubit; 2], through parens/qualifiers) -- the general case
 --       (&mut SomeStructContainingQubits) needs types and is deferred
@@ -63,6 +67,32 @@ data ValidationError : Type where
     -> (attributeNameText : String)
     -> ValidationError
 
+  -- Same attribute name written twice on one item, e.g.
+  -- `#[qasm_gate] #[qasm_gate] fn f() {}`. `errorSpan` points at the
+  -- repeated (second) occurrence.
+  DuplicateAttribute :
+       (errorSpan : SourceSpan)
+    -> (attributeNameText : String)
+    -> ValidationError
+
+  -- Two distinct KNOWN attributes on one item, e.g.
+  -- `#[qasm_gate] #[qasm_def] fn f() {}`. Today's only known attributes,
+  -- qasm_gate and qasm_def, name mutually exclusive compilation targets, so
+  -- any two distinct known attributes together are a conflict; `errorSpan`
+  -- points at the second one.
+  ConflictingAttributes :
+       (errorSpan : SourceSpan)
+    -> (attributeNameText : String)
+    -> ValidationError
+
+  -- Same parameter name written twice in one function's parameter list,
+  -- e.g. `fn f(x: i32, x: i32) {}`. `errorSpan` points at the repeated
+  -- (second) occurrence.
+  DuplicateParameterName :
+       (errorSpan : SourceSpan)
+    -> (parameterNameText : String)
+    -> ValidationError
+
   MutableBorrowOfQubit :
        (errorSpan : SourceSpan)
     -> ValidationError
@@ -84,22 +114,28 @@ public export
 validationErrorSpan : ValidationError -> SourceSpan
 validationErrorSpan err =
   case err of
-    UnknownAttribute s _    => s
-    MutableBorrowOfQubit s  => s
-    BreakOutsideLoop s      => s
-    ContinueOutsideLoop s   => s
-    ReturnOutsideFunction s => s
+    UnknownAttribute s _      => s
+    DuplicateAttribute s _    => s
+    ConflictingAttributes s _ => s
+    DuplicateParameterName s _ => s
+    MutableBorrowOfQubit s    => s
+    BreakOutsideLoop s        => s
+    ContinueOutsideLoop s     => s
+    ReturnOutsideFunction s   => s
 
 withValidationErrorFile : String -> ValidationError -> ValidationError
 withValidationErrorFile fileName err =
   let withFile : SourceSpan =
         { file := fileName } (validationErrorSpan err)
   in case err of
-       UnknownAttribute _ nameText => UnknownAttribute withFile nameText
-       MutableBorrowOfQubit _      => MutableBorrowOfQubit withFile
-       BreakOutsideLoop _          => BreakOutsideLoop withFile
-       ContinueOutsideLoop _       => ContinueOutsideLoop withFile
-       ReturnOutsideFunction _     => ReturnOutsideFunction withFile
+       UnknownAttribute _ nameText      => UnknownAttribute withFile nameText
+       DuplicateAttribute _ nameText    => DuplicateAttribute withFile nameText
+       ConflictingAttributes _ nameText => ConflictingAttributes withFile nameText
+       DuplicateParameterName _ nameText => DuplicateParameterName withFile nameText
+       MutableBorrowOfQubit _          => MutableBorrowOfQubit withFile
+       BreakOutsideLoop _              => BreakOutsideLoop withFile
+       ContinueOutsideLoop _           => ContinueOutsideLoop withFile
+       ReturnOutsideFunction _         => ReturnOutsideFunction withFile
 
 -- "file:line:col" prefix, matching the lexer-error rendering style.
 renderSpanPrefix : SourceSpan -> String
@@ -114,6 +150,16 @@ Interpolation ValidationError where
         UnknownAttribute _ nm =>
           "unknown attribute `" ++ nm ++
           "` (supported: qasm_gate, qasm_def)"
+        DuplicateAttribute _ nm =>
+          "attribute `" ++ nm ++
+          "` is already applied to this item"
+        ConflictingAttributes _ nm =>
+          "attribute `" ++ nm ++
+          "` conflicts with another attribute already applied to this item " ++
+          "(qasm_gate and qasm_def are mutually exclusive)"
+        DuplicateParameterName _ nm =>
+          "parameter `" ++ nm ++
+          "` is already used earlier in this parameter list"
         MutableBorrowOfQubit _ =>
           "`mut` is never written on a qubit reference; qubit references are mutable by default"
         BreakOutsideLoop _ =>
@@ -149,21 +195,53 @@ functionBodyContext = MkValidationContext False True
 -- Leaf checks (no traversal needed)
 --------------------------------------------------------------------------------
 
+-- Do two known attribute kinds conflict when both are written on one item?
+-- The only known kinds today, qasm_gate and qasm_def, name mutually
+-- exclusive OpenQASM compilation targets and the spec never shows more than
+-- one of them on the same function -- so any two DISTINCT known kinds
+-- conflict.
+knownAttributeKindsConflict : KnownAttributeKind -> KnownAttributeKind -> Bool
+knownAttributeKindsConflict KnownQasmGate KnownQasmGate = False
+knownAttributeKindsConflict KnownQasmDef  KnownQasmDef  = False
+knownAttributeKindsConflict _             _             = True
+
 -- Known attributes: unknown names are errors for now. Argument shape is not
 -- checked here: `parseAttribute` already accepts nothing but `#[name]` or
 -- `#[name("string")]`, so every attribute reaching this pass is already
 -- well-shaped.
-validateAttribute : SurfaceAttribute -> List ValidationError
-validateAttribute (MkAstNode attrInfo _ (MkAttributeNode nameNode _)) =
+--
+-- Walks the list left-to-right threading the (name, known-kind) pairs
+-- already seen on THIS item, so a name repeated verbatim is
+-- DuplicateAttribute and two distinct known kinds together (currently just
+-- qasm_gate + qasm_def) is ConflictingAttributes.
+validateAttributeListFrom :
+     List (String, Maybe KnownAttributeKind)
+  -> List SurfaceAttribute
+  -> List ValidationError
+validateAttributeListFrom _ [] = []
+validateAttributeListFrom seen (MkAstNode attrInfo _ (MkAttributeNode nameNode _) :: rest) =
   let MkAstNode _ _ (MkNameNode nameText) = nameNode
-  in case recognizeKnownAttribute nameText of
-       Nothing => [UnknownAttribute attrInfo.span nameText]
-       Just _  => []
+      thisKind = recognizeKnownAttribute nameText
+      unknownError =
+        case thisKind of
+          Nothing => [UnknownAttribute attrInfo.span nameText]
+          Just _  => []
+      duplicateError =
+        if any (\s => fst s == nameText) seen
+          then [DuplicateAttribute attrInfo.span nameText]
+          else []
+      conflictError =
+        case thisKind of
+          Nothing => []
+          Just k  =>
+            if any (\s => maybe False (knownAttributeKindsConflict k) (snd s)) seen
+              then [ConflictingAttributes attrInfo.span nameText]
+              else []
+  in unknownError ++ duplicateError ++ conflictError
+       ++ validateAttributeListFrom ((nameText, thisKind) :: seen) rest
 
 validateAttributeList : List SurfaceAttribute -> List ValidationError
-validateAttributeList [] = []
-validateAttributeList (a :: rest) =
-  validateAttribute a ++ validateAttributeList rest
+validateAttributeList = validateAttributeListFrom []
 
 -- Is this type SYNTACTICALLY a qubit-carrying type? Only the cases visible
 -- without resolution: qubit itself, arrays/slices of it, through parens and
@@ -224,19 +302,29 @@ mutual
   validateFunctionDecl
     (MkFunctionDeclarationNode _ attrs _ _ _ _ params retTy _ _ body) =
        validateAttributeList attrs
-    ++ validateParameterList params
+    ++ validateParameterList [] params
     ++ validateMaybeTy topLevelContext retTy
     ++ validateBlock functionBodyContext body
 
+  -- Threads the parameter names already seen in THIS list so a name reused
+  -- later (e.g. `fn f(x: i32, x: i32)`) is reported as DuplicateParameterName.
   validateParameterList :
-       List (SurfaceAstNode FunctionParameterNode)
+       List String
+    -> List (SurfaceAstNode FunctionParameterNode)
     -> List ValidationError
-  validateParameterList [] = []
-  validateParameterList (MkAstNode _ _ p :: rest) =
-    (case p of
-       NormalParameter _ _ _ ty  => validateTy topLevelContext ty
-       ReceiverParameter _ _     => [])
-      ++ validateParameterList rest
+  validateParameterList _ [] = []
+  validateParameterList seenNames (MkAstNode _ _ p :: rest) =
+    case p of
+      NormalParameter _ _ nameNode ty =>
+        let MkAstNode nameInfo _ (MkNameNode nameText) = nameNode
+            duplicateError =
+              if nameText `elem` seenNames
+                then [DuplicateParameterName nameInfo.span nameText]
+                else []
+        in duplicateError ++ validateTy topLevelContext ty
+             ++ validateParameterList (nameText :: seenNames) rest
+      ReceiverParameter _ _ =>
+        validateParameterList seenNames rest
 
   validateStructDecl : StructDeclarationNode -> List ValidationError
   validateStructDecl (MkStructDeclarationNode _ attrs _ _ fields) =

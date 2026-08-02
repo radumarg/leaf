@@ -45,6 +45,28 @@ runPostParseValidationTests = runTests $ Test.do
     validationMessages "const N: i64 = return 4;" `shouldBe`
       Just ["test-fixture.rs:1:16: `return` outside of a function body"]
 
+  test "a repeated attribute name is rejected after parsing" $
+    validationMessages "#[qasm_gate]\n#[qasm_gate]\nfn f() {}" `shouldBe`
+      Just
+        [ "test-fixture.rs:2:1: attribute `qasm_gate` is already applied " ++
+          "to this item"
+        ]
+
+  test "two distinct known attributes together are rejected after parsing" $
+    validationMessages "#[qasm_gate]\n#[qasm_def]\nfn f() {}" `shouldBe`
+      Just
+        [ "test-fixture.rs:2:1: attribute `qasm_def` conflicts with " ++
+          "another attribute already applied to this item (qasm_gate and " ++
+          "qasm_def are mutually exclusive)"
+        ]
+
+  test "a repeated parameter name is rejected after parsing" $
+    validationMessages "fn f(x: i32, x: i32) {}" `shouldBe`
+      Just
+        [ "test-fixture.rs:1:14: parameter `x` is already used earlier " ++
+          "in this parameter list"
+        ]
+
   test "valid contextual forms pass post-parse validation" $
     validationMessages
       "#[qasm_gate]\nfn f(x: &mut i32) {loop {break;} while ready {continue;} return}" `shouldBe`
