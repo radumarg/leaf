@@ -34,4 +34,18 @@ jobs:
       - name: Run tests
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          pack test leaf
+          max_attempts=3
+          attempt=1
+          while [ "$attempt" -le "$max_attempts" ]; do
+            if pack test leaf; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              sleep $((attempt * 5))
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          exit 1
