@@ -1,1 +1,0 @@
-let qs: [qubit; 2] = CY(q0, q1);

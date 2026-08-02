@@ -63,10 +63,12 @@ sourceFileInfo : String -> NodeId -> List SurfaceItem -> AstInfo
 sourceFileInfo sourceFileName nodeId [] =
     let start = MkSourcePos 1 1 in
         MkAstInfo nodeId (MkSourceSpan sourceFileName start start)
-sourceFileInfo _ nodeId (first :: rest) =
+sourceFileInfo sourceFileName nodeId (first :: rest) =
     let firstSpan = first.astInfo.span
         lastSpan = lastItemSpan first rest
-     in MkAstInfo nodeId (mergeSpans firstSpan lastSpan)
+        fileSpan : SourceSpan =
+          { file := sourceFileName } (mergeSpans firstSpan lastSpan)
+     in MkAstInfo nodeId fileSpan
 
 ||| Legal states reached while collecting a top-level item's declaration prefix.
 ||| Each constructor represents one accepted modifier sequence and retains the

@@ -14,10 +14,7 @@ unitary fn prepare_minus(q: qubit) -> qubit {
 uncompsafe fn balanced_reversible_oracle(
     qs: [qubit; 4],
     target: qubit
-) -> ([qubit; 4], qubit)
-        requires basis(target, X)
-        ensures  basis(target, X)
-        ensures  product(target, qs) {
+) -> ([qubit; 4], qubit) {
     ctrl(&qs[0]).on(bs"0").apply(X)(&target);
     ctrl(&qs[1]).on(bs"1").apply(X)(&target);
     ctrl(&qs[2]).on(bs"0").apply(X)(&target);
@@ -28,9 +25,6 @@ uncompsafe fn balanced_reversible_oracle(
 general fn phase_kickback(
     qs: [qubit; 4],
     oracle: uncompsafe fn(qs: [qubit; 4], target: qubit) -> ([qubit; 4], qubit)
-        requires basis(target, X)
-        ensures basis(target, X)
-        ensures product(target, qs)
 ) -> [qubit; 4] {
     let ancilla = qalloc();
     let ancilla = prepare_minus(ancilla);

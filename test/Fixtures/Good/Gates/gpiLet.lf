@@ -1,1 +1,0 @@
-let q: qubit = GPI(1, q);

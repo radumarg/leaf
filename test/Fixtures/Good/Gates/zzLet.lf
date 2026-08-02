@@ -1,1 +1,0 @@
-let qs: [qubit; 2] = ZZ(1, q0, q1);

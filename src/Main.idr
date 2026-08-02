@@ -9,6 +9,7 @@ import Frontend.Lexer.Error
 import Frontend.Lexer.Lexer
 import Frontend.Parser.Error
 import Frontend.Parser.Parser
+import Frontend.PostParseValidation
 import Frontend.Source
 import Frontend.Syntax.AST
 import Frontend.Syntax.ASTDebugPrinter
@@ -42,9 +43,14 @@ main = let programFile = "program.rs" in
             traverse_ (putStrLn . show) tokens
             case parseFile programFile tokens of
               Left err => putStrLn $ showParseError err
-              Right program => do
-                putStrLn ""
-                putStrLn "AST Nodes:"
-                putStrLn $ showAstDebug program
-                putStrLn "Pretty Printed Program:"
-                putStrLn $ "Parsed program:\n" ++ showSourceFileStrict program
+              Right surfaceAST =>
+                case validateSourceFile surfaceAST of
+                  [] => do
+                    putStrLn ""
+                    putStrLn "AST Nodes:"
+                    putStrLn $ showAstDebug surfaceAST
+                    putStrLn "Pretty Printed Program:"
+                    putStrLn $ "Parsed program:\n" ++ showSourceFileStrict surfaceAST
+                  errors => do
+                    putStrLn "Validation errors:"
+                    traverse_ (putStrLn . interpolate) errors

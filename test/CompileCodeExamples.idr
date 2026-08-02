@@ -11,21 +11,38 @@ import Frontend.Lexer.Error
 import Frontend.Lexer.Lexer
 import Frontend.Parser.Error
 import Frontend.Parser.Parser
+import Frontend.PostParseValidation
+import Frontend.Source
 import Frontend.Syntax.AST
-import Frontend.Syntax.ASTPrettyPrinter
+
+export
+compileLeafSource : String -> String -> Either String ()
+compileLeafSource programFile source =
+  case lexFile source of
+    Left err =>
+      Left $ "In \{programFile}: " ++ renderLexerError err
+    Right tokens =>
+      case parseFile programFile tokens of
+        Left err =>
+          Left $
+            "Parse error in \{programFile} at line " ++
+            show err.span.start.line ++ ", column " ++
+            show err.span.start.column ++ ": " ++
+            renderParseError err.value
+        Right surfaceAST =>
+          case validateSourceFile surfaceAST of
+            [] => Right ()
+            errors =>
+              Left $
+                "Validation errors in \{programFile}:\n" ++
+                unlines (map interpolate errors)
 
 compileLeafFile : String -> IO (Either String ())
 compileLeafFile programFile = do
   fileResult <- readFile programFile
   case fileResult of
     Left fileErr => pure $ Left $ "Failed to read \{programFile}: " ++ show fileErr
-    Right sampleProgram =>
-      case lexFile sampleProgram of
-        Left err => pure $ Left $ "In \{programFile}: " ++ renderLexerError err
-        Right tokens => pure $ Right ()
-        --   case parseFile programFile tokens of
-        --     Left err => pure $ Left $ "Parse error in \{programFile} at: " ++ show err.bounds ++ ", " ++ renderParseError err.val
-        --     Right _ => pure $ Right ()
+    Right source => pure $ compileLeafSource programFile source
 
 compileLeafFiles : String -> List String -> IO (Either String ())
 compileLeafFiles examplesDirectory [] = do
@@ -42,5 +59,12 @@ discoverAndCompileExamples = do
   let examplesDirectory = "examples"
   Right entries <- listDir examplesDirectory
     | Left err => pure $ Left $ "Failed to list \{examplesDirectory}: " ++ show err
-  let codeExampleFiles = filter (isSuffixOf ".rs") entries
+  -- Example 8 demonstrates quantum conditionals, which the parser rejects
+  -- explicitly until that language feature is implemented.
+  let codeExampleFiles =
+        filter
+          (\fileName =>
+            isSuffixOf ".rs" fileName &&
+            fileName /= "8_deutsch_jozsa_using_quantum_conditional.rs")
+          entries
   compileLeafFiles examplesDirectory codeExampleFiles

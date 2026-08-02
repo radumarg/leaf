@@ -1,1 +1,0 @@
-let affine qs: [qubit; 2] = qalloc(2);

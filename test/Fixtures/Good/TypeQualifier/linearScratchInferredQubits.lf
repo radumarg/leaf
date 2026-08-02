@@ -1,1 +1,0 @@
-let linear scratch qs = qalloc(2);

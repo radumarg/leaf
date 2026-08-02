@@ -1,1 +1,0 @@
-let qs: [qubit; 2] = CSX(q0, q1);

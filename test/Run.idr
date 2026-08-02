@@ -3,7 +3,9 @@ module Run
 import System
 
 import CompileCodeExamples
+import CompileCodeExamplesTest
 import Lexer.LexerTest
+import Parser.PostParseValidationTest
 import Parser.ExpressionParseTest
 import Parser.FunctionParseTest
 import Parser.TopModuleParseTest
@@ -14,6 +16,8 @@ main = do
   runExpressionParseTests
   runFunctionParseTests
   runTopModuleParseTests
+  runPostParseValidationTests
+  runCompileCodeExamplesTests
   Right () <- discoverAndCompileExamples
     | Left err => do
         putStrLn err

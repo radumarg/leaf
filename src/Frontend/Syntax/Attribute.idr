@@ -19,21 +19,18 @@ import Frontend.Syntax.Name
 --
 --   * The surface AST stores every attribute GENERICALLY: a name plus an
 --     optional argument list. It does NOT bake "known vs. unknown" into the
---     node shape. A malformed known attribute such as
+--     node shape.
 --
---       #[qasm_gate(foo, "bar", 3)]
+--   * The parser enforces argument SHAPE directly, for every attribute
+--     regardless of name: `#[name]` (no arguments) or `#[name("string")]`
+--     (exactly one string literal argument). Anything else -- `#[name()]`,
+--     a non-string argument, more than one argument -- is a parse error,
+--     not something deferred to a later pass.
 --
---     still parses into the same node shape as a well-formed one, so a later
---     validation pass can report "qasm_gate expects at most one string
---     argument" against the exact spans the user wrote, instead of the parser
---     having to reject or silently downgrade it to "unknown".
---
---   * Unknown attributes are preserved verbatim:
---
---       #[some_future_attribute(foo, "bar")]
---
---     parses fine; whether the compiler understands the attribute is a
---     semantic question, not a syntactic one.
+--   * Attribute NAME is a separate, semantic question from shape: unknown
+--     names are preserved by the parser and rejected by a later validation
+--     pass (`PostParseValidation`) instead, since whether the compiler
+--     understands a given name isn't something the grammar should decide.
 --
 --   * `KnownAttributeKind` therefore lives NEXT TO the node, not inside it:
 --     `recognizeKnownAttribute` classifies an attribute name after parsing.
@@ -85,12 +82,9 @@ recognizeKnownAttribute s =
 --------------------------------------------------------------------------------
 -- Attribute arguments
 --------------------------------------------------------------------------------
--- The argument grammar inside `#[name(...)]` is deliberately small: bare
--- identifiers and literals, comma-separated. This is NOT the full expression
--- grammar -- attributes are metadata, not code.
+-- `parseAttribute` accepts at most one argument, and only a string literal:
 --
 --   #[qasm_gate("my_gate")]              -- string literal argument
---   #[some_future_attribute(foo, "bar")] -- identifier + string arguments
 --
 -- Literal spellings are preserved raw (quotes included), matching the
 -- convention used for literal tokens elsewhere in the frontend.
@@ -98,9 +92,7 @@ recognizeKnownAttribute s =
 
 public export
 data AttributeArgumentNode
-  = AttributeArgumentName      String  -- bare identifier, e.g. foo
-  | AttributeArgumentStringLit String  -- raw spelling, e.g. "\"my_gate\""
-  | AttributeArgumentIntLit    String  -- raw spelling, e.g. "3"
+  = AttributeArgumentStringLit String  -- raw spelling, e.g. "\"my_gate\""
 
 public export
 SurfaceAttributeArgument : Type

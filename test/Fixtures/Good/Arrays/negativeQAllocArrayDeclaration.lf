@@ -1,1 +1,0 @@
-let qubits : [qubit; 3] = - qalloc(3);

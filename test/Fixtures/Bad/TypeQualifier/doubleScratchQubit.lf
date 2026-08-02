@@ -1,1 +1,0 @@
-let scratch scratch q: qubit = qalloc();

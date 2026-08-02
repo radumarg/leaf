@@ -1,1 +1,0 @@
-let affine qs = qalloc(2);

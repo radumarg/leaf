@@ -1,1 +1,0 @@
-let params : [param; 1] = - [Param("theta")];

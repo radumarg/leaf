@@ -10,6 +10,7 @@ depends = leaf,
           simple-tests
 
 modules = Lexer.LexerTest,
+          Parser.PostParseValidationTest,
           Parser.ExpressionParseTest,
           Parser.FunctionParseTest,
           Parser.TopModuleParseTest,

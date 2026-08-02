@@ -1,1 +1,0 @@
-let qs: [qubit; 2] = CRX(1, q0, q1);

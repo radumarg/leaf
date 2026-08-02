@@ -169,11 +169,7 @@ docsPrefix docs = concatMap (\d => showDocComment d ++ "\n") docs
 --------------------------------------------------------------------------------
 
 showAttributeArgument : SurfaceAttributeArgument -> String
-showAttributeArgument (MkAstNode _ _ arg) =
-  case arg of
-    AttributeArgumentName s      => s
-    AttributeArgumentStringLit s => s
-    AttributeArgumentIntLit s    => s
+showAttributeArgument (MkAstNode _ _ (AttributeArgumentStringLit s)) = s
 
 showAttribute : SurfaceAttribute -> String
 showAttribute (MkAstNode _ _ (MkAttributeNode nm margs)) =

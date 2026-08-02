@@ -1,1 +1,0 @@
-let linear linear q: qubit = qalloc();

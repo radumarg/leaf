@@ -1,6 +1,5 @@
 module Frontend.PostParseValidation
 
-import Data.List
 import Data.List1
 import Frontend.ASTData
 import Frontend.ASTPhases
@@ -8,8 +7,6 @@ import Frontend.Source
 import Frontend.Token
 import Frontend.Syntax.AST
 import Frontend.Syntax.Attribute
-import Frontend.Syntax.Common
-import Frontend.Syntax.Contract
 import Frontend.Syntax.Name
 import Frontend.Syntax.Operator
 import Frontend.Syntax.Pattern
@@ -26,39 +23,18 @@ import Frontend.Syntax.Type
 -- and reports against the spans the AST preserved for exactly this purpose.
 --
 -- CHECKS OWNED HERE:
---   * storage qualifier conflicts and duplicates
---       `linear affine q`, `scratch scratch q` -- on let binders and on
---       quantum-qualified types
---   * requires-before-ensures ordering of contract clauses
---   * known-attribute argument shapes
---       qasm_gate / qasm_def take nothing or exactly one string; `#[...]()`
---       with empty parens is rejected; unknown attributes are rejected
---       (currently an ERROR; soften to a warning when warning infrastructure
---       exists)
---   * duplicate kinds in a `supports` clause (`supports adjoint, adjoint`)
---   * mixing integer and basis-string patterns in one qmatch/smatch
+--   * known attribute names -- only `qasm_gate` and `qasm_def` are
+--       recognized; unknown attributes are rejected (currently an ERROR;
+--       soften to a warning when warning infrastructure exists). Argument
+--       SHAPE is not checked here: `parseAttribute` already accepts
+--       nothing but `#[name]` or `#[name("string")]`, so every attribute
+--       reaching this pass is already well-shaped.
 --   * `&mut` on a SYNTACTICALLY-qubit type (&mut qubit, &mut [qubit],
 --       &mut [qubit; 2], through parens/qualifiers) -- the general case
 --       (&mut SomeStructContainingQubits) needs types and is deferred
 --   * break/continue outside a loop (including Rust's rule that a while
 --       condition / for iterator does NOT count as "inside" its own loop)
 --   * return outside a function body (e.g. inside a const initializer)
---
--- DEFERRED, with their owners -- this is the consolidated inventory of every
--- "later pass" comment in the Syntax modules:
---   RESOLUTION: duplicate binders in one pattern; duplicate fields in struct
---     literals/patterns/declarations; unknown names/fields/variants; variant
---     arity vs. declaration; path-pattern variant-vs-const disambiguation
---   TYPING: const-ness of array sizes and repeat counts; Pauli string length
---     vs. qubit count; contract arguments must be qubit designators;
---     := only on qubit-producing bindings; qif/sif condition and branch
---     typing; &mut on qubit types reached through paths; qmatch scrutinee
---     arity vs. pattern width; effect checking (unitary is actually unitary)
---   PARSER (already rejected before this pass runs): wildcard/variant
---     patterns in smatch; `a..=` with no end; inner docs not at block start;
---     nested items in blocks; non-item top-level statements
---   MODULE LOADER: exactly one `main` at the crate root; `mod name;`
---     resolves to a file
 --
 -- Shape of the pass: a plain structural walk accumulating a List of errors
 -- (empty list = valid). No early exit -- diagnostics improve when the user
@@ -82,42 +58,9 @@ import Frontend.Syntax.Type
 public export
 data ValidationError : Type where
 
-  ConflictingStorageQualifiers :
-       (errorSpan : SourceSpan)
-    -> (firstQualifier  : QuantumStorageQualifier)
-    -> (secondQualifier : QuantumStorageQualifier)
-    -> ValidationError
-
-  DuplicateStorageQualifier :
-       (errorSpan : SourceSpan)
-    -> (qualifier : QuantumStorageQualifier)
-    -> ValidationError
-
-  RequiresAfterEnsures :
-       (errorSpan : SourceSpan)
-    -> ValidationError
-
   UnknownAttribute :
        (errorSpan : SourceSpan)
     -> (attributeNameText : String)
-    -> ValidationError
-
-  MalformedKnownAttributeArguments :
-       (errorSpan : SourceSpan)
-    -> (attributeKind : KnownAttributeKind)
-    -> ValidationError
-
-  EmptyAttributeArgumentList :
-       (errorSpan : SourceSpan)
-    -> ValidationError
-
-  MixedQuantumMatchPatternKinds :
-       (errorSpan : SourceSpan)
-    -> ValidationError
-
-  DuplicateSupportKind :
-       (errorSpan : SourceSpan)
-    -> (supportKind : SupportKind)
     -> ValidationError
 
   MutableBorrowOfQubit :
@@ -141,18 +84,22 @@ public export
 validationErrorSpan : ValidationError -> SourceSpan
 validationErrorSpan err =
   case err of
-    ConflictingStorageQualifiers s _ _   => s
-    DuplicateStorageQualifier s _        => s
-    RequiresAfterEnsures s               => s
-    UnknownAttribute s _                 => s
-    MalformedKnownAttributeArguments s _ => s
-    EmptyAttributeArgumentList s         => s
-    MixedQuantumMatchPatternKinds s      => s
-    DuplicateSupportKind s _             => s
-    MutableBorrowOfQubit s               => s
-    BreakOutsideLoop s                   => s
-    ContinueOutsideLoop s                => s
-    ReturnOutsideFunction s              => s
+    UnknownAttribute s _    => s
+    MutableBorrowOfQubit s  => s
+    BreakOutsideLoop s      => s
+    ContinueOutsideLoop s   => s
+    ReturnOutsideFunction s => s
+
+withValidationErrorFile : String -> ValidationError -> ValidationError
+withValidationErrorFile fileName err =
+  let withFile : SourceSpan =
+        { file := fileName } (validationErrorSpan err)
+  in case err of
+       UnknownAttribute _ nameText => UnknownAttribute withFile nameText
+       MutableBorrowOfQubit _      => MutableBorrowOfQubit withFile
+       BreakOutsideLoop _          => BreakOutsideLoop withFile
+       ContinueOutsideLoop _       => ContinueOutsideLoop withFile
+       ReturnOutsideFunction _     => ReturnOutsideFunction withFile
 
 -- "file:line:col" prefix, matching the lexer-error rendering style.
 renderSpanPrefix : SourceSpan -> String
@@ -164,25 +111,9 @@ Interpolation ValidationError where
   interpolate err =
     renderSpanPrefix (validationErrorSpan err) ++ ": " ++
       case err of
-        ConflictingStorageQualifiers _ q1 q2 =>
-          "storage qualifiers `" ++ show q1 ++ "` and `" ++ show q2 ++
-          "` are mutually exclusive"
-        DuplicateStorageQualifier _ q =>
-          "duplicate storage qualifier `" ++ show q ++ "`"
-        RequiresAfterEnsures _ =>
-          "`requires` clauses must precede all `ensures` clauses"
         UnknownAttribute _ nm =>
           "unknown attribute `" ++ nm ++
           "` (supported: qasm_gate, qasm_def)"
-        MalformedKnownAttributeArguments _ kind =>
-          "`" ++ show kind ++
-          "` takes no arguments or exactly one string argument"
-        EmptyAttributeArgumentList _ =>
-          "empty attribute argument list; write the attribute without parentheses"
-        MixedQuantumMatchPatternKinds _ =>
-          "integer and basis-string patterns cannot be mixed in one quantum match"
-        DuplicateSupportKind _ k =>
-          "duplicate `" ++ show k ++ "` in supports clause"
         MutableBorrowOfQubit _ =>
           "`mut` is never written on a qubit reference; qubit references are mutable by default"
         BreakOutsideLoop _ =>
@@ -218,114 +149,21 @@ functionBodyContext = MkValidationContext False True
 -- Leaf checks (no traversal needed)
 --------------------------------------------------------------------------------
 
--- Conflicts and duplicates in a source-ordered qualifier list. Reports at
--- the span of the SECOND offender, which is what the user should delete.
-validateQualifierList :
-     List (SurfaceAstNode QuantumStorageQualifier)
-  -> List ValidationError
-validateQualifierList = go []
-  where
-    conflictsWith : QuantumStorageQualifier -> QuantumStorageQualifier -> Bool
-    conflictsWith QualifierLinear QualifierAffine = True
-    conflictsWith QualifierAffine QualifierLinear = True
-    conflictsWith _ _ = False
-
-    go : List QuantumStorageQualifier
-      -> List (SurfaceAstNode QuantumStorageQualifier)
-      -> List ValidationError
-    go seen [] = []
-    go seen (MkAstNode info _ q :: rest) =
-      let dupErrors =
-            if elem q seen
-              then [DuplicateStorageQualifier info.span q]
-              else []
-          conflictErrors =
-            case find (\prev => conflictsWith prev q) seen of
-              Just prev => [ConflictingStorageQualifiers info.span prev q]
-              Nothing   => []
-      in dupErrors ++ conflictErrors ++ go (q :: seen) rest
-
--- Once an ensures clause appears, no requires clause may follow.
-validateContractOrdering :
-     List SurfaceContractClause
-  -> List ValidationError
-validateContractOrdering = go False
-  where
-    go : (seenEnsures : Bool)
-      -> List SurfaceContractClause
-      -> List ValidationError
-    go seenEnsures [] = []
-    go seenEnsures (MkAstNode info _ clause :: rest) =
-      case clause of
-        RequiresClause _ =>
-          (if seenEnsures then [RequiresAfterEnsures info.span] else [])
-            ++ go seenEnsures rest
-        EnsuresClause _ =>
-          go True rest
-
--- Known attributes: no argument list, or exactly one string literal.
--- `#[name()]` is rejected outright. Unknown attributes are errors for now.
+-- Known attributes: unknown names are errors for now. Argument shape is not
+-- checked here: `parseAttribute` already accepts nothing but `#[name]` or
+-- `#[name("string")]`, so every attribute reaching this pass is already
+-- well-shaped.
 validateAttribute : SurfaceAttribute -> List ValidationError
-validateAttribute (MkAstNode attrInfo _ (MkAttributeNode nameNode maybeArgs)) =
+validateAttribute (MkAstNode attrInfo _ (MkAttributeNode nameNode _)) =
   let MkAstNode _ _ (MkNameNode nameText) = nameNode
   in case recognizeKnownAttribute nameText of
        Nothing => [UnknownAttribute attrInfo.span nameText]
-       Just kind =>
-         case maybeArgs of
-           Nothing => []
-           Just [] => [EmptyAttributeArgumentList attrInfo.span]
-           Just [MkAstNode _ _ (AttributeArgumentStringLit _)] => []
-           Just _  => [MalformedKnownAttributeArguments attrInfo.span kind]
+       Just _  => []
 
 validateAttributeList : List SurfaceAttribute -> List ValidationError
 validateAttributeList [] = []
 validateAttributeList (a :: rest) =
   validateAttribute a ++ validateAttributeList rest
-
--- `supports adjoint, adjoint` -- duplicates are meaningless.
-validateSupportClause :
-     List (SurfaceAstNode SupportKind)
-  -> List ValidationError
-validateSupportClause = go []
-  where
-    go : List SupportKind
-      -> List (SurfaceAstNode SupportKind)
-      -> List ValidationError
-    go seen [] = []
-    go seen (MkAstNode info _ k :: rest) =
-      (if elem k seen then [DuplicateSupportKind info.span k] else [])
-        ++ go (k :: seen) rest
-
--- Homogeneity of qmatch/smatch pattern kinds: all-integer or all-basis
--- (wildcards and qenum variants are neutral). Reports at the first pattern
--- whose kind disagrees with the first committed kind.
-validateQuantumArmHomogeneity :
-     List (SurfaceAstNode QuantumMatchArmNode)
-  -> List ValidationError
-validateQuantumArmHomogeneity = go Nothing
-  where
-    -- True = basis string, False = integer
-    patternKind : QuantumMatchPatternNode -> Maybe Bool
-    patternKind (QuantumPatternBasisStringRaw _)  = Just True
-    patternKind (QuantumPatternIntegerRaw _)      = Just False
-    patternKind QuantumPatternWildcard            = Nothing
-    patternKind (QuantumPatternQenumVariant _ _)  = Nothing
-
-    go : Maybe Bool
-      -> List (SurfaceAstNode QuantumMatchArmNode)
-      -> List ValidationError
-    go committed [] = []
-    go committed
-       (MkAstNode _ _
-          (MkQuantumMatchArmNode (MkAstNode patInfo _ pat) _) :: rest) =
-      case (committed, patternKind pat) of
-        (Nothing, k)      => go k rest
-        (Just _, Nothing) => go committed rest
-        (Just c, Just k)  =>
-          if c == k
-            then go committed rest
-            else MixedQuantumMatchPatternKinds patInfo.span
-                   :: go committed rest
 
 -- Is this type SYNTACTICALLY a qubit-carrying type? Only the cases visible
 -- without resolution: qubit itself, arrays/slices of it, through parens and
@@ -353,8 +191,8 @@ mutual
   -- Entry point: validate one parsed source file.
   public export
   validateSourceFile : SurfaceSourceFile -> List ValidationError
-  validateSourceFile (MkAstNode _ _ (MkSourceFileNode _ items)) =
-    validateItemList items
+  validateSourceFile (MkAstNode fileInfo _ (MkSourceFileNode _ items)) =
+    map (withValidationErrorFile fileInfo.span.file) (validateItemList items)
 
   ------------------------------------------------------------------
   -- Items and declarations
@@ -373,20 +211,21 @@ mutual
       ItemQEnum qd    => validateQEnumDecl qd
       ItemImpl impl   => validateImplDecl impl
       ItemConst cd    => validateConstDecl cd
+      -- `use` has no attributes, types, or expressions to walk.
       ItemUse _       => []
       ItemModule md   => validateModuleDecl md
 
   -- Fields (in declaration order): docs, attributes, visibility, constness,
   -- effect, name, parameters, returnType, supports, contracts, body.
+  -- `supports` and `contracts` are not walked here: the parser rejects
+  -- `supports` and `requires`/`ensures` outright, so those fields are
+  -- always empty by construction.
   validateFunctionDecl : FunctionDeclarationNode -> List ValidationError
   validateFunctionDecl
-    (MkFunctionDeclarationNode _ attrs _ _ _ _ params retTy supports contracts body) =
+    (MkFunctionDeclarationNode _ attrs _ _ _ _ params retTy _ _ body) =
        validateAttributeList attrs
     ++ validateParameterList params
     ++ validateMaybeTy topLevelContext retTy
-    ++ validateSupportClause supports
-    ++ validateContractOrdering contracts
-    ++ validateContractClauseList contracts
     ++ validateBlock functionBodyContext body
 
   validateParameterList :
@@ -468,36 +307,6 @@ mutual
       ModuleExternal       => []
 
   ------------------------------------------------------------------
-  -- Contracts: walk the argument expressions inside predicates.
-  -- Signature position: neither in a loop nor in a function body.
-  ------------------------------------------------------------------
-
-  validateContractClauseList :
-       List SurfaceContractClause
-    -> List ValidationError
-  validateContractClauseList [] = []
-  validateContractClauseList (MkAstNode _ _ clause :: rest) =
-    (case clause of
-       RequiresClause p => validateContractPredicate p
-       EnsuresClause p  => validateContractPredicate p)
-      ++ validateContractClauseList rest
-
-  validateContractPredicate :
-       SurfaceAstNode (ContractPredicateNode SurfaceExpr)
-    -> List ValidationError
-  validateContractPredicate (MkAstNode _ _ predicate) =
-    case predicate of
-      ContractClean e          => validateExpr topLevelContext e
-      ContractBasis e _        => validateExpr topLevelContext e
-      ContractSeparable e      => validateExpr topLevelContext e
-      ContractIsolated e       => validateExpr topLevelContext e
-      ContractProduct e (x ::: xs) =>
-           validateExpr topLevelContext e
-        ++ validateExpr topLevelContext x
-        ++ validateExprList topLevelContext xs
-      ContractStabilized e _   => validateExpr topLevelContext e
-
-  ------------------------------------------------------------------
   -- Blocks and statements
   ------------------------------------------------------------------
 
@@ -520,9 +329,8 @@ mutual
     -> List ValidationError
   validateStatement ctx (MkAstNode _ _ stmt) =
     case stmt of
-      StatementLet (MkLetBindingNode quals _ tyAnn maybeInit) =>
-           validateQualifierList quals
-        ++ validateMaybeTy ctx tyAnn
+      StatementLet (MkLetBindingNode _ _ tyAnn maybeInit) =>
+           validateMaybeTy ctx tyAnn
         ++ (case maybeInit of
               Nothing => []
               Just (MkLetInitializerNode _ initValue) =>
@@ -570,16 +378,12 @@ mutual
     case expr of
       ExprLiteral _  => []
       ExprName _     => []
-      ExprPath _     => []
       ExprBuiltin _  => []
-      ExprSelf       => []
 
       ExprParenthesized e   => validateExpr ctx e
       ExprTuple es          => validateExprList1 ctx es
       ExprArray es          => validateExprList ctx es
       ExprRepeatedArray e c => validateExpr ctx e ++ validateExpr ctx c
-
-      ExprStructLiteral _ fields => validateFieldInitList ctx fields
 
       ExprCall callee args =>
         validateExpr ctx callee ++ validateExprList ctx args
@@ -597,28 +401,6 @@ mutual
       ExprBlock b            => validateBlock ctx b
 
       ExprIf ifNode          => validateClassicalIf ctx ifNode
-      ExprQIf (MkQuantumIfNode qifCond thenBranch elseBranch) =>
-           validateExpr ctx qifCond
-        ++ validateQuantumBranch ctx thenBranch
-        ++ (case elseBranch of
-              Nothing => []
-              Just b  => validateQuantumBranch ctx b)
-      ExprSIf (MkStateIfNode sifCond thenE elseE) =>
-           validateExpr ctx sifCond
-        ++ validateExpr ctx thenE
-        ++ validateExpr ctx elseE
-
-      ExprMatch (MkClassicalMatchNode scrut arms) =>
-           validateExpr ctx scrut
-        ++ validateClassicalArmList ctx arms
-      ExprQMatch (MkQuantumMatchNode scrut arms) =>
-           validateExpr ctx scrut
-        ++ validateQuantumArmHomogeneity arms
-        ++ validateQuantumArmBodies ctx arms
-      ExprSMatch (MkStateMatchNode scrut arms) =>
-           validateExpr ctx scrut
-        ++ validateQuantumArmHomogeneity arms
-        ++ validateQuantumArmBodies ctx arms
 
       -- Loop bodies set insideLoop; while conditions and for iterator
       -- expressions do NOT count as inside the loop they head.
@@ -642,6 +424,39 @@ mutual
 
       ExprCtrl c    => validateControlExpr ctx c
       ExprAdjoint a => validateAdjointExpr ctx a
+
+      ExprStructLiteral _ fields => validateFieldInitList ctx fields
+
+      ExprQIf (MkQuantumIfNode qifCond thenBranch elseBranch) =>
+           validateExpr ctx qifCond
+        ++ validateQuantumBranch ctx thenBranch
+        ++ (case elseBranch of
+              Nothing => []
+              Just b  => validateQuantumBranch ctx b)
+      ExprSIf (MkStateIfNode sifCond thenE elseE) =>
+           validateExpr ctx sifCond
+        ++ validateExpr ctx thenE
+        ++ validateExpr ctx elseE
+
+      ExprMatch (MkClassicalMatchNode scrut arms) =>
+           validateExpr ctx scrut
+        ++ validateClassicalArmList ctx arms
+      ExprQMatch (MkQuantumMatchNode scrut arms) =>
+           validateExpr ctx scrut
+        ++ validateQuantumArmBodies ctx arms
+      ExprSMatch (MkStateMatchNode scrut arms) =>
+           validateExpr ctx scrut
+        ++ validateQuantumArmBodies ctx arms
+
+      -- ExprPath/ExprSelf carry no sub-expressions to walk. All eight forms
+      -- above are also rejected as unsupported by the current parser, so a
+      -- parsed source file cannot contain them yet -- but walking them now
+      -- costs nothing and means nothing needs revisiting once the parser
+      -- catches up. Their own semantic checks (qmatch/smatch pattern
+      -- homogeneity, contract ordering, duplicate supports) stay out until
+      -- that syntax exists to check.
+      ExprPath _ => []
+      ExprSelf   => []
 
   validateFieldInitList :
        ValidationContext
@@ -709,8 +524,8 @@ mutual
       AdjointBlock body          => validateBlock ctx body
 
   ------------------------------------------------------------------
-  -- Types: qualifier lists, the &mut-qubit check, and recursion into
-  -- array-size expressions (which are full surface expressions).
+  -- Types: the &mut-qubit check, and recursion into array-size
+  -- expressions (which are full surface expressions).
   ------------------------------------------------------------------
 
   validateTyList :
@@ -749,9 +564,7 @@ mutual
                else []
            SharedBorrow  => [])
           ++ validateTy ctx innerNode
-      TyQualified qualifiers inner =>
-           validateQualifierList (forget qualifiers)
-        ++ validateTy ctx inner
+      TyQualified _ inner => validateTy ctx inner
       TyFunction _ params returnTy =>
         validateFunctionTypeParams ctx params
           ++ validateMaybeTy ctx returnTy
