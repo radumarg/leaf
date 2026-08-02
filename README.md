@@ -59,10 +59,10 @@ general fn main() -> bit {
 | ----------------------------  | ----------- |
 | Language Design & Docs        | Implemented |
 | Lexer                         | Implemented |
-| Parser                        | In progress |
-| Surface AST                   | In progress |
-| Semantic Analyzer             | In progress |
-| De-sugaring  & Canonical AST  | Planned     |
+| Parser                        | Implemented |
+| Surface AST                   | Implemented |
+| Post-Parse Validation         | Implemented |
+| De-sugaring  & Canonical AST  | In progress |
 | Scope & Name Resolution       | Planned     |
 | Type Checker & Typed AST      | Planned     |
 | Quantum Lambda Calculus IR    | Planned     |
@@ -73,9 +73,9 @@ general fn main() -> bit {
 | Alpha release                 | Fall 2026   |
 | Lean Interface                | Planned     |
 
-<!-- ## Todo
+## Todo
 
-[Pending Features](docs/todo.md) -->
+[Pending Features](docs/todo.md)
 
 ## Contributing
 
