@@ -1068,6 +1068,8 @@ parseBlockContents :
   -> SnocList SurfaceStatement
   -> NestedRule True SurfaceBlock root
 
+||| Requires an opening `{` and parses a block within an existing expression
+||| root, preserving the suffix evidence needed by recursively nested expressions.
 parseBracedBlockWithin :
      {0 root : List (Bounded Token)}
   -> RootedRule True SurfaceBlock root
@@ -2485,11 +2487,11 @@ parseAttribute _ (B _ bounds :: _) _ =
 
 ||| Parses a function declaration from its modifiers through parameters, contracts, and body.
 ||| Modifiers and attributes are supplied by the top-level dispatchers; this function
-||| owns the `fn` token onward. It reserves the function item node before parsing its
-||| children and threads the next free node ID through every optional phase. The final
-||| item span starts at `declarationStart`, so preceding attributes, visibility,
-||| `const`, or effects are
-||| included even though they were parsed by another function.
+||| starts immediately after the dispatcher-consumed `fn` token. It reserves the
+||| function item node before parsing its children and threads the next free node ID
+||| through every optional phase. The final item span starts at `declarationStart`,
+||| so preceding attributes, visibility, `const`, or effects are included even though
+||| they were parsed by another function.
 ||| Tested by: `const fn square(x: i64) -> i64 { x * x }`.
 parseFunctionDeclaration :
     (itemNodeId : NodeId)
@@ -2499,12 +2501,10 @@ parseFunctionDeclaration :
   -> (constness : Maybe (SurfaceAstNode FunctionConstness))
   -> (functionEffect : Maybe (SurfaceAstNode FunctionEffect))
   -> Rule True SurfaceItem
-parseFunctionDeclaration _ _ _ _ _ _ _ [] _ = Fail0 (B EOI NoBounds)
 parseFunctionDeclaration itemNodeId declarationStart attributes visibility
-    constness functionEffect nodeId
-    ((B (TokKw KwFn) _) :: remaining) (SA recur) =
+    constness functionEffect nodeId tokens acc =
   let Succ0 (functionName, afterNameNodeId) afterName :=
-            succT $ parseName "function name" nodeId remaining recur
+            parseName "function name" nodeId tokens acc
         | Fail0 err => Fail0 err
       Succ0 (functionParameters, afterParametersNodeId) afterParameters :=
             succT $ parseFunctionParameters afterNameNodeId afterName suffixAcc
@@ -2544,9 +2544,6 @@ parseFunctionDeclaration itemNodeId declarationStart attributes visibility
         (surfaceAstNode (MkAstInfo itemNodeId itemSpan) (ItemFunction declaration),
          finalNodeId)
         finalTokens
-parseFunctionDeclaration _ _ _ _ _ _ _ ((B token bounds) :: _) _ =
-  failWithCustomError (ParseErrorWithMessage
-    "Expected `fn` keyword, found instead: `\{interpolate token}`.") bounds
 
 ||| Parses a typed constant value declaration after its `const` prefix.
 ||| Tested by: `const N: i64 = 4;`.
@@ -2664,12 +2661,13 @@ invalidItemAfterPrefix itemPrefix token bounds =
 parseItemAfterPrefix : ItemPrefix -> Rule True SurfaceItem
 parseItemAfterPrefix _ _ [] _ = Fail0 (B EOI NoBounds)
 parseItemAfterPrefix itemPrefix nodeId
-    ((B (TokKw KwFn) bounds) :: remaining) acc =
+    ((B (TokKw KwFn) _) :: remaining) (SA recur) =
   let (visibility, constBounds, effect) = prefixComponents itemPrefix.state
       (constness, nextNodeId) = locatedConstness constBounds
-   in parseFunctionDeclaration itemPrefix.itemNodeId itemPrefix.declarationStart
+   in succT $ parseFunctionDeclaration
+        itemPrefix.itemNodeId itemPrefix.declarationStart
         (itemPrefix.attributes <>> []) visibility constness effect nextNodeId
-        (B (TokKw KwFn) bounds :: remaining) acc
+        remaining recur
   where
     locatedConstness :
       Maybe Bounds -> (Maybe (SurfaceAstNode FunctionConstness), Nat)

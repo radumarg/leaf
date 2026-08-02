@@ -51,6 +51,33 @@ runTopModuleParseTests = runTests $ Test.do
         , (1, 13)
         )
 
+  test "constant declarations require a colon after the name" $
+    parseErrorDetails "const N i64 = 4;" `shouldBe`
+      Just
+        ( "Expected `:` after constant name, found instead: `i64`."
+        , "test-fixture.rs"
+        , (1, 9)
+        , (1, 12)
+        )
+
+  test "constant declarations require an equals sign after the type" $
+    parseErrorDetails "const N: i64 4;" `shouldBe`
+      Just
+        ( "Expected `=` in const declaration, found instead: `4`."
+        , "test-fixture.rs"
+        , (1, 14)
+        , (1, 15)
+        )
+
+  test "constant declarations require a semicolon after the value" $
+    parseErrorDetails "const N: i64 = 4 }" `shouldBe`
+      Just
+        ( "Expected `;` after const declaration, found instead: `}`."
+        , "test-fixture.rs"
+        , (1, 18)
+        , (1, 19)
+        )
+
   test "enum declarations are not yet supported" $
     parseErrorDetails "enum Result {}" `shouldBe`
       Just ("Enums are not yet supported.", "test-fixture.rs", (1, 1), (1, 5))
