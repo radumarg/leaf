@@ -45,7 +45,7 @@ runTopModuleParseTests = runTests $ Test.do
   test "constant declarations report a missing constant name" $
     parseErrorDetails "const struct Point {}" `shouldBe`
       Just
-        ( "Parse error: expected [\"constant name\"], but got keyword struct"
+        ( "Parse error: expected ['constant name'], but got keyword struct"
         , "test-fixture.rs"
         , (1, 7)
         , (1, 13)

@@ -74,7 +74,7 @@ runExpressionParseTests = runTests $ Test.do
   test "array type reports valid continuations after its element type" $
     parseErrorDetails "fn arrays() { let b: [i32 value]; }" `shouldBe`
       Just
-        ( "Parse error: expected [\"]\", \";\"], but got identifier \"value\""
+        ( "Parse error: expected [']', ';'], but got identifier \"value\""
         , "test-fixture.rs"
         , (1, 27)
         , (1, 32)
@@ -103,7 +103,7 @@ runExpressionParseTests = runTests $ Test.do
   test "let bindings report the markers accepted after a pattern" $
     parseErrorDetails "fn f() {let x + 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\":\", \"=\", \":=\"], but got symbol +"
+        ( "Parse error: expected [':', '=', ':='], but got symbol +"
         , "test-fixture.rs"
         , (1, 15)
         , (1, 16)
@@ -112,7 +112,7 @@ runExpressionParseTests = runTests $ Test.do
   test "let bindings report the markers accepted after a type annotation" $
     parseErrorDetails "fn f() {let x: i32 + 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"=\", \":=\"], but got symbol +"
+        ( "Parse error: expected ['=', ':='], but got symbol +"
         , "test-fixture.rs"
         , (1, 20)
         , (1, 21)
@@ -121,7 +121,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a builtin in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let measr = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got builtin measr"
+        ( "Parse error: expected ['a pattern'], but got builtin measr"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 18)
@@ -130,7 +130,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a raw integer literal in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let 5 = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got raw integer literal \"5\""
+        ( "Parse error: expected ['a pattern'], but got raw integer literal `5`"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 14)
@@ -139,7 +139,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a raw float literal in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let 5.0 = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got raw float literal \"5.0\""
+        ( "Parse error: expected ['a pattern'], but got raw float literal `5.0`"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 16)
@@ -148,7 +148,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a raw byte literal in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let b'a' = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got raw byte literal \"b'a'\""
+        ( "Parse error: expected ['a pattern'], but got raw byte literal `b'a'`"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 17)
@@ -157,7 +157,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a raw byte string literal in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let b\"hi\" = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got raw byte string literal \"b\\\"hi\\\"\""
+        ( "Parse error: expected ['a pattern'], but got raw byte string literal `b\"hi\"`"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 18)
@@ -166,7 +166,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a raw basis string literal in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let bs\"01\" = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got raw basis string literal \"bs\\\"01\\\"\""
+        ( "Parse error: expected ['a pattern'], but got raw basis string literal `bs\"01\"`"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 19)
@@ -175,7 +175,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a raw string literal in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let \"hi\" = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got raw string literal \"\\\"hi\\\"\""
+        ( "Parse error: expected ['a pattern'], but got raw string literal `\"hi\"`"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 17)
@@ -184,7 +184,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a boolean literal in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let true = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got boolean literal true"
+        ( "Parse error: expected ['a pattern'], but got boolean literal true"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 17)
@@ -193,7 +193,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a state literal in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let zero = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got state literal zero"
+        ( "Parse error: expected ['a pattern'], but got state literal zero"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 17)
@@ -202,7 +202,7 @@ runExpressionParseTests = runTests $ Test.do
   test "a primitive type in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() {let i32 = 1;}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got primitive type i32"
+        ( "Parse error: expected ['a pattern'], but got primitive type i32"
         , "test-fixture.rs"
         , (1, 13)
         , (1, 16)
@@ -211,7 +211,7 @@ runExpressionParseTests = runTests $ Test.do
   test "an outer doc comment in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() { let /// doc\nx = 1; }" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got outer doc comment \"/// doc\""
+        ( "Parse error: expected ['a pattern'], but got outer doc comment \"/// doc\""
         , "test-fixture.rs"
         , (1, 14)
         , (1, 21)
@@ -220,7 +220,7 @@ runExpressionParseTests = runTests $ Test.do
   test "an inner doc comment in place of a let pattern is described by kind" $
     parseErrorDetails "fn f() { let //! doc\nx = 1; }" `shouldBe`
       Just
-        ( "Parse error: expected [\"a pattern\"], but got inner doc comment \"//! doc\""
+        ( "Parse error: expected ['a pattern'], but got inner doc comment \"//! doc\""
         , "test-fixture.rs"
         , (1, 14)
         , (1, 21)
@@ -229,7 +229,7 @@ runExpressionParseTests = runTests $ Test.do
   test "an underscore in place of an expression is described by kind" $
     parseErrorDetails "fn f() { let _ = 1; _(); }" `shouldBe`
       Just
-        ( "Parse error: expected [\"an expression\"], but got underscore"
+        ( "Parse error: expected ['an expression'], but got underscore"
         , "test-fixture.rs"
         , (1, 21)
         , (1, 22)
@@ -238,7 +238,7 @@ runExpressionParseTests = runTests $ Test.do
   test "end of input in place of a closing bracket is described by kind" $
     parseErrorDetails "fn f() { let b: [i32; 2 " `shouldBe`
       Just
-        ( "Parse error: expected [\"]\"], but got end of input"
+        ( "Parse error: expected [']'], but got end of input"
         , "test-fixture.rs"
         , (1, 25)
         , (1, 26)
@@ -362,7 +362,7 @@ runExpressionParseTests = runTests $ Test.do
   test "else is left unconsumed when followed by neither a block nor an if" $
     parseErrorDetails "fn f() {if ready {1} else 2}" `shouldBe`
       Just
-        ( "Parse error: expected [\"an expression\"], but got keyword else"
+        ( "Parse error: expected ['an expression'], but got keyword else"
         , "test-fixture.rs"
         , (1, 22)
         , (1, 26)
@@ -408,7 +408,7 @@ runExpressionParseTests = runTests $ Test.do
   test "for expressions require in after their binder" $
     parseErrorDetails "fn f() {for x y {}}" `shouldBe`
       Just
-        ( "Parse error: expected [\"for identifier in expression\"], but got keyword for"
+        ( "Parse error: expected ['for identifier in expression'], but got keyword for"
         , "test-fixture.rs"
         , (1, 9)
         , (1, 12)
@@ -417,7 +417,7 @@ runExpressionParseTests = runTests $ Test.do
   test "for expressions require a binder before in" $
     parseErrorDetails "fn f() {for in values {}}" `shouldBe`
       Just
-        ( "Parse error: expected [\"for identifier in expression\"], but got keyword for"
+        ( "Parse error: expected ['for identifier in expression'], but got keyword for"
         , "test-fixture.rs"
         , (1, 9)
         , (1, 12)

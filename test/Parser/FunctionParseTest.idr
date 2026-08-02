@@ -16,7 +16,7 @@ runFunctionParseTests = runTests $ Test.do
   test "a raw integer literal in place of a function name is described by kind" $
     parseErrorDetails "fn 5() {}" `shouldBe`
       Just
-        ( "Parse error: expected [\"function name\"], but got raw integer literal \"5\""
+        ( "Parse error: expected ['function name'], but got raw integer literal `5`"
         , "test-fixture.rs"
         , (1, 4)
         , (1, 5)
@@ -95,7 +95,7 @@ runFunctionParseTests = runTests $ Test.do
   test "reference types require an inner type" $
     parseErrorDetails "fn f(x: &) {}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a type declaration\"], but got symbol )"
+        ( "Parse error: expected ['a type declaration'], but got symbol )"
         , "test-fixture.rs"
         , (1, 10)
         , (1, 11)
@@ -104,7 +104,7 @@ runFunctionParseTests = runTests $ Test.do
   test "a builtin in place of a type is described by kind" $
     parseErrorDetails "fn f(x: measr) {}" `shouldBe`
       Just
-        ( "Parse error: expected [\"a type declaration\"], but got builtin measr"
+        ( "Parse error: expected ['a type declaration'], but got builtin measr"
         , "test-fixture.rs"
         , (1, 9)
         , (1, 14)

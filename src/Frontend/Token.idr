@@ -446,12 +446,12 @@ Interpolation Token where
 public export
 describeToken : Token -> String
 describeToken (TokIdent name)             = "identifier " ++ show name
-describeToken (TokIntLitRaw text)         = "raw integer literal " ++ show text
-describeToken (TokFloatLitRaw text)       = "raw float literal " ++ show text
-describeToken (TokByteLitRaw text)        = "raw byte literal " ++ show text
-describeToken (TokByteStringLitRaw text)  = "raw byte string literal " ++ show text
-describeToken (TokBasisStringLitRaw text) = "raw basis string literal " ++ show text
-describeToken (TokStringLitRaw text)      = "raw string literal " ++ show text
+describeToken (TokIntLitRaw text)         = "raw integer literal `" ++ text ++ "`"
+describeToken (TokFloatLitRaw text)       = "raw float literal `" ++ text ++ "`"
+describeToken (TokByteLitRaw text)        = "raw byte literal `" ++ text ++ "`"
+describeToken (TokByteStringLitRaw text)  = "raw byte string literal `" ++ text ++ "`"
+describeToken (TokBasisStringLitRaw text) = "raw basis string literal `" ++ text ++ "`"
+describeToken (TokStringLitRaw text)      = "raw string literal `" ++ text ++ "`"
 describeToken (TokOuterDoc text)          = "outer doc comment " ++ show text
 describeToken (TokInnerDoc text)          = "inner doc comment " ++ show text
 describeToken (TokBoolLit True)           = "boolean literal true"

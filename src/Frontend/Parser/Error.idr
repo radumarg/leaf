@@ -1,5 +1,6 @@
 module Frontend.Parser.Error
 
+import Data.List
 import Text.Parse.Manual
 import public Text.ParseError
 
@@ -15,6 +16,10 @@ public export
 0 ParseError : Type
 ParseError = InnerError CustomParseError
 
+renderExpected : List String -> String
+renderExpected expected =
+  "[" ++ concat (intersperse ", " (map (\item => "'" ++ item ++ "'") expected)) ++ "]"
+
 public export
 renderParseError : ParseError -> String
 renderParseError (Custom (UnsupportedFeature message)) = message
@@ -22,7 +27,7 @@ renderParseError (Custom (UnexpectedToken message)) = message
 renderParseError (Custom (ParseErrorWithMessage message)) = message
 renderParseError EOI = "Parse error: unexpected end of input"
 renderParseError (Expected expected actual) =
-  "Parse error: expected " ++ show expected ++ ", but got " ++ actual
+  "Parse error: expected " ++ renderExpected expected ++ ", but got " ++ actual
 renderParseError (ExpectedChar charClass) = "Parse error: expected " ++ interpolate charClass
 renderParseError ExpectedEOI = "Parse error: expected end of input"
 renderParseError (InvalidControl char) = "Parse error: invalid control character: " ++ show char
