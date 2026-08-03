@@ -23,22 +23,21 @@ import Frontend.Syntax.Type
 -- and reports against the spans the AST preserved for exactly this purpose.
 --
 -- CHECKS OWNED HERE:
---   * known attribute names -- only `qasm_gate` and `qasm_def` are
---       recognized; unknown attributes are rejected (currently an ERROR;
---       soften to a warning when warning infrastructure exists). Argument
---       SHAPE is not checked here: `parseAttribute` already accepts
---       nothing but `#[name]` or `#[name("string")]`, so every attribute
---       reaching this pass is already well-shaped.
---   * duplicate/conflicting attributes on one item -- the same name written
---       twice, or two distinct KNOWN kinds together (today: qasm_gate and
---       qasm_def, which name mutually exclusive compilation targets)
---   * duplicate parameter names in one function's parameter list
---   * `&mut` on a SYNTACTICALLY-qubit type (&mut qubit, &mut [qubit],
---       &mut [qubit; 2], through parens/qualifiers) -- the general case
---       (&mut SomeStructContainingQubits) needs types and is deferred
---   * break/continue outside a loop (including Rust's rule that a while
---       condition / for iterator does NOT count as "inside" its own loop)
---   * return outside a function body (e.g. inside a const initializer)
+--   * unknown attribute names: only `qasm_gate` and `qasm_def` are
+--       recognized
+--   * duplicate attributes on one item: a repeated name is rejected at its
+--       second occurrence
+--   * conflicting attributes on one item: `qasm_gate` and `qasm_def` are
+--       mutually exclusive and are rejected when applied together
+--   * duplicate parameter names in one function's parameter list, including
+--       functions nested in an `impl`
+--   * `&mut` on a SYNTACTICALLY-qubit type (`&mut qubit`, `&mut [qubit]`,
+--       `&mut [qubit; 2]`, through parens/qualifiers), wherever a type occurs;
+--   * `break` outside a loop, while still walking and validating its optional
+--       value expression
+--   * `continue` outside a loop
+--   * `return` outside a function body (for example in a const initializer),
+--       while still walking and validating its optional value expression
 --
 -- Shape of the pass: a plain structural walk accumulating a List of errors
 -- (empty list = valid). No early exit -- diagnostics improve when the user
@@ -114,28 +113,28 @@ public export
 validationErrorSpan : ValidationError -> SourceSpan
 validationErrorSpan err =
   case err of
-    UnknownAttribute s _      => s
-    DuplicateAttribute s _    => s
-    ConflictingAttributes s _ => s
+    UnknownAttribute s _       => s
+    DuplicateAttribute s _     => s
+    ConflictingAttributes s _  => s
     DuplicateParameterName s _ => s
-    MutableBorrowOfQubit s    => s
-    BreakOutsideLoop s        => s
-    ContinueOutsideLoop s     => s
-    ReturnOutsideFunction s   => s
+    MutableBorrowOfQubit s     => s
+    BreakOutsideLoop s         => s
+    ContinueOutsideLoop s      => s
+    ReturnOutsideFunction s    => s
 
 withValidationErrorFile : String -> ValidationError -> ValidationError
 withValidationErrorFile fileName err =
   let withFile : SourceSpan =
         { file := fileName } (validationErrorSpan err)
   in case err of
-       UnknownAttribute _ nameText      => UnknownAttribute withFile nameText
-       DuplicateAttribute _ nameText    => DuplicateAttribute withFile nameText
-       ConflictingAttributes _ nameText => ConflictingAttributes withFile nameText
+       UnknownAttribute _ nameText       => UnknownAttribute withFile nameText
+       DuplicateAttribute _ nameText     => DuplicateAttribute withFile nameText
+       ConflictingAttributes _ nameText  => ConflictingAttributes withFile nameText
        DuplicateParameterName _ nameText => DuplicateParameterName withFile nameText
-       MutableBorrowOfQubit _          => MutableBorrowOfQubit withFile
-       BreakOutsideLoop _              => BreakOutsideLoop withFile
-       ContinueOutsideLoop _           => ContinueOutsideLoop withFile
-       ReturnOutsideFunction _         => ReturnOutsideFunction withFile
+       MutableBorrowOfQubit _            => MutableBorrowOfQubit withFile
+       BreakOutsideLoop _                => BreakOutsideLoop withFile
+       ContinueOutsideLoop _             => ContinueOutsideLoop withFile
+       ReturnOutsideFunction _           => ReturnOutsideFunction withFile
 
 -- "file:line:col" prefix, matching the lexer-error rendering style.
 renderSpanPrefix : SourceSpan -> String
@@ -249,12 +248,12 @@ validateAttributeList = validateAttributeListFrom []
 isSyntacticallyQubitTy : TyNode SurfaceExpr -> Bool
 isSyntacticallyQubitTy ty =
   case ty of
-    TyPrimitive TypPrimQubit                        => True
+    TyPrimitive TypPrimQubit                   => True
     TyParenthesized (MkAstNode _ _ inner)      => isSyntacticallyQubitTy inner
     TyQualified _ (MkAstNode _ _ inner)        => isSyntacticallyQubitTy inner
     TySlice (MkAstNode _ _ element)            => isSyntacticallyQubitTy element
     TyArray (MkAstNode _ _ element) _          => isSyntacticallyQubitTy element
-    _                                               => False
+    _                                          => False
 
 --------------------------------------------------------------------------------
 -- The traversal
