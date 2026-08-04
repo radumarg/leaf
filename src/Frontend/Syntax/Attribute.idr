@@ -18,24 +18,16 @@ import Frontend.Syntax.Name
 -- Design choices:
 --
 --   * The surface AST stores every attribute GENERICALLY: a name plus an
---     optional argument list. It does NOT bake "known vs. unknown" into the
---     node shape.
+--     optional argument list. 
 --
 --   * The parser enforces argument SHAPE directly, for every attribute
 --     regardless of name: `#[name]` (no arguments) or `#[name("string")]`
 --     (exactly one string literal argument). Anything else -- `#[name()]`,
---     a non-string argument, more than one argument -- is a parse error,
---     not something deferred to a later pass.
+--     a non-string argument, more than one argument -- is a parse error.
 --
 --   * Attribute NAME is a separate, semantic question from shape: unknown
 --     names are preserved by the parser and rejected by a later validation
---     pass (`PostParseValidation`) instead, since whether the compiler
---     understands a given name isn't something the grammar should decide.
---
---   * `KnownAttributeKind` therefore lives NEXT TO the node, not inside it:
---     `recognizeKnownAttribute` classifies an attribute name after parsing.
---     Storing the classification on the node would duplicate the name and
---     create a keep-in-sync invariant for no benefit.
+--     pass (`PostParseValidation`) instead.
 --
 --   * Attribute names are never resolved to program symbols -- they are
 --     compiler-directed metadata, not references to bindings -- so they reuse
@@ -45,9 +37,8 @@ import Frontend.Syntax.Name
 --------------------------------------------------------------------------------
 -- Known attribute kinds
 --------------------------------------------------------------------------------
--- The attributes the compiler currently understands. Spelled out directly
--- (like `boolFromString` in Token.idr) rather than via the Finite/findByShow
--- machinery: with two constructors the derivation buys nothing.
+-- The attributes the compiler currently understands needed by the 
+-- `PostParseValidation` pass.
 --------------------------------------------------------------------------------
 
 public export
@@ -68,9 +59,6 @@ public export
 implementation Show KnownAttributeKind where
   show = showKnownAttributeLeaf
 
--- Classify an attribute name. `Nothing` means the attribute is unknown to
--- this compiler version; unknown attributes are preserved, and whether they
--- are an error or a warning is a later pass's policy decision.
 public export
 recognizeKnownAttribute : String -> Maybe KnownAttributeKind
 recognizeKnownAttribute s =
@@ -114,10 +102,6 @@ CanonicalAttributeArgument = CanonicalAstNode AttributeArgumentNode
 --
 -- The distinction is preserved because it is visible in source (and a later
 -- pass may well want to reject the `Just []` form for known attributes).
---
--- Parameterized over the name and argument node types so each phase can
--- instantiate it with its own located wrappers, following the `PathNode` /
--- `QualifiedNameNode` pattern in Name.idr.
 --------------------------------------------------------------------------------
 
 public export
