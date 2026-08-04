@@ -18,15 +18,15 @@ data AstPhase     -- The four phases of processing the AST, each with its own me
 
 record CanonicalMetadata where
   constructor MkCanonicalMetadata
-  origin : NodeOrigin
+  provenance : NodeProvenance
 
 record ResolvedMetadata where
   constructor MkResolvedMetadata
-  origin : NodeOrigin
+  provenance : NodeProvenance
 
 record TypedMetadata where
   constructor MkTypedMetadata
-  origin       : NodeOrigin
+  provenance  : NodeProvenance
   inferredType : LeafType
 
 MetadataFor : AstPhase -> Type
@@ -72,17 +72,17 @@ surfaceAstNode astInfo value =
   MkAstNode astInfo () value
 
 public export
-canonicalAstNode : AstInfo -> NodeOrigin -> a -> CanonicalAstNode a
+canonicalAstNode : AstInfo -> NodeProvenance -> a -> CanonicalAstNode a
 canonicalAstNode astInfo origin value =
   MkAstNode astInfo (MkCanonicalMetadata origin) value
 
 public export
-resolvedAstNode : AstInfo -> NodeOrigin -> a -> ResolvedAstNode a
+resolvedAstNode : AstInfo -> NodeProvenance -> a -> ResolvedAstNode a
 resolvedAstNode astInfo origin value =
   MkAstNode astInfo (MkResolvedMetadata origin) value
 
 public export
-typedAstNode : AstInfo -> NodeOrigin -> LeafType -> a -> TypedAstNode a
+typedAstNode : AstInfo -> NodeProvenance -> LeafType -> a -> TypedAstNode a
 typedAstNode astInfo origin inferredType value =
   MkAstNode astInfo (MkTypedMetadata origin inferredType) value
 

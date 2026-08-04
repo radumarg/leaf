@@ -34,41 +34,23 @@ record ScopeId where
   id : Nat
 
 --------------------------------------------------------------------------------
--- Desugaring / generation provenance
+-- Node provenance: written/desugaring/type-checker
 --------------------------------------------------------------------------------
 
--- TODO: tentative, will be clarified as we implement desugaring.
-
--- Type of desugaring that 
---was applied to a node.
 public export
-data DesugarKind
-  = ForLoopDesugar
-  | MethodCallDesugar
-  | CompoundAssignmentDesugar
-  -- other desugarings will be added here
-
--- Type of generated node that was created 
--- by the compiler during desugaring.
-public export
-data GeneratedKind
-  = SyntheticReturn
-  | SyntheticBlock
-  | TemporaryBinding
-  | BuiltinExpansion
-  | OtherGenerated String
-
--- Type of origin for a node in the AST
--- Written: node was written by the user
--- Desugared: node was created by the 
--- compiler during desugaring.
--- Generated: node was created by the 
--- compiler during code generation.
-public export
-data NodeOrigin
+data NodeProvenance
   = Written
-  | Desugared DesugarKind
-  | Generated GeneratedKind
+  | DesugarQubitQualifier
+  | DesugarFunctionEffect
+  | DesugarFunctionReturnType
+
+
+public export
+Show NodeProvenance where
+  show Written = "user written code"
+  show DesugarQubitQualifier = "auto-generated default qubit qualifier"
+  show DesugarFunctionEffect = "auto-generated default function effect"
+  show DesugarFunctionReturnType = "auto-generated default function return type"
 
 --------------------------------------------------------------------------------
 -- Common AST information
@@ -102,5 +84,4 @@ record Scope where
 
 public export
 reserveNodeId : Nat -> (NodeId, Nat)
-reserveNodeId current =
-    (MkNodeId current, S current)
+reserveNodeId current = (MkNodeId current, S current)
