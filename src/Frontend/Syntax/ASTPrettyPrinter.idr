@@ -51,6 +51,9 @@ import Frontend.Syntax.Type
 -- Patterns (Frontend.Syntax.Pattern) do not depend on expressions, so they
 -- get their own, smaller mutual block, checked independently and reused
 -- freely (via ordinary, non-recursive calls) from the big block below.
+--
+-- Every node family is fixed to the SurfaceAstPhase phase throughout this module:
+-- pretty-printing only ever renders freshly-parsed source.
 --------------------------------------------------------------------------------
 
 public export
@@ -223,7 +226,7 @@ mutual
   showPattern : SurfacePattern -> String
   showPattern (MkAstNode _ _ pat) = showPatternNode pat
 
-  showPatternNode : PatternNode -> String
+  showPatternNode : PatternNode SurfaceAstPhase -> String
   showPatternNode pat =
     case pat of
       PatternWildcard          => "_"
@@ -342,7 +345,7 @@ binaryOperatorPrecedence op =
     BinaryLogicalAnd   => precLogicalAnd
     BinaryLogicalOr    => precLogicalOr
 
-exprOwnPrecedence : ExpressionNode -> Nat
+exprOwnPrecedence : ExpressionNode SurfaceAstPhase -> Nat
 exprOwnPrecedence e =
   case e of
     ExprLiteral _         => precAtomic
@@ -380,7 +383,7 @@ exprOwnPrecedence e =
     ExprContinue                                                              => precLowest
     ExprReturn _                                                                => precLowest
 
-isOperatorClassExpr : ExpressionNode -> Bool
+isOperatorClassExpr : ExpressionNode SurfaceAstPhase -> Bool
 isOperatorClassExpr e =
   case e of
     ExprUnary _ _   => True
@@ -404,7 +407,7 @@ mutual
   -- Types (Frontend.Syntax.Type)
   ------------------------------------------------------------------
 
-  showTyNode : PrettyStyle -> TyNode SurfaceExpr -> String
+  showTyNode : PrettyStyle -> TyNode SurfaceAstPhase SurfaceExpr -> String
   showTyNode style ty =
     case ty of
       TyPrimitive p         => showTypPrimLeaf p
@@ -441,7 +444,7 @@ mutual
 
   showFunctionTypeParameterList :
        PrettyStyle
-    -> List (SurfaceAstNode (FunctionTypeParameterNode SurfaceExpr))
+    -> List (SurfaceAstNode (FunctionTypeParameterNode SurfaceAstPhase SurfaceExpr))
     -> List String
   showFunctionTypeParameterList style [] = []
   showFunctionTypeParameterList style (MkAstNode _ _ (MkFunctionTypeParameterNode nm ty) :: rest) =
@@ -463,7 +466,7 @@ mutual
   showExpr : PrettyStyle -> SurfaceExpr -> String
   showExpr style = showExprAt style 0
 
-  wrapExpr : PrettyStyle -> Nat -> ExpressionNode -> String
+  wrapExpr : PrettyStyle -> Nat -> ExpressionNode SurfaceAstPhase -> String
   wrapExpr style outerReq value =
     let body     = showExpressionNodeBody style value
         own      = exprOwnPrecedence value
@@ -472,10 +475,10 @@ mutual
 
   -- Top-level (unconstrained) rendering of a raw ExpressionNode -- used by
   -- the Show instance further down.
-  showExpressionNode : PrettyStyle -> ExpressionNode -> String
+  showExpressionNode : PrettyStyle -> ExpressionNode SurfaceAstPhase -> String
   showExpressionNode style value = wrapExpr style 0 value
 
-  showExpressionNodeBody : PrettyStyle -> ExpressionNode -> String
+  showExpressionNodeBody : PrettyStyle -> ExpressionNode SurfaceAstPhase -> String
   showExpressionNodeBody style value =
     case value of
       ExprLiteral lit => showLiteral lit
@@ -581,14 +584,14 @@ mutual
   showExprList1 : PrettyStyle -> List1 SurfaceExpr -> List String
   showExprList1 style (e ::: es) = showExprAt style 0 e :: showExprList style es
 
-  showFieldInit : PrettyStyle -> SurfaceAstNode FieldInitializerNode -> String
+  showFieldInit : PrettyStyle -> AstNode SurfaceAstPhase (FieldInitializerNode SurfaceAstPhase) -> String
   showFieldInit style (MkAstNode _ _ f) =
     case f of
       FieldInitShorthand nm => showName nm
       FieldInitExplicit nm e => showName nm ++ ": " ++ showExprAt style 0 e
 
   showFieldInitList :
-       PrettyStyle -> List (SurfaceAstNode FieldInitializerNode) -> List String
+       PrettyStyle -> List (AstNode SurfaceAstPhase (FieldInitializerNode SurfaceAstPhase)) -> List String
   showFieldInitList style []        = []
   showFieldInitList style (f :: fs) = showFieldInit style f :: showFieldInitList style fs
 
@@ -596,7 +599,7 @@ mutual
   -- if / qif / sif
   ------------------------------------------------------------------
 
-  showClassicalIfNode : PrettyStyle -> ClassicalIfNode -> String
+  showClassicalIfNode : PrettyStyle -> ClassicalIfNode SurfaceAstPhase -> String
   showClassicalIfNode style (MkClassicalIfNode cond thenBlk elseBranch) =
     "if " ++ showExprAt style 0 cond ++ " " ++ showBlock style thenBlk ++
       (case elseBranch of
@@ -605,7 +608,7 @@ mutual
          Just (ElseChainedIf (MkAstNode _ _ chained)) =>
            " else " ++ showClassicalIfNode style chained)
 
-  showQuantumBranch : PrettyStyle -> QuantumBranchNode -> String
+  showQuantumBranch : PrettyStyle -> QuantumBranchNode SurfaceAstPhase -> String
   showQuantumBranch style branch =
     case branch of
       QuantumBranchBlock b      => showBlock style b
@@ -615,7 +618,7 @@ mutual
   -- match / qmatch / smatch
   ------------------------------------------------------------------
 
-  showClassicalMatchArmNode : PrettyStyle -> ClassicalMatchArmNode -> String
+  showClassicalMatchArmNode : PrettyStyle -> ClassicalMatchArmNode SurfaceAstPhase -> String
   showClassicalMatchArmNode style (MkClassicalMatchArmNode pat guard armBody) =
     showPattern pat ++
       (case guard of
@@ -624,25 +627,25 @@ mutual
       " => " ++ showExprAt style 0 armBody
 
   public export
-  showClassicalMatchArm : PrettyStyle -> SurfaceAstNode ClassicalMatchArmNode -> String
+  showClassicalMatchArm : PrettyStyle -> SurfaceClassicalMatchArm -> String
   showClassicalMatchArm style (MkAstNode _ _ arm) = showClassicalMatchArmNode style arm
 
   showClassicalMatchArmList :
-       PrettyStyle -> List (SurfaceAstNode ClassicalMatchArmNode) -> List String
+       PrettyStyle -> List SurfaceClassicalMatchArm -> List String
   showClassicalMatchArmList style []        = []
   showClassicalMatchArmList style (a :: as) =
     showClassicalMatchArm style a :: showClassicalMatchArmList style as
 
-  showQuantumMatchArmNode : PrettyStyle -> QuantumMatchArmNode -> String
+  showQuantumMatchArmNode : PrettyStyle -> QuantumMatchArmNode SurfaceAstPhase -> String
   showQuantumMatchArmNode style (MkQuantumMatchArmNode pat armBody) =
     showQuantumMatchPattern pat ++ " => " ++ showExprAt style 0 armBody
 
   public export
-  showQuantumMatchArm : PrettyStyle -> SurfaceAstNode QuantumMatchArmNode -> String
+  showQuantumMatchArm : PrettyStyle -> SurfaceQuantumMatchArm -> String
   showQuantumMatchArm style (MkAstNode _ _ arm) = showQuantumMatchArmNode style arm
 
   showQuantumMatchArmList :
-       PrettyStyle -> List (SurfaceAstNode QuantumMatchArmNode) -> List String
+       PrettyStyle -> List SurfaceQuantumMatchArm -> List String
   showQuantumMatchArmList style []        = []
   showQuantumMatchArmList style (a :: as) =
     showQuantumMatchArm style a :: showQuantumMatchArmList style as
@@ -651,7 +654,7 @@ mutual
   -- ctrl and adjoint
   ------------------------------------------------------------------
 
-  showControlExpr : PrettyStyle -> ControlExpressionNode -> String
+  showControlExpr : PrettyStyle -> ControlExpressionNode SurfaceAstPhase -> String
   showControlExpr style c =
     case c of
       ControlledCallable controls onBasis callable =>
@@ -661,7 +664,7 @@ mutual
         "ctrl(" ++ joinWith ", " (showExprList1 style controls) ++ ")" ++
           showOnBasis onBasis ++ " " ++ showBlock style body
 
-  showAdjointExpr : PrettyStyle -> AdjointExpressionNode -> String
+  showAdjointExpr : PrettyStyle -> AdjointExpressionNode SurfaceAstPhase -> String
   showAdjointExpr style a =
     case a of
       AdjointOfCallable callable => "adjoint(" ++ showExprAt style 0 callable ++ ")"
@@ -671,7 +674,7 @@ mutual
   -- Blocks and statements
   ------------------------------------------------------------------
 
-  showBlockNode : PrettyStyle -> BlockNode -> String
+  showBlockNode : PrettyStyle -> BlockNode SurfaceAstPhase -> String
   showBlockNode style (MkBlockNode innerDocs stmts finalE) =
     let docsStrs  = map showDocComment innerDocs
         stmtsStrs = showStatementList style stmts
@@ -687,7 +690,7 @@ mutual
   showBlock : PrettyStyle -> SurfaceBlock -> String
   showBlock style (MkAstNode _ _ blk) = showBlockNode style blk
 
-  showStatementNode : PrettyStyle -> StatementNode -> String
+  showStatementNode : PrettyStyle -> StatementNode SurfaceAstPhase -> String
   showStatementNode style stmt =
     case stmt of
       StatementLet letBinding         => showLetBindingNode style letBinding ++ ";"
@@ -703,7 +706,7 @@ mutual
   showStatementList style []        = []
   showStatementList style (s :: ss) = showStatement style s :: showStatementList style ss
 
-  showLetBindingNode : PrettyStyle -> LetBindingNode -> String
+  showLetBindingNode : PrettyStyle -> LetBindingNode SurfaceAstPhase -> String
   showLetBindingNode style (MkLetBindingNode quals pat tyAnn maybeInit) =
     "let " ++ showQualifiersPrefix quals ++ showPattern pat ++
       (case tyAnn of
@@ -718,11 +721,11 @@ mutual
   showLetBinding : PrettyStyle -> SurfaceLetBinding -> String
   showLetBinding style (MkAstNode _ _ lb) = showLetBindingNode style lb
 
-  showAssignmentNode : PrettyStyle -> AssignmentNode -> String
+  showAssignmentNode : PrettyStyle -> AssignmentNode SurfaceAstPhase -> String
   showAssignmentNode style (MkAssignmentNode (MkAstNode _ _ target) (MkAstNode _ _ op) val) =
     showAssignmentTargetNode style target ++ " " ++ show op ++ " " ++ showExprAt style 0 val
 
-  showAssignmentTargetNode : PrettyStyle -> AssignmentTargetNode -> String
+  showAssignmentTargetNode : PrettyStyle -> AssignmentTargetNode SurfaceAstPhase -> String
   showAssignmentTargetNode style target =
     case target of
       AssignTargetName nm      => showName nm
@@ -739,7 +742,7 @@ mutual
   -- Contracts: requires/ensures clauses and their predicates
   ------------------------------------------------------------------
 
-  showContractPredicateNode : PrettyStyle -> ContractPredicateNode SurfaceExpr -> String
+  showContractPredicateNode : PrettyStyle -> ContractPredicateNode SurfaceAstPhase SurfaceExpr -> String
   showContractPredicateNode style predicate =
     case predicate of
       ContractClean e        => "clean(" ++ showExprAt style 0 e ++ ")"
@@ -759,7 +762,7 @@ mutual
   showContractPredicate : PrettyStyle -> SurfaceContractPredicate -> String
   showContractPredicate style (MkAstNode _ _ p) = showContractPredicateNode style p
 
-  showContractClauseNode : PrettyStyle -> ContractClauseNode SurfaceExpr -> String
+  showContractClauseNode : PrettyStyle -> ContractClauseNode SurfaceAstPhase SurfaceExpr -> String
   showContractClauseNode style clause =
     case clause of
       RequiresClause p => "requires " ++ showContractPredicate style p
@@ -778,7 +781,7 @@ mutual
   -- Function declarations and parameters
   ------------------------------------------------------------------
 
-  showFunctionParameterNode : PrettyStyle -> FunctionParameterNode -> String
+  showFunctionParameterNode : PrettyStyle -> FunctionParameterNode SurfaceAstPhase -> String
   showFunctionParameterNode style p =
     case p of
       NormalParameter docs mutability nm ty =>
@@ -800,7 +803,7 @@ mutual
   showFunctionParameterList style (p :: ps) =
     showFunctionParameter style p :: showFunctionParameterList style ps
 
-  showFunctionDeclarationNode : PrettyStyle -> FunctionDeclarationNode -> String
+  showFunctionDeclarationNode : PrettyStyle -> FunctionDeclarationNode SurfaceAstPhase -> String
   showFunctionDeclarationNode style
     (MkFunctionDeclarationNode docs attrs vis constness effect nm params retTy supports contracts body) =
     let visibilityStr = case vis of
@@ -830,7 +833,7 @@ mutual
   showFunctionDeclaration style (MkAstNode _ _ fd) = showFunctionDeclarationNode style fd
 
   showImplFunctionList :
-       PrettyStyle -> List (SurfaceAstNode FunctionDeclarationNode) -> List String
+       PrettyStyle -> List SurfaceFunctionDeclaration -> List String
   showImplFunctionList style []        = []
   showImplFunctionList style (MkAstNode _ _ fd :: rest) =
     showFunctionDeclarationNode style fd :: showImplFunctionList style rest
@@ -839,15 +842,16 @@ mutual
   -- struct / enum / qenum declarations
   ------------------------------------------------------------------
 
-  showStructField : PrettyStyle -> SurfaceAstNode StructFieldNode -> String
+  showStructField : PrettyStyle -> AstNode SurfaceAstPhase (StructFieldNode SurfaceAstPhase) -> String
   showStructField style (MkAstNode _ _ (MkStructFieldNode docs nm ty)) =
     docsPrefix docs ++ showName nm ++ ": " ++ showTy style ty
 
-  showStructFieldList : PrettyStyle -> List (SurfaceAstNode StructFieldNode) -> List String
+  showStructFieldList :
+       PrettyStyle -> List (AstNode SurfaceAstPhase (StructFieldNode SurfaceAstPhase)) -> List String
   showStructFieldList style []        = []
   showStructFieldList style (f :: fs) = showStructField style f :: showStructFieldList style fs
 
-  showStructDeclarationNode : PrettyStyle -> StructDeclarationNode -> String
+  showStructDeclarationNode : PrettyStyle -> StructDeclarationNode SurfaceAstPhase -> String
   showStructDeclarationNode style (MkStructDeclarationNode docs attrs vis nm fields) =
     docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "struct " ++ showName nm ++
       " " ++ braces (joinWith ", " (showStructFieldList style fields))
@@ -856,22 +860,23 @@ mutual
   showStructDeclaration : PrettyStyle -> SurfaceStructDeclaration -> String
   showStructDeclaration style (MkAstNode _ _ sd) = showStructDeclarationNode style sd
 
-  showEnumVariantBody : PrettyStyle -> EnumVariantBody -> String
+  showEnumVariantBody : PrettyStyle -> EnumVariantBody SurfaceAstPhase -> String
   showEnumVariantBody style body =
     case body of
       VariantUnit          => ""
       VariantTuple tys      => parens (joinWith ", " (showTyList1 style tys))
       VariantStruct fields   => " " ++ braces (joinWith ", " (showStructFieldList style fields))
 
-  showEnumVariant : PrettyStyle -> SurfaceAstNode EnumVariantNode -> String
+  showEnumVariant : PrettyStyle -> AstNode SurfaceAstPhase (EnumVariantNode SurfaceAstPhase) -> String
   showEnumVariant style (MkAstNode _ _ (MkEnumVariantNode docs nm body)) =
     docsPrefix docs ++ showName nm ++ showEnumVariantBody style body
 
-  showEnumVariantList : PrettyStyle -> List (SurfaceAstNode EnumVariantNode) -> List String
+  showEnumVariantList :
+       PrettyStyle -> List (AstNode SurfaceAstPhase (EnumVariantNode SurfaceAstPhase)) -> List String
   showEnumVariantList style []        = []
   showEnumVariantList style (v :: vs) = showEnumVariant style v :: showEnumVariantList style vs
 
-  showEnumDeclarationNode : PrettyStyle -> EnumDeclarationNode -> String
+  showEnumDeclarationNode : PrettyStyle -> EnumDeclarationNode SurfaceAstPhase -> String
   showEnumDeclarationNode style (MkEnumDeclarationNode docs attrs vis nm variants) =
     docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "enum " ++ showName nm ++
       " " ++ braces (joinWith ", " (showEnumVariantList style variants))
@@ -880,15 +885,16 @@ mutual
   showEnumDeclaration : PrettyStyle -> SurfaceEnumDeclaration -> String
   showEnumDeclaration style (MkAstNode _ _ ed) = showEnumDeclarationNode style ed
 
-  showQEnumVariant : PrettyStyle -> SurfaceAstNode QEnumVariantNode -> String
+  showQEnumVariant : PrettyStyle -> AstNode SurfaceAstPhase (QEnumVariantNode SurfaceAstPhase) -> String
   showQEnumVariant style (MkAstNode _ _ (MkQEnumVariantNode docs nm payloadTys)) =
     docsPrefix docs ++ showName nm ++ parens (joinWith ", " (showTyList1 style payloadTys))
 
-  showQEnumVariantList : PrettyStyle -> List (SurfaceAstNode QEnumVariantNode) -> List String
+  showQEnumVariantList :
+       PrettyStyle -> List (AstNode SurfaceAstPhase (QEnumVariantNode SurfaceAstPhase)) -> List String
   showQEnumVariantList style []        = []
   showQEnumVariantList style (v :: vs) = showQEnumVariant style v :: showQEnumVariantList style vs
 
-  showQEnumDeclarationNode : PrettyStyle -> QEnumDeclarationNode -> String
+  showQEnumDeclarationNode : PrettyStyle -> QEnumDeclarationNode SurfaceAstPhase -> String
   showQEnumDeclarationNode style (MkQEnumDeclarationNode docs attrs vis nm variants) =
     docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "qenum " ++ showName nm ++
       " " ++ braces (joinWith ", " (showQEnumVariantList style variants))
@@ -901,7 +907,7 @@ mutual
   -- impl / const / use / mod declarations
   ------------------------------------------------------------------
 
-  showImplDeclarationNode : PrettyStyle -> ImplDeclarationNode -> String
+  showImplDeclarationNode : PrettyStyle -> ImplDeclarationNode SurfaceAstPhase -> String
   showImplDeclarationNode style (MkImplDeclarationNode docs target fns) =
     docsPrefix docs ++ "impl " ++ showPath target ++ " " ++
       braces (joinWith " " (showImplFunctionList style fns))
@@ -910,7 +916,7 @@ mutual
   showImplDeclaration : PrettyStyle -> SurfaceImplDeclaration -> String
   showImplDeclaration style (MkAstNode _ _ impl) = showImplDeclarationNode style impl
 
-  showConstDeclarationNode : PrettyStyle -> ConstDeclarationNode -> String
+  showConstDeclarationNode : PrettyStyle -> ConstDeclarationNode SurfaceAstPhase -> String
   showConstDeclarationNode style (MkConstDeclarationNode docs vis nm ty val) =
     docsPrefix docs ++ optionalVisPrefix vis ++ "const " ++ showName nm ++ ": " ++ showTy style ty ++
       " = " ++ showExprAt style 0 val ++ ";"
@@ -919,7 +925,7 @@ mutual
   showConstDeclaration : PrettyStyle -> SurfaceConstDeclaration -> String
   showConstDeclaration style (MkAstNode _ _ cd) = showConstDeclarationNode style cd
 
-  showUseDeclarationNode : PrettyStyle -> UseDeclarationNode -> String
+  showUseDeclarationNode : PrettyStyle -> UseDeclarationNode SurfaceAstPhase -> String
   showUseDeclarationNode style (MkUseDeclarationNode docs vis path) =
     docsPrefix docs ++ optionalVisPrefix vis ++ "use " ++ showPath path ++ ";"
 
@@ -927,11 +933,11 @@ mutual
   showUseDeclaration : PrettyStyle -> SurfaceUseDeclaration -> String
   showUseDeclaration style (MkAstNode _ _ ud) = showUseDeclarationNode style ud
 
-  showModuleDeclarationNode : PrettyStyle -> ModuleDeclarationNode -> String
+  showModuleDeclarationNode : PrettyStyle -> ModuleDeclarationNode SurfaceAstPhase -> String
   showModuleDeclarationNode style (MkModuleDeclarationNode docs vis nm body) =
     docsPrefix docs ++ optionalVisPrefix vis ++ "mod " ++ showName nm ++ showModuleBody style body
 
-  showModuleBody : PrettyStyle -> ModuleBody -> String
+  showModuleBody : PrettyStyle -> ModuleBody SurfaceAstPhase -> String
   showModuleBody style body =
     case body of
       ModuleInline innerDocs items =>
@@ -946,7 +952,7 @@ mutual
   -- Items and the source file
   ------------------------------------------------------------------
 
-  showItemNode : PrettyStyle -> ItemNode -> String
+  showItemNode : PrettyStyle -> ItemNode SurfaceAstPhase -> String
   showItemNode style item =
     case item of
       ItemFunction fd => showFunctionDeclarationNode style fd
@@ -966,7 +972,7 @@ mutual
   showItemList style []        = []
   showItemList style (i :: is) = showItem style i :: showItemList style is
 
-  showSourceFileNode : PrettyStyle -> SourceFileNode -> String
+  showSourceFileNode : PrettyStyle -> SourceFileNode SurfaceAstPhase -> String
   showSourceFileNode style (MkSourceFileNode innerDocs items) =
     joinWith "\n" (map showDocComment innerDocs ++ showItemList style items)
 
@@ -1020,8 +1026,8 @@ showTyStrict = showTy PrettyStrict
 
 --------------------------------------------------------------------------------
 -- Show instances on the raw (un-located) payload types. Frontend.ASTPhases
--- implements `Show a => Show (SurfaceAstNode a)` (and the Canonical/Resolved/
--- Typed equivalents) generically by printing `value` alone and skipping
+-- implements `Show a => Show (SurfaceAstNode a)` (and the CanonicalAstPhase/ResolvedAstPhase/
+-- TypedAstPhase equivalents) generically by printing `value` alone and skipping
 -- AstInfo/NodeOrigin -- so giving each raw type below a Show instance is
 -- enough for every SurfaceXxx alias in Frontend.Syntax.AST to be `Show`
 -- automatically, always in PrettyLax style. Call showXxxStrict (or
@@ -1029,85 +1035,85 @@ showTyStrict = showTy PrettyStrict
 --------------------------------------------------------------------------------
 
 public export
-implementation Show ExpressionNode where
+implementation Show (ExpressionNode SurfaceAstPhase) where
   show = showExpressionNode PrettyLax
 
 public export
-implementation Show BlockNode where
+implementation Show (BlockNode SurfaceAstPhase) where
   show = showBlockNode PrettyLax
 
 public export
-implementation Show StatementNode where
+implementation Show (StatementNode SurfaceAstPhase) where
   show = showStatementNode PrettyLax
 
 public export
-implementation Show ItemNode where
+implementation Show (ItemNode SurfaceAstPhase) where
   show = showItemNode PrettyLax
 
 public export
-implementation Show (TyNode SurfaceExpr) where
+implementation Show (TyNode SurfaceAstPhase SurfaceExpr) where
   show = showTyNode PrettyLax
 
 public export
-implementation Show (ContractClauseNode SurfaceExpr) where
+implementation Show (ContractClauseNode SurfaceAstPhase SurfaceExpr) where
   show = showContractClauseNode PrettyLax
 
 public export
-implementation Show (ContractPredicateNode SurfaceExpr) where
+implementation Show (ContractPredicateNode SurfaceAstPhase SurfaceExpr) where
   show = showContractPredicateNode PrettyLax
 
 public export
-implementation Show SourceFileNode where
+implementation Show (SourceFileNode SurfaceAstPhase) where
   show = showSourceFileNode PrettyLax
 
 public export
-implementation Show FunctionDeclarationNode where
+implementation Show (FunctionDeclarationNode SurfaceAstPhase) where
   show = showFunctionDeclarationNode PrettyLax
 
 public export
-implementation Show FunctionParameterNode where
+implementation Show (FunctionParameterNode SurfaceAstPhase) where
   show = showFunctionParameterNode PrettyLax
 
 public export
-implementation Show StructDeclarationNode where
+implementation Show (StructDeclarationNode SurfaceAstPhase) where
   show = showStructDeclarationNode PrettyLax
 
 public export
-implementation Show EnumDeclarationNode where
+implementation Show (EnumDeclarationNode SurfaceAstPhase) where
   show = showEnumDeclarationNode PrettyLax
 
 public export
-implementation Show QEnumDeclarationNode where
+implementation Show (QEnumDeclarationNode SurfaceAstPhase) where
   show = showQEnumDeclarationNode PrettyLax
 
 public export
-implementation Show ImplDeclarationNode where
+implementation Show (ImplDeclarationNode SurfaceAstPhase) where
   show = showImplDeclarationNode PrettyLax
 
 public export
-implementation Show ConstDeclarationNode where
+implementation Show (ConstDeclarationNode SurfaceAstPhase) where
   show = showConstDeclarationNode PrettyLax
 
 public export
-implementation Show UseDeclarationNode where
+implementation Show (UseDeclarationNode SurfaceAstPhase) where
   show = showUseDeclarationNode PrettyLax
 
 public export
-implementation Show ModuleDeclarationNode where
+implementation Show (ModuleDeclarationNode SurfaceAstPhase) where
   show = showModuleDeclarationNode PrettyLax
 
 public export
-implementation Show LetBindingNode where
+implementation Show (LetBindingNode SurfaceAstPhase) where
   show = showLetBindingNode PrettyLax
 
 public export
-implementation Show AssignmentTargetNode where
+implementation Show (AssignmentTargetNode SurfaceAstPhase) where
   show = showAssignmentTargetNode PrettyLax
 
 public export
-implementation Show ClassicalMatchArmNode where
+implementation Show (ClassicalMatchArmNode SurfaceAstPhase) where
   show = showClassicalMatchArmNode PrettyLax
 
 public export
-implementation Show QuantumMatchArmNode where
+implementation Show (QuantumMatchArmNode SurfaceAstPhase) where
   show = showQuantumMatchArmNode PrettyLax

@@ -245,7 +245,7 @@ validateAttributeList = validateAttributeListFrom []
 -- Is this type SYNTACTICALLY a qubit-carrying type? Only the cases visible
 -- without resolution: qubit itself, arrays/slices of it, through parens and
 -- qualifiers. Path types that CONTAIN qubits are typing's problem.
-isSyntacticallyQubitTy : TyNode SurfaceExpr -> Bool
+isSyntacticallyQubitTy : TyNode SurfaceAstPhase SurfaceExpr -> Bool
 isSyntacticallyQubitTy ty =
   case ty of
     TyPrimitive TypPrimQubit                   => True
@@ -297,7 +297,7 @@ mutual
   -- `supports` and `contracts` are not walked here: the parser rejects
   -- `supports` and `requires`/`ensures` outright, so those fields are
   -- always empty by construction.
-  validateFunctionDecl : FunctionDeclarationNode -> List ValidationError
+  validateFunctionDecl : FunctionDeclarationNode SurfaceAstPhase -> List ValidationError
   validateFunctionDecl
     (MkFunctionDeclarationNode _ attrs _ _ _ _ params retTy _ _ body) =
        validateAttributeList attrs
@@ -309,7 +309,7 @@ mutual
   -- later (e.g. `fn f(x: i32, x: i32)`) is reported as DuplicateParameterName.
   validateParameterList :
        List String
-    -> List (SurfaceAstNode FunctionParameterNode)
+    -> List SurfaceFunctionParameter
     -> List ValidationError
   validateParameterList _ [] = []
   validateParameterList seenNames (MkAstNode _ _ p :: rest) =
@@ -325,26 +325,26 @@ mutual
       ReceiverParameter _ _ =>
         validateParameterList seenNames rest
 
-  validateStructDecl : StructDeclarationNode -> List ValidationError
+  validateStructDecl : StructDeclarationNode SurfaceAstPhase -> List ValidationError
   validateStructDecl (MkStructDeclarationNode _ attrs _ _ fields) =
        validateAttributeList attrs
     ++ validateStructFieldList fields
 
   validateStructFieldList :
-       List (SurfaceAstNode StructFieldNode)
+       List (AstNode SurfaceAstPhase (StructFieldNode SurfaceAstPhase))
     -> List ValidationError
   validateStructFieldList [] = []
   validateStructFieldList
     (MkAstNode _ _ (MkStructFieldNode _ _ fieldTy) :: rest) =
     validateTy topLevelContext fieldTy ++ validateStructFieldList rest
 
-  validateEnumDecl : EnumDeclarationNode -> List ValidationError
+  validateEnumDecl : EnumDeclarationNode SurfaceAstPhase -> List ValidationError
   validateEnumDecl (MkEnumDeclarationNode _ attrs _ _ variants) =
        validateAttributeList attrs
     ++ validateEnumVariantList variants
 
   validateEnumVariantList :
-       List (SurfaceAstNode EnumVariantNode)
+       List (AstNode SurfaceAstPhase (EnumVariantNode SurfaceAstPhase))
     -> List ValidationError
   validateEnumVariantList [] = []
   validateEnumVariantList
@@ -355,13 +355,13 @@ mutual
        VariantStruct fields   => validateStructFieldList fields)
       ++ validateEnumVariantList rest
 
-  validateQEnumDecl : QEnumDeclarationNode -> List ValidationError
+  validateQEnumDecl : QEnumDeclarationNode SurfaceAstPhase -> List ValidationError
   validateQEnumDecl (MkQEnumDeclarationNode _ attrs _ _ variants) =
        validateAttributeList attrs
     ++ validateQEnumVariantList variants
 
   validateQEnumVariantList :
-       List (SurfaceAstNode QEnumVariantNode)
+       List (AstNode SurfaceAstPhase (QEnumVariantNode SurfaceAstPhase))
     -> List ValidationError
   validateQEnumVariantList [] = []
   validateQEnumVariantList
@@ -369,12 +369,12 @@ mutual
     validateTyList1 topLevelContext payloadTys
       ++ validateQEnumVariantList rest
 
-  validateImplDecl : ImplDeclarationNode -> List ValidationError
+  validateImplDecl : ImplDeclarationNode SurfaceAstPhase -> List ValidationError
   validateImplDecl (MkImplDeclarationNode _ _ fns) =
     validateImplFunctionList fns
 
   validateImplFunctionList :
-       List (SurfaceAstNode FunctionDeclarationNode)
+       List SurfaceFunctionDeclaration
     -> List ValidationError
   validateImplFunctionList [] = []
   validateImplFunctionList (MkAstNode _ _ fd :: rest) =
@@ -382,12 +382,12 @@ mutual
 
   -- Const initializers are NOT function bodies: `return` inside one is an
   -- error, which topLevelContext encodes.
-  validateConstDecl : ConstDeclarationNode -> List ValidationError
+  validateConstDecl : ConstDeclarationNode SurfaceAstPhase -> List ValidationError
   validateConstDecl (MkConstDeclarationNode _ _ _ constTy constVal) =
        validateTy topLevelContext constTy
     ++ validateExpr topLevelContext constVal
 
-  validateModuleDecl : ModuleDeclarationNode -> List ValidationError
+  validateModuleDecl : ModuleDeclarationNode SurfaceAstPhase -> List ValidationError
   validateModuleDecl (MkModuleDeclarationNode _ _ _ body) =
     case body of
       ModuleInline _ items => validateItemList items
@@ -430,7 +430,7 @@ mutual
 
   validateAssignmentTarget :
        ValidationContext
-    -> SurfaceAstNode AssignmentTargetNode
+    -> SurfaceAssignmentTarget
     -> List ValidationError
   validateAssignmentTarget ctx (MkAstNode _ _ target) =
     case target of
@@ -547,7 +547,7 @@ mutual
 
   validateFieldInitList :
        ValidationContext
-    -> List (SurfaceAstNode FieldInitializerNode)
+    -> List (AstNode SurfaceAstPhase (FieldInitializerNode SurfaceAstPhase))
     -> List ValidationError
   validateFieldInitList ctx [] = []
   validateFieldInitList ctx (MkAstNode _ _ f :: rest) =
@@ -557,7 +557,7 @@ mutual
       ++ validateFieldInitList ctx rest
 
   validateClassicalIf :
-       ValidationContext -> ClassicalIfNode -> List ValidationError
+       ValidationContext -> ClassicalIfNode SurfaceAstPhase -> List ValidationError
   validateClassicalIf ctx (MkClassicalIfNode ifCond thenBlock elseBranch) =
        validateExpr ctx ifCond
     ++ validateBlock ctx thenBlock
@@ -568,7 +568,7 @@ mutual
             validateClassicalIf ctx chained)
 
   validateQuantumBranch :
-       ValidationContext -> QuantumBranchNode -> List ValidationError
+       ValidationContext -> QuantumBranchNode SurfaceAstPhase -> List ValidationError
   validateQuantumBranch ctx branch =
     case branch of
       QuantumBranchBlock b      => validateBlock ctx b
@@ -576,7 +576,7 @@ mutual
 
   validateClassicalArmList :
        ValidationContext
-    -> List (SurfaceAstNode ClassicalMatchArmNode)
+    -> List SurfaceClassicalMatchArm
     -> List ValidationError
   validateClassicalArmList ctx [] = []
   validateClassicalArmList ctx
@@ -587,7 +587,7 @@ mutual
 
   validateQuantumArmBodies :
        ValidationContext
-    -> List (SurfaceAstNode QuantumMatchArmNode)
+    -> List SurfaceQuantumMatchArm
     -> List ValidationError
   validateQuantumArmBodies ctx [] = []
   validateQuantumArmBodies ctx
@@ -595,7 +595,7 @@ mutual
     validateExpr ctx armBody ++ validateQuantumArmBodies ctx rest
 
   validateControlExpr :
-       ValidationContext -> ControlExpressionNode -> List ValidationError
+       ValidationContext -> ControlExpressionNode SurfaceAstPhase -> List ValidationError
   validateControlExpr ctx c =
     case c of
       ControlledCallable controls _ callable =>
@@ -604,7 +604,7 @@ mutual
         validateExprList1 ctx controls ++ validateBlock ctx body
 
   validateAdjointExpr :
-       ValidationContext -> AdjointExpressionNode -> List ValidationError
+       ValidationContext -> AdjointExpressionNode SurfaceAstPhase -> List ValidationError
   validateAdjointExpr ctx a =
     case a of
       AdjointOfCallable callable => validateExpr ctx callable
@@ -658,7 +658,7 @@ mutual
 
   validateFunctionTypeParams :
        ValidationContext
-    -> List (SurfaceAstNode (FunctionTypeParameterNode SurfaceExpr))
+    -> List (AstNode SurfaceAstPhase (FunctionTypeParameterNode SurfaceAstPhase SurfaceExpr))
     -> List ValidationError
   validateFunctionTypeParams ctx [] = []
   validateFunctionTypeParams ctx

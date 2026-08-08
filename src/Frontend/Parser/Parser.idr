@@ -500,7 +500,7 @@ mutual
   ||| Parses one named and typed parameter inside a function type.
   ||| Tested by: `fn callback(f: fn(value: i32)) {}`.
   parseFunctionTypeParameter : TypeRule True
-      (SurfaceAstNode (FunctionTypeParameterNode SurfaceExpr))
+      (SurfaceAstNode (FunctionTypeParameterNode SurfaceAstPhase SurfaceExpr))
   parseFunctionTypeParameter nodeId tokens smaller acc@(SA recur) =
     let (parameterNodeId, afterParameterNodeId) = reserveNodeId nodeId in
     case parseName "function type parameter name" afterParameterNodeId tokens acc of
@@ -533,9 +533,9 @@ mutual
   ||| followed immediately by `)` as a trailing comma.
   ||| Tested by: `fn callback(f: fn(value: i32)) {}`.
   parseFunctionTypeParameterList :
-       SnocList (SurfaceAstNode (FunctionTypeParameterNode SurfaceExpr))
+       SnocList (SurfaceAstNode (FunctionTypeParameterNode SurfaceAstPhase SurfaceExpr))
     -> TypeRule True
-         (CommaList (SurfaceAstNode (FunctionTypeParameterNode SurfaceExpr)))
+         (CommaList (SurfaceAstNode (FunctionTypeParameterNode SurfaceAstPhase SurfaceExpr)))
   parseFunctionTypeParameterList _ _ [] _ _ = Fail0 (B EOI NoBounds)
   parseFunctionTypeParameterList parsed nodeId
       ((B token tokenBounds) :: remaining) smaller acc@(SA recur) =
@@ -758,7 +758,7 @@ parseParameterMutability nodeId tokens _ =
 
 ||| Parses one function parameter, including docs, mutability, name, and type.
 ||| Tested by: `fn increment(mut x: i32) -> i32 { x += 1; x }`.
-parseFunctionParameter : Rule True (SurfaceAstNode FunctionParameterNode)
+parseFunctionParameter : Rule True (SurfaceFunctionParameter)
 parseFunctionParameter nodeId tokens acc =
     let (parameterNodeId, nextNodeId) = reserveNodeId nodeId
         Succ0 (docs, afterDocsNodeId) afterDocs @{docsSuffix} :=
@@ -794,8 +794,8 @@ parseFunctionParameter nodeId tokens acc =
 ||| is `)`, which accepts a trailing comma.
 ||| Tested by: `fn add(i: i32, point: (i32, i32)) {}`.
 parseFunctionParameterList :
-     SnocList (SurfaceAstNode FunctionParameterNode)
-  -> Rule True (List (SurfaceAstNode FunctionParameterNode))
+     SnocList (SurfaceFunctionParameter)
+  -> Rule True (List (SurfaceFunctionParameter))
 parseFunctionParameterList _ _ [] _ = Fail0 (B EOI NoBounds)
 parseFunctionParameterList parsed nodeId
     ((B token tokenBounds) :: remaining) acc@(SA recur) =
@@ -825,7 +825,7 @@ parseFunctionParameterList parsed nodeId
 
 ||| Parses a function declaration's parenthesized parameter list.
 ||| Tested by: `fn add(i: i32, point: (i32, i32)) {}`.
-parseFunctionParameters : Rule True (List (SurfaceAstNode FunctionParameterNode))
+parseFunctionParameters : Rule True (List (SurfaceFunctionParameter))
 parseFunctionParameters _ [] _ = Fail0 (B EOI NoBounds)
 parseFunctionParameters nodeId tokens@(_ :: _) _ =
     (exact (TokSym SymLParen) *> acc (parseFunctionParameterList [<] nodeId)) tokens
@@ -2083,7 +2083,7 @@ parseForExpression forBounds _ _ _ _ _ =
 ||| Builds a `break` or `return` expression, parsing its optional value.
 parseOptionalExitExpression :
      {0 root : List (Bounded Token)}
-  -> (Maybe SurfaceExpr -> ExpressionNode)
+  -> (Maybe SurfaceExpr -> ExpressionNode SurfaceAstPhase)
   -> Bounds
   -> NestedRule False SurfaceExpr root
 parseOptionalExitExpression makeExit keywordBounds smaller nodeId tokens suffix _ =
@@ -2125,7 +2125,7 @@ parseIfExpression ifBounds smaller nodeId tokens suffix (SA recur) =
                 (weaken afterConditionWithin) recur
         | Fail0 err => Fail0 err
       0 afterThenWithin = suffixWithinStrict thenSuffix suffix
-      makeIfExpression : Maybe ClassicalElseNode -> SourceSpan -> SurfaceExpr
+      makeIfExpression : Maybe (ClassicalElseNode SurfaceAstPhase) -> SourceSpan -> SurfaceExpr
       makeIfExpression elseBranch endSpan =
         let ifSpan = mergeSpans (sourceSpan ifBounds) endSpan
             ifNode = MkClassicalIfNode condition thenBlock elseBranch
@@ -2174,7 +2174,7 @@ parseLetInitializerValue :
      {0 root : List (Bounded Token)}
   -> InitializerMarker
   -> Bounds
-  -> NestedRule True LetInitializerNode root
+  -> NestedRule True (LetInitializerNode SurfaceAstPhase) root
 parseLetInitializerValue markerValue markerBounds smaller nodeId tokens suffix _ =
   let (markerNodeId, nextNodeId) = reserveNodeId nodeId
       marker = surfaceAstNode (MkAstInfo markerNodeId (sourceSpan markerBounds))
@@ -2188,7 +2188,7 @@ parseLetInitializerValue markerValue markerBounds smaller nodeId tokens suffix _
 ||| Tested by: `fn compute() {let q: qubit := f(q);}`.
 parseLetInitializer :
      {0 root : List (Bounded Token)}
-  -> NestedRule True LetInitializerNode root
+  -> NestedRule True (LetInitializerNode SurfaceAstPhase) root
 parseLetInitializer _ _ [] _ _ = Fail0 (B EOI NoBounds)
 parseLetInitializer smaller nodeId
     ((B (TokSym symbol) bounds) :: remaining) suffix (SA recur) =
@@ -2228,7 +2228,7 @@ parseLetStatement smaller nodeId
         | Fail0 err => Fail0 err
       makeLetStatement :
            Maybe SurfaceTy
-        -> Maybe LetInitializerNode
+        -> Maybe (LetInitializerNode SurfaceAstPhase)
         -> Bounds
         -> SurfaceStatement
       makeLetStatement ty initializer semiBounds =

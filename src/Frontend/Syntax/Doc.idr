@@ -14,27 +14,6 @@ import Frontend.ASTPhases
 --   /** outer block doc */  -- documents the item that FOLLOWS
 --   //! inner line doc      -- documents the ENCLOSING module/block
 --   /*! inner block doc */  -- documents the ENCLOSING module/block
---
--- Design choices:
---
---   * The AST records the raw spelling of every doc comment, so a
---     pretty-printer or doc generator can round-trip the exact source text.
---   * `DocCommentPlacement` is stored on the node even though the attachment
---     site (a `List DocComment` on an item vs. on a module/block) already
---     implies it. Keeping it explicit preserves what the user actually wrote,
---     which matters for diagnostics such as "inner doc comment is only
---     allowed at the start of a module or block".
---   * Attachment itself is NOT modeled here. Items, fields, variants, and
---     parameters carry their own `List SurfaceDocComment` (outer docs);
---     modules and blocks carry theirs (inner docs). This module only defines
---     what a single doc comment is.
---
--- Relationship to the lexer: `TokOuterDoc`/`TokInnerDoc` carry the raw text
--- and already fix the placement. The line-vs-block distinction is recovered
--- by the parser from the leading characters of the raw spelling ("///" or
--- "//!" vs. "/**" or "/*!"). This assumes the lexer preserves the comment
--- delimiters in the token payload; if the lexer ever strips them, the
--- kind must instead be carried on the token itself.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -57,13 +36,7 @@ data DocCommentPlacement
 
 --------------------------------------------------------------------------------
 -- Doc comment node
---------------------------------------------------------------------------------
 -- A single documentation comment as it appeared in source.
---
--- `docCommentRawText` is the full raw spelling, delimiters included, exactly
--- as the lexer captured it. No trimming, no de-indentation, no stripping of
--- leading `*` in block docs -- all of that is presentation-layer work for a
--- later documentation pass, not the AST's concern.
 --------------------------------------------------------------------------------
 
 public export
@@ -76,23 +49,23 @@ record DocCommentNode where
 --------------------------------------------------------------------------------
 -- Phase wrappers
 --------------------------------------------------------------------------------
--- Doc comments are phase-invariant payloads: resolution and type checking
--- never change their content, only the wrapper node changes as the comment is
--- carried along on the declarations it documents.
---------------------------------------------------------------------------------
+
+public export
+DocComment : AstPhase -> Type
+DocComment phase = AstNode phase DocCommentNode
 
 public export
 SurfaceDocComment : Type
-SurfaceDocComment = SurfaceAstNode DocCommentNode
+SurfaceDocComment = DocComment SurfaceAstPhase
 
 public export
 CanonicalDocComment : Type
-CanonicalDocComment = CanonicalAstNode DocCommentNode
+CanonicalDocComment = DocComment CanonicalAstPhase
 
 public export
 ResolvedDocComment : Type
-ResolvedDocComment = ResolvedAstNode DocCommentNode
+ResolvedDocComment = DocComment ResolvedAstPhase
 
 public export
 TypedDocComment : Type
-TypedDocComment = TypedAstNode DocCommentNode
+TypedDocComment = DocComment TypedAstPhase

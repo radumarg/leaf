@@ -17,8 +17,9 @@ import Frontend.Syntax.Name
 --
 -- Design choices:
 --
---   * The surface AST stores every attribute GENERICALLY: a name plus an
---     optional argument list. 
+--   * Every phase stores an attribute GENERICALLY: a name plus an optional
+--     argument list -- indexed by `phase : AstPhase` like every other node
+--     family, following ASTPhases.idr's XFor convention.
 --
 --   * The parser enforces argument SHAPE directly, for every attribute
 --     regardless of name: `#[name]` (no arguments) or `#[name("string")]`
@@ -29,15 +30,18 @@ import Frontend.Syntax.Name
 --     names are preserved by the parser and rejected by a later validation
 --     pass (`PostParseValidation`) instead.
 --
---   * Attribute names are never resolved to program symbols -- they are
---     compiler-directed metadata, not references to bindings -- so they reuse
---     the plain textual `Name` machinery and stay textual in every phase.
+--   * Attribute names are NEVER resolved to program symbols -- they are
+--     compiler-directed metadata, not references to bindings. So unlike
+--     every other name in the tree, an attribute's name does NOT route
+--     through the `Name phase` family (which carries a SymbolId from
+--     ResolvedAstPhase onward) -- it stays the plain textual `NameNode` at every
+--     phase, ResolvedAstPhase and TypedAstPhase included.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 -- Known attribute kinds
 --------------------------------------------------------------------------------
--- The attributes the compiler currently understands needed by the 
+-- The attributes the compiler currently understands needed by the
 -- `PostParseValidation` pass.
 --------------------------------------------------------------------------------
 
@@ -75,7 +79,9 @@ recognizeKnownAttribute s =
 --   #[qasm_gate("my_gate")]              -- string literal argument
 --
 -- Literal spellings are preserved raw (quotes included), matching the
--- convention used for literal tokens elsewhere in the frontend.
+-- convention used for literal tokens elsewhere in the frontend. Phase-
+-- invariant payload, like Literal.idr/Doc.idr: no phase ever rewrites an
+-- argument's raw spelling.
 --------------------------------------------------------------------------------
 
 public export
@@ -83,12 +89,24 @@ data AttributeArgumentNode
   = AttributeArgumentStringLit String  -- raw spelling, e.g. "\"my_gate\""
 
 public export
+AttributeArgument : AstPhase -> Type
+AttributeArgument phase = AstNode phase AttributeArgumentNode
+
+public export
 SurfaceAttributeArgument : Type
-SurfaceAttributeArgument = SurfaceAstNode AttributeArgumentNode
+SurfaceAttributeArgument = AttributeArgument SurfaceAstPhase
 
 public export
 CanonicalAttributeArgument : Type
-CanonicalAttributeArgument = CanonicalAstNode AttributeArgumentNode
+CanonicalAttributeArgument = AttributeArgument CanonicalAstPhase
+
+public export
+ResolvedAttributeArgument : Type
+ResolvedAttributeArgument = AttributeArgument ResolvedAstPhase
+
+public export
+TypedAttributeArgument : Type
+TypedAttributeArgument = AttributeArgument TypedAstPhase
 
 --------------------------------------------------------------------------------
 -- Attribute node
@@ -102,30 +120,34 @@ CanonicalAttributeArgument = CanonicalAstNode AttributeArgumentNode
 --
 -- The distinction is preserved because it is visible in source (and a later
 -- pass may well want to reject the `Just []` form for known attributes).
+--
+-- `attributeName` is deliberately `AstNode phase NameNode`, NOT
+-- `Name phase` -- see the module header: attribute names never resolve to a
+-- SymbolId at any phase.
 --------------------------------------------------------------------------------
 
 public export
-record AttributeNode (name : Type) (argument : Type) where
+record AttributeNode (phase : AstPhase) where
   constructor MkAttributeNode
-  attributeName      : name
-  attributeArguments : Maybe (List argument)
+  attributeName      : AstNode phase NameNode
+  attributeArguments : Maybe (List (AttributeArgument phase))
+
+public export
+Attribute : AstPhase -> Type
+Attribute phase = AstNode phase (AttributeNode phase)
 
 public export
 SurfaceAttribute : Type
-SurfaceAttribute = SurfaceAstNode (AttributeNode SurfaceName SurfaceAttributeArgument)
+SurfaceAttribute = Attribute SurfaceAstPhase
 
 public export
 CanonicalAttribute : Type
-CanonicalAttribute = CanonicalAstNode (AttributeNode CanonicalName CanonicalAttributeArgument)
+CanonicalAttribute = Attribute CanonicalAstPhase
 
---------------------------------------------------------------------------------
--- Later phases
---------------------------------------------------------------------------------
--- Unlike doc comments (Doc.idr), attributes do not get Resolved/Typed aliases
--- here. Attribute names never resolve to SymbolIds, so `ResolvedName` (which
--- carries a mandatory SymbolId) is the wrong instantiation. Post-resolution
--- declarations should either keep carrying `CanonicalAttribute` unchanged, or
--- an attribute-validation pass should replace attributes with a checked form
--- (known kind + validated argument, unknown preserved). That decision belongs
--- to the phase that owns it and is deliberately not prejudged here.
---------------------------------------------------------------------------------
+public export
+ResolvedAttribute : Type
+ResolvedAttribute = Attribute ResolvedAstPhase
+
+public export
+TypedAttribute : Type
+TypedAttribute = Attribute TypedAstPhase

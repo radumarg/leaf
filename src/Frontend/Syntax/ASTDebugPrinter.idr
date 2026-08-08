@@ -42,7 +42,7 @@ nameText (MkAstNode _ _ (MkNameNode text)) = text
 leafText : Show a => SurfaceAstNode a -> String
 leafText (MkAstNode _ _ value) = show value
 
-exprCtor : ExpressionNode -> String
+exprCtor : ExpressionNode SurfaceAstPhase -> String
 exprCtor e = case e of
   ExprLiteral _ => "ExprLiteral"
   ExprName _ => "ExprName"
@@ -85,7 +85,7 @@ mutual
     node depth "ExpressionNode" (exprCtor value) info (showExprStrict expression) ++
     debugExprChildren (S depth) value
 
-  debugExprChildren : Nat -> ExpressionNode -> String
+  debugExprChildren : Nat -> ExpressionNode SurfaceAstPhase -> String
   debugExprChildren depth e = case e of
     ExprParenthesized x => debugExpr depth x
     ExprTuple xs => debugExprs depth (forget xs)
@@ -168,13 +168,13 @@ mutual
       node depth "StatementNode" "StatementExpression" info (showExprStrict expression) ++
       debugExpr (S depth) expression
 
-  debugLet : Nat -> LetBindingNode -> String
+  debugLet : Nat -> LetBindingNode SurfaceAstPhase -> String
   debugLet depth (MkLetBindingNode _ pattern annotation initializer) =
     indent depth ++ "LetBindingNode MkLetBindingNode\n" ++
     field (S depth) "pattern" (showPattern pattern) ++ debugMaybeTy (S depth) annotation ++
     debugInitializer (S depth) initializer
 
-  debugInitializer : Nat -> Maybe LetInitializerNode -> String
+  debugInitializer : Nat -> Maybe (LetInitializerNode SurfaceAstPhase) -> String
   debugInitializer _ Nothing = ""
   debugInitializer depth (Just (MkLetInitializerNode marker value)) =
     indent depth ++ "LetInitializerNode MkLetInitializerNode\n" ++
@@ -194,7 +194,7 @@ mutual
   debugParameters _ [] = ""
   debugParameters depth (x :: xs) = debugParameter depth x ++ debugParameters depth xs
 
-  debugFunction : Nat -> AstInfo -> SurfaceItem -> FunctionDeclarationNode -> String
+  debugFunction : Nat -> AstInfo -> SurfaceItem -> FunctionDeclarationNode SurfaceAstPhase -> String
   debugFunction depth info item function = case function of
     MkFunctionDeclarationNode _ _ _ _ _ name params result _ _ body =>
       node depth "ItemNode" "ItemFunction(FunctionDeclarationNode)" info (showItemStrict item) ++

@@ -4,5 +4,5 @@ import Frontend.Syntax.AST
 
 %default total
 
-desugarSurfaceSyntax : SurfaceSourceFile ->  SurfaceSourceFile
+desugarSurfaceSyntax : SurfaceSourceFile -> CanonicalSourceFile
 desugarSurfaceSyntax = ?desugar

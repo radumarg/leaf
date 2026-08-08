@@ -532,7 +532,7 @@ CX(&q0, &q1);
 // (14) Prelude quantum gates, CAN be shadowed by a local declaration
 //////////////////////////////////////////////////////////////////////
 
-Id, X, Y, Z, H, S, SDG, T, TDG, SX, SXDG, RX, RY, RZ, U1, U2, U3, CNOT, CX, CY, CZ, CS, CSDG, CT, CTDG, CSX, CSXDG, CRX, CRY, CRZ, CU1, CU2, CU3, SWAP, RXX, RYY, RZZ, CCX, CSWAP, GPI, GPI2, MS, ZZ
+I, X, Y, Z, H, S, SDG, T, TDG, SX, SXDG, RX, RY, RZ, U1, U2, U3, CNOT, CX, CY, CZ, CS, CSDG, CT, CTDG, CSX, CSXDG, CRX, CRY, CRZ, CU1, CU2, CU3, SWAP, RXX, RYY, RZZ, CCX, CSWAP, GPI, GPI2, MS, ZZ
 
 // Handling parameterized gates in general: the angle input arguments can be of type: param, angle32, angle64 or floating point numbers
 
@@ -552,7 +552,7 @@ let theta = Param("theta");
 let q: qubit = U1(theta, q);
 
 // Single-Qubit Gates
-let q: qubit = Id(q);
+let q: qubit = I(q);
 let q: qubit = X(q);
 let q: qubit = Y(q);
 let q: qubit = Z(q);
@@ -1603,7 +1603,7 @@ fn make_ghz(q0: &qubit, q1: &qubit, q2: &qubit)
     CNOT(q0, q2);
 }
 
-The following gates can appear in stabilizer expressions: Id, X, Y, Z, H, S, SDG, SX, SXDG
+The following gates can appear in stabilizer expressions: I, X, Y, Z, H, S, SDG, SX, SXDG
 
 The "requires" clauses specify the pre-conditions that must hold on the quantum data before the function is called, while the "ensures" clauses specify the post-conditions that must hold on the quantum data after the function returns ao "requires" clauses should precede "ensures" clauses in function signature.
 

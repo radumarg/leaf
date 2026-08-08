@@ -20,34 +20,10 @@ import Frontend.ASTPhases
 --   ()                                        -- unit literal
 --   zero one plus minus plusi minusi          -- quantum state literals
 --
--- Design choices:
---
 --   * Numeric, string, byte, byte-string, and basis-string literals preserve
 --     their RAW SOURCE SPELLING, exactly as the lexer captured it: quotes,
 --     prefixes (0x/0o/0b/b/bs), digit separators (1_000), exponents, and
---     type suffixes (0xff_u8, 5f32) all included. The AST does NOT eagerly
---     normalize. Later passes parse suffixes, infer types, check ranges, and
---     validate escapes/basis characters -- and can report precise errors
---     ("suffix u8 out of range for value 0x1ff") against the exact spelling
---     the user wrote. This mirrors the TokIntLitRaw / TokFloatLitRaw / ...
---     convention in Token.idr.
---
---   * Boolean and quantum-state literals are stored DECODED, because the
---     lexer already decodes them (TokBoolLit Bool, TokStateLit
---     BasisStateName) and each has a fixed spelling per value -- raw text
---     would add nothing. `BasisStateName` is reused from Frontend.Token
---     rather than duplicated: `zero`/`one`/`plus`/`minus`/`plusi`/`minusi`
---     have exactly one authoritative enumeration in the frontend.
---
---   * `()` is treated as the unit LITERAL, per the spec's basic-type table
---     (`let unit : () = ();`). Deciding that a source `()` is this literal
---     rather than an empty tuple expression is the parser's job; the AST
---     simply provides the constructor.
---
---   * Basis-string literals (bs"...") appear both as expressions (qstate
---     initialization, ctrl(...).on(bs"10")) and as qmatch/smatch patterns.
---     This module only defines the literal itself; the pattern module will
---     reference the same raw-spelling convention.
+--     type suffixes (0xff_u8, 5f32) all included.
 --------------------------------------------------------------------------------
 
 public export
@@ -65,24 +41,23 @@ data LiteralNode
 --------------------------------------------------------------------------------
 -- Phase wrappers
 --------------------------------------------------------------------------------
--- Literals are phase-invariant payloads, like doc comments: resolution never
--- touches them, and type checking attaches its result via the TypedAstNode
--- wrapper rather than by rewriting the literal. All four aliases are provided
--- so every phase's expression tree can embed literals directly.
---------------------------------------------------------------------------------
+
+public export
+Literal : AstPhase -> Type
+Literal phase = AstNode phase LiteralNode
 
 public export
 SurfaceLiteral : Type
-SurfaceLiteral = SurfaceAstNode LiteralNode
+SurfaceLiteral = Literal SurfaceAstPhase
 
 public export
 CanonicalLiteral : Type
-CanonicalLiteral = CanonicalAstNode LiteralNode
+CanonicalLiteral = Literal CanonicalAstPhase
 
 public export
 ResolvedLiteral : Type
-ResolvedLiteral = ResolvedAstNode LiteralNode
+ResolvedLiteral = Literal ResolvedAstPhase
 
 public export
 TypedLiteral : Type
-TypedLiteral = TypedAstNode LiteralNode
+TypedLiteral = Literal TypedAstPhase

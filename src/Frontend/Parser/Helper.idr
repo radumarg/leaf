@@ -270,7 +270,7 @@ makeBuiltinExpression builtin bounds nodeId =
 
 
 public export
-assignmentTargetFromExpression : SurfaceExpr -> Maybe AssignmentTargetNode
+assignmentTargetFromExpression : SurfaceExpr -> Maybe (AssignmentTargetNode SurfaceAstPhase)
 assignmentTargetFromExpression (MkAstNode _ _ expression) =
   case expression of
     ExprName name => Just (AssignTargetName name)

@@ -11,7 +11,7 @@ import Language.Reflection
 --------------------------------------------------------------------------------
 -- Centralizes the operator names used by expression, assignment, and type
 -- nodes. These are VOCABULARY, not located AST nodes: an operator by itself
--- has no phase-dependent content, so there are no Surface/Canonical/...
+-- has no phase-dependent content, so there are no SurfaceAstPhase/CanonicalAstPhase/...
 -- wrappers here. If a diagnostic needs to point at the operator itself
 -- ("cannot apply `+` to operands of type `qubit`"), the owning expression
 -- node should carry the operator's SourceSpan alongside the operator value --

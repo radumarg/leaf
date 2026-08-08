@@ -33,8 +33,11 @@ import Frontend.Syntax.Name
 -- Consequently PatternNode needs no `arraySizeExpr`-style parameter, and the
 -- concrete SurfacePattern alias can be defined right here.
 --
--- Both grammars are recursive (or reference located children), so per the
--- policy in ASTPhase.idr they are SURFACE-PHASE ONLY.
+-- Both grammars are recursive (or reference located children), so they are
+-- indexed by `phase : AstPhase` -- the RECURSIVE occurrences are wrapped in
+-- the concrete `AstNode phase`, which is strictly positive (see Type.idr's
+-- header for why this differs from the abstract-wrapper construction that
+-- does NOT typecheck).
 --
 -- Deliberately REPRESENTABLE here, rejected by later passes with good spans:
 --
@@ -56,12 +59,12 @@ import Frontend.Syntax.Name
 mutual
 
   public export
-  data PatternNode : Type where
+  data PatternNode : (phase : AstPhase) -> Type where
 
     -- The wildcard `_`: matches anything, binds nothing.
     --   let (x, _, z) = (1, 2, 3);
     PatternWildcard :
-         PatternNode
+         PatternNode phase
 
     -- A single-identifier binder, optionally `mut`:
     --   let q = ...          let mut x = ...          fn f(mut x: i32)
@@ -78,8 +81,8 @@ mutual
     -- belong to the Let statement node, applying to its whole binder.
     PatternName :
          (mutability  : Maybe Mutability)
-      -> (binderName  : SurfaceName)
-      -> PatternNode
+      -> (binderName  : Name phase)
+      -> PatternNode phase
 
     -- A MULTI-SEGMENT path pattern: unit enum variants and (potentially)
     -- named constants:
@@ -88,8 +91,8 @@ mutual
     -- PatternName, per the parser rule above). What the path denotes --
     -- variant vs. constant -- is resolution's job.
     PatternPath :
-         (valuePath : SurfacePath)
-      -> PatternNode
+         (valuePath : Path phase)
+      -> PatternNode phase
 
     -- A literal pattern:
     --   1 => ...     true => ...     bs"01" is NOT here (quantum grammar)
@@ -97,41 +100,41 @@ mutual
     -- PatternLiteral of LiteralUnit -- no separate constructor, consistent
     -- with `()` being the unit value everywhere.
     PatternLiteral :
-         (literal : SurfaceLiteral)
-      -> PatternNode
+         (literal : Literal phase)
+      -> PatternNode phase
 
     -- A parenthesized pattern `(p)`. Explicit for the same reason as
     -- TyParenthesized / the planned ExprParenthesized: Leaf has one-element
     -- tuple patterns `(p,)`, so `(p)` vs `(p,)` is a one-token distinction
     -- diagnostics must be able to see. Discarded during canonicalization.
     PatternParenthesized :
-         (innerPattern : SurfaceAstNode PatternNode)
-      -> PatternNode
+         (innerPattern : AstNode phase (PatternNode phase))
+      -> PatternNode phase
 
     -- Tuple pattern with AT LEAST one element:
     --   let (a, _, c) = (1, 2, 3);         let (q,) = ...;
     -- The List1 shape keeps `()` unrepresentable as an empty tuple pattern
     -- (that source form is PatternLiteral LiteralUnit).
     PatternTuple :
-         (elementPatterns : List1 (SurfaceAstNode PatternNode))
-      -> PatternNode
+         (elementPatterns : List1 (AstNode phase (PatternNode phase)))
+      -> PatternNode phase
 
     -- Array pattern:
     --   let [b0, b1, b2] = measr(qs);
     -- Plain List: `[]` is legitimate syntax (matching a [T; 0]), however
     -- rarely useful.
     PatternArray :
-         (elementPatterns : List (SurfaceAstNode PatternNode))
-      -> PatternNode
+         (elementPatterns : List (AstNode phase (PatternNode phase)))
+      -> PatternNode phase
 
     -- Struct pattern, which also covers STRUCT-LIKE ENUM VARIANTS
     -- (the path distinguishes them only after resolution):
     --   let Pair { q0: q3, q1: q4 } = mypair;
     --   Message::Move { x, y } => ...
     PatternStruct :
-         (structPath    : SurfacePath)
-      -> (fieldPatterns : List (SurfaceAstNode StructPatternFieldNode))
-      -> PatternNode
+         (structPath    : Path phase)
+      -> (fieldPatterns : List (AstNode phase (StructPatternFieldNode phase)))
+      -> PatternNode phase
 
     -- Tuple-like enum/qenum variant pattern:
     --   Data::Left(a) => ...        Data::Right(b, c) => ...
@@ -139,9 +142,9 @@ mutual
     -- representable; whether the arity matches the declaration is checked
     -- after resolution.
     PatternEnumTuple :
-         (variantPath      : SurfacePath)
-      -> (argumentPatterns : List (SurfaceAstNode PatternNode))
-      -> PatternNode
+         (variantPath      : Path phase)
+      -> (argumentPatterns : List (AstNode phase (PatternNode phase)))
+      -> PatternNode phase
 
   -- One field inside a struct pattern. The shorthand/explicit split is the
   -- pattern-side mirror of the FieldInit split on struct EXPRESSIONS:
@@ -156,25 +159,57 @@ mutual
   -- any mutability on the subpattern's own binders), which the two shapes
   -- encode exactly.
   public export
-  data StructPatternFieldNode : Type where
+  data StructPatternFieldNode : (phase : AstPhase) -> Type where
 
     StructPatternFieldShorthand :
          (mutability : Mutability)
-      -> (fieldAndBinderName : SurfaceName)
-      -> StructPatternFieldNode
+      -> (fieldAndBinderName : Name phase)
+      -> StructPatternFieldNode phase
 
     StructPatternFieldExplicit :
-         (fieldName    : SurfaceName)
-      -> (fieldPattern : SurfaceAstNode PatternNode)
-      -> StructPatternFieldNode
+         (fieldName    : Name phase)
+      -> (fieldPattern : AstNode phase (PatternNode phase))
+      -> StructPatternFieldNode phase
+
+public export
+Pattern : AstPhase -> Type
+Pattern phase = AstNode phase (PatternNode phase)
 
 public export
 SurfacePattern : Type
-SurfacePattern = SurfaceAstNode PatternNode
+SurfacePattern = Pattern SurfaceAstPhase
+
+public export
+CanonicalPattern : Type
+CanonicalPattern = Pattern CanonicalAstPhase
+
+public export
+ResolvedPattern : Type
+ResolvedPattern = Pattern ResolvedAstPhase
+
+public export
+TypedPattern : Type
+TypedPattern = Pattern TypedAstPhase
+
+public export
+StructPatternField : AstPhase -> Type
+StructPatternField phase = AstNode phase (StructPatternFieldNode phase)
 
 public export
 SurfaceStructPatternField : Type
-SurfaceStructPatternField = SurfaceAstNode StructPatternFieldNode
+SurfaceStructPatternField = StructPatternField SurfaceAstPhase
+
+public export
+CanonicalStructPatternField : Type
+CanonicalStructPatternField = StructPatternField CanonicalAstPhase
+
+public export
+ResolvedStructPatternField : Type
+ResolvedStructPatternField = StructPatternField ResolvedAstPhase
+
+public export
+TypedStructPatternField : Type
+TypedStructPatternField = StructPatternField TypedAstPhase
 
 --------------------------------------------------------------------------------
 -- Quantum match patterns (qmatch / smatch)
@@ -213,33 +248,49 @@ SurfaceStructPatternField = SurfaceAstNode StructPatternFieldNode
 --------------------------------------------------------------------------------
 
 public export
-data QuantumMatchPatternNode : Type where
+data QuantumMatchPatternNode : (phase : AstPhase) -> Type where
 
   -- bs"00", bs"0+", bs"1-", ... raw spelling including the bs"..." wrapper.
   QuantumPatternBasisStringRaw :
        (rawSpelling : String)
-    -> QuantumMatchPatternNode
+    -> QuantumMatchPatternNode phase
 
   -- 0, 1, 2, 3, ... raw spelling; equivalent to the basis string of the
   -- integer's binary expansion (a later pass makes that precise).
   QuantumPatternIntegerRaw :
        (rawSpelling : String)
-    -> QuantumMatchPatternNode
+    -> QuantumMatchPatternNode phase
 
   -- `_` -- qmatch only; smatch construction sites never populate this.
   QuantumPatternWildcard :
-       QuantumMatchPatternNode
+       QuantumMatchPatternNode phase
 
   -- Data::Left(a), Data::Right(b, c) -- qmatch over a qenum. Arguments are
   -- plain BINDER NAMES, not nested patterns: that is all the spec shows,
   -- and qenum payloads are qubits, which deeper patterns could not usefully
   -- destructure anyway. If nested destructuring is ever ruled legal, this
-  -- becomes List SurfacePattern.
+  -- becomes List (Pattern phase).
   QuantumPatternQenumVariant :
-       (variantPath : SurfacePath)
-    -> (binderNames : List SurfaceName)
-    -> QuantumMatchPatternNode
+       (variantPath : Path phase)
+    -> (binderNames : List (Name phase))
+    -> QuantumMatchPatternNode phase
+
+public export
+QuantumMatchPattern : AstPhase -> Type
+QuantumMatchPattern phase = AstNode phase (QuantumMatchPatternNode phase)
 
 public export
 SurfaceQuantumMatchPattern : Type
-SurfaceQuantumMatchPattern = SurfaceAstNode QuantumMatchPatternNode
+SurfaceQuantumMatchPattern = QuantumMatchPattern SurfaceAstPhase
+
+public export
+CanonicalQuantumMatchPattern : Type
+CanonicalQuantumMatchPattern = QuantumMatchPattern CanonicalAstPhase
+
+public export
+ResolvedQuantumMatchPattern : Type
+ResolvedQuantumMatchPattern = QuantumMatchPattern ResolvedAstPhase
+
+public export
+TypedQuantumMatchPattern : Type
+TypedQuantumMatchPattern = QuantumMatchPattern TypedAstPhase

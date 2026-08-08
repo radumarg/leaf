@@ -27,20 +27,11 @@ import Frontend.Syntax.Operator
 -- ties the knot:
 --
 --   SurfaceTy : Type
---   SurfaceTy = LocatedTy SurfaceExpr
+--   SurfaceTy = Ty SurfaceAstPhase SurfaceExpr
 --
 -- The parameter does NOT leak beyond that point: every module downstream of
 -- Expr.idr (Stmt, Contract, Decl, ...) uses the concrete SurfaceTy alias and
 -- never mentions arraySizeExpr.
---
--- One deliberate deviation from the obvious generalization: the RECURSIVE
--- occurrences of TyNode below are wrapped in the concrete `SurfaceAstNode`,
--- not in an abstract `wrapper : Type -> Type` parameter. Parameterizing the
--- recursion over an arbitrary functor (`wrapper (TyNode wrapper e)`) is not
--- strictly positive, and Idris 2's totality checker rightly rejects it. So
--- this module is SURFACE-PHASE ONLY. Later phases either embed surface type
--- nodes unchanged (types are not rewritten by desugaring) or define their
--- own representation with their own, typically smaller, grammar.
 --
 -- Representable examples:
 --
@@ -64,24 +55,18 @@ import Frontend.Syntax.Operator
 --   * `&mut qubit` / `&mut [qubit]`   -- mut is never written on qubit refs
 --   * `[T; N]` with non-const N       -- const-ness of the size expression
 --   * `linear affine qubit`           -- mutually exclusive qualifiers
---
--- Located leaves: qualifiers, the borrow kind, the function effect, and
--- function-type parameters are all individually wrapped in SurfaceAstNode.
--- The construction noise is deliberate -- diagnostics like "remove this
--- `mut`" or "`unitary` is not allowed here" point at the keyword itself,
--- not at the whole type.
 --------------------------------------------------------------------------------
 
 mutual
 
   public export
-  data TyNode : (arraySizeExpr : Type) -> Type where
+  data TyNode : (phase : AstPhase) -> (arraySizeExpr : Type) -> Type where
 
     -- Built-in primitive type name: qubit, qstate, bit, i32, f64, angle64,
     -- param, bool, ... Reuses the lexer's authoritative enumeration.
     TyPrimitive :
          (primitiveName : TypPrimName)
-      -> TyNode arraySizeExpr
+      -> TyNode phase arraySizeExpr
 
     -- User-defined named type: struct, enum, or qenum, possibly behind a
     -- module path (Person, my_module::Config). Which of those it actually
@@ -92,14 +77,14 @@ mutual
     -- every consumer changes. That is a language-design decision to make
     -- explicitly, not one to pre-wire.
     TyPath :
-         (typePath : SurfacePath)
-      -> TyNode arraySizeExpr
+         (typePath : Path phase)
+      -> TyNode phase arraySizeExpr
 
     -- The unit TYPE `()`. A dedicated constructor: `()` is never an
     -- empty tuple, so TyTuple below cannot represent it (List1 requires at
     -- least one element).
     TyUnit :
-         TyNode arraySizeExpr
+         TyNode phase arraySizeExpr
 
     -- A parenthesized type `(T)`. Kept explicit in the surface AST because
     -- Leaf has one-element tuple types `(T,)`: with both in the grammar,
@@ -107,8 +92,8 @@ mutual
     -- "help: `(T)` is a parenthesized type, not a 1-tuple -- add a trailing
     -- comma" need the written form. Discarded during canonicalization.
     TyParenthesized :
-         (innerType : SurfaceAstNode (TyNode arraySizeExpr))
-      -> TyNode arraySizeExpr
+         (innerType : AstNode phase (TyNode phase arraySizeExpr))
+      -> TyNode phase arraySizeExpr
 
     -- Tuple type with AT LEAST one element: (i32, f64), (qubit,).
     -- The List1 shape makes a zero-element tuple type unrepresentable --
@@ -116,33 +101,33 @@ mutual
     -- is only semantically visible in the one-element case, where it is
     -- the entire difference between TyTuple and TyParenthesized.
     TyTuple :
-         (elementTypes : List1 (SurfaceAstNode (TyNode arraySizeExpr)))
-      -> TyNode arraySizeExpr
+         (elementTypes : List1 (AstNode phase (TyNode phase arraySizeExpr)))
+      -> TyNode phase arraySizeExpr
 
     -- Fixed-size array type [T; N]. The size is stored as a WRITTEN
     -- EXPRESSION (integer literal, `2 + 2`, a named constant N, ...);
     -- requiring it to be a const expression is a later pass's check.
     TyArray :
-         (elementType    : SurfaceAstNode (TyNode arraySizeExpr))
+         (elementType    : AstNode phase (TyNode phase arraySizeExpr))
       -> (sizeExpression : arraySizeExpr)
-      -> TyNode arraySizeExpr
+      -> TyNode phase arraySizeExpr
 
     -- Slice type [T]. In well-formed Leaf source this only occurs behind a
     -- reference (&[T], &mut [T]) -- as TyReference wrapping TySlice -- but
     -- the AST does not enforce "slices only behind references"; a bare
     -- `[T]` annotation is a semantic (sizedness) error with a good span.
     TySlice :
-         (elementType : SurfaceAstNode (TyNode arraySizeExpr))
-      -> TyNode arraySizeExpr
+         (elementType : AstNode phase (TyNode phase arraySizeExpr))
+      -> TyNode phase arraySizeExpr
 
     -- Reference type: &T or &mut T, reusing BorrowKind so shared-vs-mutable
     -- is spelled once for both expressions and types. The borrow kind is
     -- located so "`mut` is never written on a qubit reference" can point at
     -- the `&mut` itself rather than the whole type.
     TyReference :
-         (borrowKind     : SurfaceAstNode BorrowKind)
-      -> (referencedType : SurfaceAstNode (TyNode arraySizeExpr))
-      -> TyNode arraySizeExpr
+         (borrowKind     : AstNode phase BorrowKind)
+      -> (referencedType : AstNode phase (TyNode phase arraySizeExpr))
+      -> TyNode phase arraySizeExpr
 
     -- Quantum-qualified type: linear qubit, affine qubit, scratch linear
     -- qubit, ... Qualifiers are non-empty (a TyQualified node exists only
@@ -151,9 +136,9 @@ mutual
     -- from `linear scratch` and a validation pass can point at the exact
     -- offending keyword in `linear affine qubit`.
     TyQualified :
-         (storageQualifiers : List1 (SurfaceAstNode QuantumStorageQualifier))
-      -> (qualifiedType     : SurfaceAstNode (TyNode arraySizeExpr))
-      -> TyNode arraySizeExpr
+         (storageQualifiers : List1 (AstNode phase QuantumStorageQualifier))
+      -> (qualifiedType     : AstNode phase (TyNode phase arraySizeExpr))
+      -> TyNode phase arraySizeExpr
 
     -- Function type, as used for higher-order parameters:
     --
@@ -164,33 +149,33 @@ mutual
     -- explicitly wrote `general`. The return type is optional: `Nothing`
     -- means no `->` was written, distinct from an explicit `-> ()`.
     TyFunction :
-         (functionEffect     : Maybe (SurfaceAstNode FunctionEffect))
-      -> (functionParameters : List (SurfaceAstNode (FunctionTypeParameterNode arraySizeExpr)))
-      -> (returnType         : Maybe (SurfaceAstNode (TyNode arraySizeExpr)))
-      -> TyNode arraySizeExpr
+         (functionEffect     : Maybe (AstNode phase FunctionEffect))
+      -> (functionParameters : List (AstNode phase (FunctionTypeParameterNode phase arraySizeExpr)))
+      -> (returnType         : Maybe (AstNode phase (TyNode phase arraySizeExpr)))
+      -> TyNode phase arraySizeExpr
 
   -- One parameter inside a FUNCTION TYPE: `qs: [qubit; 4]`. The name is
   -- required because every function-type parameter in the spec is written
   -- name-first; if Leaf ever admits Rust-style anonymous fn-type parameters
-  -- (fn(i32) -> i32), this becomes `Maybe SurfaceName` -- a one-line change.
+  -- (fn(i32) -> i32), this becomes `Maybe (Name phase)` -- a one-line change.
   -- Distinct from the (richer) declaration-side parameter in Decl.idr, which
   -- additionally carries doc comments and mutability.
   public export
-  record FunctionTypeParameterNode (arraySizeExpr : Type) where
+  record FunctionTypeParameterNode (phase : AstPhase) (arraySizeExpr : Type) where
     constructor MkFunctionTypeParameterNode
-    parameterName : SurfaceName
-    parameterType : SurfaceAstNode (TyNode arraySizeExpr)
+    parameterName : Name phase
+    parameterType : AstNode phase (TyNode phase arraySizeExpr)
 
 --------------------------------------------------------------------------------
--- Located alias
+-- AST-wrapped type
 --------------------------------------------------------------------------------
 -- Expr.idr / AST.idr tie the knot by instantiating `arraySizeExpr` with the
--- located surface expression type:
+-- located expression type at the same phase:
 --
 --   SurfaceTy : Type
---   SurfaceTy = LocatedTy SurfaceExpr
+--   SurfaceTy = Ty SurfaceAstPhase SurfaceExpr
 --------------------------------------------------------------------------------
 
 public export
-LocatedTy : (arraySizeExpr : Type) -> Type
-LocatedTy arraySizeExpr = SurfaceAstNode (TyNode arraySizeExpr)
+Ty : (phase : AstPhase) -> (arraySizeExpr : Type) -> Type
+Ty phase arraySizeExpr = AstNode phase (TyNode phase arraySizeExpr)

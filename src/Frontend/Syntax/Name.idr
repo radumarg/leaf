@@ -6,17 +6,21 @@ import Frontend.ASTData
 %default total
 
 --------------------------------------------------------------------------------
--- Names in the surface AST
+-- Names
 --------------------------------------------------------------------------------
--- This module represents textual, unresolved names as they appear in source code.
+-- Every node family below is indexed by `phase : AstPhase`. What actually 
+-- changes across phases:
 --
--- Important design choice:
+--   * SurfaceAstPhase / CanonicalAstPhase -- a name is just its written text. Desugaring
+--     never invents or resolves names, so CanonicalAstPhase reuses SurfaceAstPhase's
+--     payload unchanged.
+--   * ResolvedAstPhase / TypedAstPhase -- a name additionally carries the SymbolId it
+--     resolved to.
 --
---   * This module does NOT resolve names.
---   * It does NOT decide whether a name denotes a local variable, function,
---     type, enum variant, module, field, method, or associated function.
---   * It preserves source locations so later phases can report diagnostics
---     against the exact written name/path.
+-- This does NOT resolve names itself -- it does not decide whether a name
+-- denotes a local variable, function, type, enum variant, module, field,
+-- method, or associated function. It preserves source locations so every
+-- phase can report diagnostics against the exact written name/path.
 --
 -- Examples represented by these types:
 --
@@ -27,12 +31,12 @@ import Frontend.ASTData
 --   Data::Left
 --   Person::new
 --
--- Builtins such as qalloc, measr, reset, ctrl, apply, etc. are not modeled here
--- as ordinary names if the lexer classifies them as TokBuiltin.
+-- Builtins such as qalloc, measr, reset, ctrl, apply, etc. are not modeled
+-- here as ordinary names if the lexer classifies them as TokBuiltin.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Simple unresolved names
+-- Simple names
 --------------------------------------------------------------------------------
 
 public export
@@ -40,18 +44,7 @@ record NameNode where
   constructor MkNameNode
   nameNodeText : String
 
-public export
-SurfaceName : Type
-SurfaceName = SurfaceAstNode NameNode
-
-public export
-CanonicalName : Type
-CanonicalName = CanonicalAstNode NameNode
-
---------------------------------------------------------------------------------
--- Simple resolved names: SymbolId tells which binding/program entity this name denotes.
---------------------------------------------------------------------------------
-
+-- SymbolId tells which binding/program entity this name denotes
 public export
 record ResolvedNameNode where
   constructor MkResolvedNameNode
@@ -59,12 +52,31 @@ record ResolvedNameNode where
   resolvedNameNodeSymbolId : SymbolId
 
 public export
+NameFor : AstPhase -> Type
+NameFor SurfaceAstPhase   = NameNode
+NameFor CanonicalAstPhase = NameNode
+NameFor ResolvedAstPhase  = ResolvedNameNode
+NameFor TypedAstPhase     = ResolvedNameNode
+
+public export
+Name : AstPhase -> Type
+Name phase = AstNode phase (NameFor phase)
+
+public export
+SurfaceName : Type
+SurfaceName = Name SurfaceAstPhase
+
+public export
+CanonicalName : Type
+CanonicalName = Name CanonicalAstPhase
+
+public export
 ResolvedName : Type
-ResolvedName = ResolvedAstNode ResolvedNameNode
+ResolvedName = Name ResolvedAstPhase
 
 public export
 TypedName : Type
-TypedName = TypedAstNode ResolvedNameNode
+TypedName = Name TypedAstPhase
 
 --------------------------------------------------------------------------------
 -- Path segments
@@ -81,13 +93,12 @@ TypedName = TypedAstNode ResolvedNameNode
 --   ^^^^  ^^^^
 --   segment segment
 --
--- The `self` keyword is syntactically special in Leaf and lexed as a keyword,
--- not an ordinary identifier, so it gets its own segment constructor.
---------------------------------------------------------------------------------
-
-
---------------------------------------------------------------------------------
--- Unresolved path segments
+-- The `self` keyword is syntactically special in Leaf and lexed as a
+-- keyword, not an ordinary identifier, so it gets its own segment
+-- constructor. Segments are phase-invariant TEXT before resolution
+-- collapses a whole path into ResolvedPathNode below, so there is no
+-- `PathSegmentFor` -- only SurfaceAstPhase and CanonicalAstPhase ever wrap a
+-- `PathSegmentNode` directly.
 --------------------------------------------------------------------------------
 
 public export
@@ -96,13 +107,16 @@ data PathSegmentNode
   | PathSegmentSelf
 
 public export
+PathSegment : AstPhase -> Type
+PathSegment phase = AstNode phase PathSegmentNode
+
+public export
 SurfacePathSegment : Type
-SurfacePathSegment = SurfaceAstNode PathSegmentNode
+SurfacePathSegment = PathSegment SurfaceAstPhase
 
 public export
 CanonicalPathSegment : Type
-CanonicalPathSegment = CanonicalAstNode PathSegmentNode
-
+CanonicalPathSegment = PathSegment CanonicalAstPhase
 
 --------------------------------------------------------------------------------
 -- Paths
@@ -118,47 +132,25 @@ CanonicalPathSegment = CanonicalAstNode PathSegmentNode
 --   Data::Left
 --   Person::new
 --
--- A single identifier like `x` can be represented as a path with one segment,
--- but local binders and declarations should usually use `Name` directly.
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- Unresolved paths
---------------------------------------------------------------------------------
-
-public export
-record PathNode (segment : Type) where
-  constructor MkPathNode
-  firstSegment      : segment
-  remainingSegments : List segment
-
-public export
-SurfacePath : Type
-SurfacePath = SurfaceAstNode (PathNode SurfacePathSegment)
-
-public export
-CanonicalPath : Type
-CanonicalPath = CanonicalAstNode (PathNode CanonicalPathSegment)
-
-
---------------------------------------------------------------------------------
--- Resolved paths
---------------------------------------------------------------------------------
--- Keep resolved paths intentionally simple.
+-- A single identifier like `x` can be represented as a path with one
+-- segment, but local binders and declarations should usually use `Name`
+-- directly.
 --
--- The resolver preserves the written path as text and records the final symbol
--- the whole path resolved to.
---
--- Example:
---
---   Data::Left
---
--- becomes something like:
+-- ResolvedAstPhase paths are kept intentionally simple: the resolver preserves the
+-- written path as text and records only the FINAL symbol the whole path
+-- resolved to (individual segments are no longer separately meaningful once
+-- resolution has happened). Example -- `Data::Left` becomes:
 --
 --   firstPathSegmentText      = "Data"
 --   remainingPathSegmentTexts = ["Left"]
 --   resolvedPathTargetSymbolId = SymbolId for Left
 --------------------------------------------------------------------------------
+
+public export
+record PathNode (phase : AstPhase) where
+  constructor MkPathNode
+  firstSegment      : PathSegment phase
+  remainingSegments : List (PathSegment phase)
 
 public export
 record ResolvedPathNode where
@@ -168,12 +160,31 @@ record ResolvedPathNode where
   resolvedPathTargetSymbolId : SymbolId
 
 public export
+PathFor : AstPhase -> Type
+PathFor SurfaceAstPhase   = PathNode SurfaceAstPhase
+PathFor CanonicalAstPhase = PathNode CanonicalAstPhase
+PathFor ResolvedAstPhase  = ResolvedPathNode
+PathFor TypedAstPhase     = ResolvedPathNode
+
+public export
+Path : AstPhase -> Type
+Path phase = AstNode phase (PathFor phase)
+
+public export
+SurfacePath : Type
+SurfacePath = Path SurfaceAstPhase
+
+public export
+CanonicalPath : Type
+CanonicalPath = Path CanonicalAstPhase
+
+public export
 ResolvedPath : Type
-ResolvedPath = ResolvedAstNode ResolvedPathNode
+ResolvedPath = Path ResolvedAstPhase
 
 public export
 TypedPath : Type
-TypedPath = TypedAstNode ResolvedPathNode
+TypedPath = Path TypedAstPhase
 
 --------------------------------------------------------------------------------
 -- Qualified names
@@ -204,27 +215,27 @@ TypedPath = TypedAstNode ResolvedPathNode
 --------------------------------------------------------------------------------
 
 public export
-record QualifiedNameNode (path : Type) (name : Type) where
+record QualifiedNameNode (phase : AstPhase) where
   constructor MkQualifiedNameNode
-  qualifierPath : Maybe path
-  finalName     : name
+  qualifierPath : Maybe (Path phase)
+  finalName     : Name phase
+
+public export
+QualifiedName : AstPhase -> Type
+QualifiedName phase = AstNode phase (QualifiedNameNode phase)
 
 public export
 SurfaceQualifiedName : Type
-SurfaceQualifiedName =
-  SurfaceAstNode (QualifiedNameNode SurfacePath SurfaceName)
+SurfaceQualifiedName = QualifiedName SurfaceAstPhase
 
 public export
 CanonicalQualifiedName : Type
-CanonicalQualifiedName =
-  CanonicalAstNode (QualifiedNameNode CanonicalPath CanonicalName)
+CanonicalQualifiedName = QualifiedName CanonicalAstPhase
 
 public export
 ResolvedQualifiedName : Type
-ResolvedQualifiedName =
-  ResolvedAstNode (QualifiedNameNode ResolvedPath ResolvedName)
+ResolvedQualifiedName = QualifiedName ResolvedAstPhase
 
 public export
 TypedQualifiedName : Type
-TypedQualifiedName =
-  TypedAstNode (QualifiedNameNode TypedPath TypedName)
+TypedQualifiedName = QualifiedName TypedAstPhase

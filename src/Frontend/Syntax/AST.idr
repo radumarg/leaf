@@ -16,7 +16,7 @@ import Frontend.Syntax.Type
 %default total
 
 --------------------------------------------------------------------------------
--- The central mutually recursive surface AST
+-- The central mutually recursive AST, indexed by AstPhase
 --------------------------------------------------------------------------------
 -- Everything mutually recursive lives in this one module: programs, items,
 -- declarations, blocks, statements, and expressions. The leaf modules
@@ -24,43 +24,130 @@ import Frontend.Syntax.Type
 -- Type and Contract are parameterized over the expression type, and THIS
 -- module ties both knots:
 --
---   TODO: unclear how type and contract clauses will be handled
---   SurfaceTy             = LocatedTy             SurfaceExpr
---   SurfaceContractClause = LocatedContractClause SurfaceExpr
+--   SurfaceTy             = Ty SurfaceAstPhase SurfaceExpr
+--   SurfaceContractClause = ContractClause SurfaceAstPhase SurfaceExpr
 --------------------------------------------------------------------------------
 
 mutual
 
   ------------------------------------------------------------------------------
-  -- Located aliases (defined first; mutual-block visibility makes the
+  -- aliases (defined first; mutual-block visibility makes the
   -- forward references to the node families below legal)
   ------------------------------------------------------------------------------
 
   public export
+  Expr : AstPhase -> Type
+  Expr phase = AstNode phase (ExpressionNode phase)
+
+  public export
   SurfaceExpr : Type
-  SurfaceExpr = SurfaceAstNode ExpressionNode
+  SurfaceExpr = Expr SurfaceAstPhase
+
+  public export
+  CanonicalExpr : Type
+  CanonicalExpr = Expr CanonicalAstPhase
+
+  public export
+  ResolvedExpr : Type
+  ResolvedExpr = Expr ResolvedAstPhase
+
+  public export
+  TypedExpr : Type
+  TypedExpr = Expr TypedAstPhase
+
+  public export
+  Block : AstPhase -> Type
+  Block phase = AstNode phase (BlockNode phase)
 
   public export
   SurfaceBlock : Type
-  SurfaceBlock = SurfaceAstNode BlockNode
+  SurfaceBlock = Block SurfaceAstPhase
+
+  public export
+  CanonicalBlock : Type
+  CanonicalBlock = Block CanonicalAstPhase
+
+  public export
+  ResolvedBlock : Type
+  ResolvedBlock = Block ResolvedAstPhase
+
+  public export
+  TypedBlock : Type
+  TypedBlock = Block TypedAstPhase
+
+  public export
+  Statement : AstPhase -> Type
+  Statement phase = AstNode phase (StatementNode phase)
 
   public export
   SurfaceStatement : Type
-  SurfaceStatement = SurfaceAstNode StatementNode
+  SurfaceStatement = Statement SurfaceAstPhase
+
+  public export
+  CanonicalStatement : Type
+  CanonicalStatement = Statement CanonicalAstPhase
+
+  public export
+  ResolvedStatement : Type
+  ResolvedStatement = Statement ResolvedAstPhase
+
+  public export
+  TypedStatement : Type
+  TypedStatement = Statement TypedAstPhase
+
+  public export
+  Item : AstPhase -> Type
+  Item phase = AstNode phase (ItemNode phase)
 
   public export
   SurfaceItem : Type
-  SurfaceItem = SurfaceAstNode ItemNode
+  SurfaceItem = Item SurfaceAstPhase
 
-  -- The knots: written types and contract clauses with full surface
-  -- expressions in their expression positions.
+  public export
+  CanonicalItem : Type
+  CanonicalItem = Item CanonicalAstPhase
+
+  public export
+  ResolvedItem : Type
+  ResolvedItem = Item ResolvedAstPhase
+
+  public export
+  TypedItem : Type
+  TypedItem = Item TypedAstPhase
+
+  -- The knots: written types and contract clauses with full expressions (at
+  -- the same phase) in their expression positions.
   public export
   SurfaceTy : Type
-  SurfaceTy = LocatedTy SurfaceExpr
+  SurfaceTy = Ty SurfaceAstPhase SurfaceExpr
+
+  public export
+  CanonicalTy : Type
+  CanonicalTy = Ty CanonicalAstPhase CanonicalExpr
+
+  public export
+  ResolvedTy : Type
+  ResolvedTy = Ty ResolvedAstPhase ResolvedExpr
+
+  public export
+  TypedTy : Type
+  TypedTy = Ty TypedAstPhase TypedExpr
 
   public export
   SurfaceContractClause : Type
-  SurfaceContractClause = LocatedContractClause SurfaceExpr
+  SurfaceContractClause = ContractClause SurfaceAstPhase SurfaceExpr
+
+  public export
+  CanonicalContractClause : Type
+  CanonicalContractClause = ContractClause CanonicalAstPhase CanonicalExpr
+
+  public export
+  ResolvedContractClause : Type
+  ResolvedContractClause = ContractClause ResolvedAstPhase ResolvedExpr
+
+  public export
+  TypedContractClause : Type
+  TypedContractClause = ContractClause TypedAstPhase TypedExpr
 
   ------------------------------------------------------------------------------
   -- Source file
@@ -78,10 +165,10 @@ mutual
   -- Inner docs (//! and /*! ... */ at the top of the file) document the
   -- file/module itself.
   public export
-  record SourceFileNode where
+  record SourceFileNode (phase : AstPhase) where
     constructor MkSourceFileNode
-    sourceFileInnerDocs : List SurfaceDocComment
-    sourceFileItems     : List SurfaceItem
+    sourceFileInnerDocs : List (DocComment phase)
+    sourceFileItems     : List (Item phase)
 
   ------------------------------------------------------------------------------
   -- Items
@@ -90,15 +177,15 @@ mutual
   -- error, which this family encodes by simply having no statement arm.
 
   public export
-  data ItemNode : Type where
-    ItemModule   : (moduleDeclaration   : ModuleDeclarationNode)   -> ItemNode -- module declaration
-    ItemUse      : (useDeclaration      : UseDeclarationNode)      -> ItemNode -- use statement
-    ItemConst    : (constDeclaration    : ConstDeclarationNode)    -> ItemNode -- const declaration
-    ItemEnum     : (enumDeclaration     : EnumDeclarationNode)     -> ItemNode -- enum declaration
-    ItemQEnum    : (qenumDeclaration    : QEnumDeclarationNode)    -> ItemNode -- qenum declaration
-    ItemStruct   : (structDeclaration   : StructDeclarationNode)   -> ItemNode -- struct declaration
-    ItemImpl     : (implDeclaration     : ImplDeclarationNode)     -> ItemNode -- impl block declaration
-    ItemFunction : (functionDeclaration : FunctionDeclarationNode) -> ItemNode -- function declaration
+  data ItemNode : (phase : AstPhase) -> Type where
+    ItemModule   : (moduleDeclaration   : ModuleDeclarationNode phase)   -> ItemNode phase -- module declaration
+    ItemUse      : (useDeclaration      : UseDeclarationNode phase)      -> ItemNode phase -- use statement
+    ItemConst    : (constDeclaration    : ConstDeclarationNode phase)    -> ItemNode phase -- const declaration
+    ItemEnum     : (enumDeclaration     : EnumDeclarationNode phase)     -> ItemNode phase -- enum declaration
+    ItemQEnum    : (qenumDeclaration    : QEnumDeclarationNode phase)    -> ItemNode phase -- qenum declaration
+    ItemStruct   : (structDeclaration   : StructDeclarationNode phase)   -> ItemNode phase -- struct declaration
+    ItemImpl     : (implDeclaration     : ImplDeclarationNode phase)     -> ItemNode phase -- impl block declaration
+    ItemFunction : (functionDeclaration : FunctionDeclarationNode phase) -> ItemNode phase -- function declaration
 
   ------------------------------------------------------------------------------
   -- Function declarations
@@ -108,27 +195,27 @@ mutual
   -- signature. The surface AST records that the user WROTE `unitary`; it
   -- does not know or care whether the body is unitary.
   public export
-  record FunctionDeclarationNode where
+  record FunctionDeclarationNode (phase : AstPhase) where
     constructor MkFunctionDeclarationNode
-    functionDocs       : List SurfaceDocComment
-    functionAttributes : List SurfaceAttribute
-    functionVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
+    functionDocs       : List (DocComment phase)
+    functionAttributes : List (Attribute phase)
+    functionVisibility : Maybe (AstNode phase VisibilityQualifier)
     -- Nothing: ordinary `fn`. Just: the user explicitly wrote `const fn`.
-    functionConstness  : Maybe (SurfaceAstNode FunctionConstness)
+    functionConstness  : Maybe (AstNode phase FunctionConstness)
     -- Nothing: no effect written (treated as general later).
     -- Just (located EffectGeneral): the user explicitly wrote `general`.
-    functionEffect     : Maybe (SurfaceAstNode FunctionEffect)
-    functionName       : SurfaceName
-    functionParameters : List (SurfaceAstNode FunctionParameterNode)
+    functionEffect     : Maybe (AstNode phase FunctionEffect)
+    functionName       : Name phase
+    functionParameters : List (AstNode phase (FunctionParameterNode phase))
     -- Nothing: no `->` written (distinct from an explicit `-> ()`).
-    returnType         : Maybe SurfaceTy
+    returnType         : Maybe (Ty phase (Expr phase))
     -- Empty: no `supports` clause written. A written clause always names
     -- at least one kind, so emptiness is unambiguous.
-    supportClause      : List (SurfaceAstNode SupportKind)
+    supportClause      : List (AstNode phase SupportKind)
     -- requires/ensures in SOURCE ORDER; the requires-before-ensures rule
     -- is a validation check against this order, not an AST shape.
-    contractClauses    : List SurfaceContractClause
-    functionBody       : SurfaceBlock
+    contractClauses    : List (ContractClause phase (Expr phase))
+    functionBody       : Block phase
 
   -- Declaration-side parameters. Two shapes:
   --
@@ -137,92 +224,92 @@ mutual
   --
   -- Normal parameters require BOTH a name and a type (the spec never shows
   -- untyped or pattern-bound parameters; if `fn f((a, b): (i32, i32))` is
-  -- ever ruled legal, the name field becomes a SurfacePattern). Parameters
+  -- ever ruled legal, the name field becomes a Pattern). Parameters
   -- carry their own outer docs, per the doc-comment attachment rules.
   public export
-  data FunctionParameterNode : Type where
+  data FunctionParameterNode : (phase : AstPhase) -> Type where
 
     NormalParameter :
-         (parameterDocs       : List SurfaceDocComment)
-      -> (parameterMutability : Maybe (SurfaceAstNode Mutability))
-      -> (parameterName       : SurfaceName)
-      -> (parameterType       : SurfaceTy)
-      -> FunctionParameterNode
+         (parameterDocs       : List (DocComment phase))
+      -> (parameterMutability : Maybe (AstNode phase Mutability))
+      -> (parameterName       : Name phase)
+      -> (parameterType       : Ty phase (Expr phase))
+      -> FunctionParameterNode phase
 
     -- `self`, `&self`, `&mut self`. Nothing = plain `self` (by value);
     -- Just borrow = `&self` / `&mut self`. Only the spec's `&self` is
     -- currently exercised; the others are representable and validated later.
     ReceiverParameter :
-         (receiverDocs   : List SurfaceDocComment)
-      -> (receiverBorrow : Maybe (SurfaceAstNode BorrowKind))
-      -> FunctionParameterNode
+         (receiverDocs   : List (DocComment phase))
+      -> (receiverBorrow : Maybe (AstNode phase BorrowKind))
+      -> FunctionParameterNode phase
 
   ------------------------------------------------------------------------------
   -- Struct / enum / qenum declarations
   ------------------------------------------------------------------------------
 
   public export
-  record StructDeclarationNode where
+  record StructDeclarationNode (phase : AstPhase) where
     constructor MkStructDeclarationNode
-    structDocs       : List SurfaceDocComment
-    structAttributes : List SurfaceAttribute
-    structVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
-    structName       : SurfaceName
-    structFields     : List (SurfaceAstNode StructFieldNode)
+    structDocs       : List (DocComment phase)
+    structAttributes : List (Attribute phase)
+    structVisibility : Maybe (AstNode phase VisibilityQualifier)
+    structName       : Name phase
+    structFields     : List (AstNode phase (StructFieldNode phase))
 
   -- One named field: `x: f64`. (No per-field visibility: the spec never
   -- writes `pub` on fields; parser rejection pending a ruling.)
   public export
-  record StructFieldNode where
+  record StructFieldNode (phase : AstPhase) where
     constructor MkStructFieldNode
-    fieldDocs : List SurfaceDocComment
-    fieldName : SurfaceName
-    fieldType : SurfaceTy
+    fieldDocs : List (DocComment phase)
+    fieldName : Name phase
+    fieldType : Ty phase (Expr phase)
 
   public export
-  record EnumDeclarationNode where
+  record EnumDeclarationNode (phase : AstPhase) where
     constructor MkEnumDeclarationNode
-    enumDocs       : List SurfaceDocComment
-    enumAttributes : List SurfaceAttribute
-    enumVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
-    enumName       : SurfaceName
-    enumVariants   : List (SurfaceAstNode EnumVariantNode)
+    enumDocs       : List (DocComment phase)
+    enumAttributes : List (Attribute phase)
+    enumVisibility : Maybe (AstNode phase VisibilityQualifier)
+    enumName       : Name phase
+    enumVariants   : List (AstNode phase (EnumVariantNode phase))
 
   -- Classical enum variants mix freely within one enum:
   --   Zero,                      -- unit-like
   --   Left(i32),                 -- tuple-like (>= 1 payload type)
   --   Move { x: i32, y: i32 },   -- struct-like
   public export
-  record EnumVariantNode where
+  record EnumVariantNode (phase : AstPhase) where
     constructor MkEnumVariantNode
-    variantDocs : List SurfaceDocComment
-    variantName : SurfaceName
-    variantBody : EnumVariantBody
+    variantDocs : List (DocComment phase)
+    variantName : Name phase
+    variantBody : EnumVariantBody phase
 
   public export
-  data EnumVariantBody : Type where
-    VariantUnit   : EnumVariantBody
-    VariantTuple  : (payloadTypes  : List1 SurfaceTy) -> EnumVariantBody
-    VariantStruct : (payloadFields : List (SurfaceAstNode StructFieldNode))
-                 -> EnumVariantBody
+  data EnumVariantBody : (phase : AstPhase) -> Type where
+    VariantUnit   : EnumVariantBody phase
+    VariantTuple  : (payloadTypes  : List1 (Ty phase (Expr phase))) -> EnumVariantBody phase
+    VariantStruct : (payloadFields : List (AstNode phase (StructFieldNode phase)))
+                 -> EnumVariantBody phase
 
   -- qenum: ONLY tuple-like variants exist, which the AST enforces by
   -- construction -- there is no unit or struct arm to build.
   public export
-  record QEnumDeclarationNode where
+  record QEnumDeclarationNode (phase : AstPhase) where
     constructor MkQEnumDeclarationNode
-    qenumDocs       : List SurfaceDocComment
-    qenumAttributes : List SurfaceAttribute
-    qenumVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
-    qenumName       : SurfaceName
-    qenumVariants   : List (SurfaceAstNode QEnumVariantNode)
+    qenumDocs       : List (DocComment phase)
+    qenumAttributes : List (Attribute phase)
+    qenumVisibility : Maybe (AstNode phase VisibilityQualifier)
+    qenumName       : Name phase
+    qenumVariants   : List (AstNode phase (QEnumVariantNode phase))
 
   public export
-  record QEnumVariantNode where
+  record QEnumVariantNode (phase : AstPhase) where
     constructor MkQEnumVariantNode
-    qenumVariantDocs         : List SurfaceDocComment
-    qenumVariantName         : SurfaceName
-    qenumVariantPayloadTypes : List1 SurfaceTy
+    qenumVariantDocs         : List (DocComment phase)
+    qenumVariantName         : Name phase
+    qenumVariantPayloadTypes : List1 (Ty phase (Expr phase))
 
   ------------------------------------------------------------------------------
   -- impl / const / use / mod declarations
@@ -231,50 +318,50 @@ mutual
   -- `impl Person { fn new(...) -> Person { ... } ... }`. Only function
   -- declarations occur inside impl blocks per the spec.
   public export
-  record ImplDeclarationNode where
+  record ImplDeclarationNode (phase : AstPhase) where
     constructor MkImplDeclarationNode
-    implDocs      : List SurfaceDocComment
-    implTarget    : SurfacePath
-    implFunctions : List (SurfaceAstNode FunctionDeclarationNode)
+    implDocs      : List (DocComment phase)
+    implTarget    : Path phase
+    implFunctions : List (AstNode phase (FunctionDeclarationNode phase))
 
   -- `const FIVE: i32 = 5;`. The type annotation is MANDATORY on consts
   -- (as in Rust; the spec always writes it).
   public export
-  record ConstDeclarationNode where
+  record ConstDeclarationNode (phase : AstPhase) where
     constructor MkConstDeclarationNode
-    constDocs       : List SurfaceDocComment
-    constVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
-    constName       : SurfaceName
-    constType       : SurfaceTy
-    constValue      : SurfaceExpr
+    constDocs       : List (DocComment phase)
+    constVisibility : Maybe (AstNode phase VisibilityQualifier)
+    constName       : Name phase
+    constType       : Ty phase (Expr phase)
+    constValue      : Expr phase
 
   -- `use my_library::helper;`
   public export
-  record UseDeclarationNode where
+  record UseDeclarationNode (phase : AstPhase) where
     constructor MkUseDeclarationNode
-    useDocs       : List SurfaceDocComment
-    useVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
-    usePath       : SurfacePath
+    useDocs       : List (DocComment phase)
+    useVisibility : Maybe (AstNode phase VisibilityQualifier)
+    usePath       : Path phase
 
   -- Two source forms:
   --   mod my_module { ...items... }   -- inline body
   --   mod my_library;                 -- external file
   public export
-  record ModuleDeclarationNode where
+  record ModuleDeclarationNode (phase : AstPhase) where
     constructor MkModuleDeclarationNode
-    moduleDocs       : List SurfaceDocComment
-    moduleVisibility : Maybe (SurfaceAstNode VisibilityQualifier)
-    moduleName       : SurfaceName
-    moduleBody       : ModuleBody
+    moduleDocs       : List (DocComment phase)
+    moduleVisibility : Maybe (AstNode phase VisibilityQualifier)
+    moduleName       : Name phase
+    moduleBody       : ModuleBody phase
 
   public export
-  data ModuleBody : Type where
+  data ModuleBody : (phase : AstPhase) -> Type where
     ModuleInline :
-         (moduleInnerDocs : List SurfaceDocComment)
-      -> (moduleItems     : List SurfaceItem)
-      -> ModuleBody
+         (moduleInnerDocs : List (DocComment phase))
+      -> (moduleItems     : List (Item phase))
+      -> ModuleBody phase
     ModuleExternal :
-         ModuleBody
+         ModuleBody phase
 
   ------------------------------------------------------------------------------
   -- Blocks
@@ -284,39 +371,39 @@ mutual
   -- `;` (or are block-like), and the optional trailing expression WITHOUT
   -- `;` is the block's value.
   public export
-  record BlockNode where
+  record BlockNode (phase : AstPhase) where
     constructor MkBlockNode
-    blockInnerDocs  : List SurfaceDocComment
-    blockStatements : List SurfaceStatement
-    finalExpression : Maybe SurfaceExpr
+    blockInnerDocs  : List (DocComment phase)
+    blockStatements : List (Statement phase)
+    finalExpression : Maybe (Expr phase)
 
   ------------------------------------------------------------------------------
   -- Statements
   ------------------------------------------------------------------------------
 
   public export
-  data StatementNode : Type where
+  data StatementNode : (phase : AstPhase) -> Type where
 
     StatementLet :
-         (letBinding : LetBindingNode)
-      -> StatementNode
+         (letBinding : LetBindingNode phase)
+      -> StatementNode phase
 
     StatementAssignment :
-         (assignment : AssignmentNode)
-      -> StatementNode
+         (assignment : AssignmentNode phase)
+      -> StatementNode phase
 
     -- An expression statement WITH a written `;`:  f(&q);  x + 1;
     StatementSemiExpression :
-         (statementExpression : SurfaceExpr)
-      -> StatementNode
+         (statementExpression : Expr phase)
+      -> StatementNode phase
 
     -- A block-like expression in statement position WITHOUT `;`, in
     -- non-final position:  if c { ... } else { ... }  loop { ... }
     -- Distinct from StatementSemiExpression so "expected `;`" diagnostics
     -- and pretty-printing see what was written.
     StatementExpression :
-         (statementExpression : SurfaceExpr)
-      -> StatementNode
+         (statementExpression : Expr phase)
+      -> StatementNode phase
 
   -- let [qualifiers] pattern [: Ty] [= | := expr] ;
   --
@@ -324,79 +411,79 @@ mutual
   -- "marker without initializer" is unrepresentable; `let a: [i32; 4];`
   -- (no initializer at all) is Nothing.
   public export
-  record LetBindingNode where
+  record LetBindingNode (phase : AstPhase) where
     constructor MkLetBindingNode
     -- Source order; empty = none written. `let scratch linear q = ...`.
-    letQualifiers    : List (SurfaceAstNode QuantumStorageQualifier)
-    letPattern       : SurfacePattern
-    letTypeAnnotation : Maybe SurfaceTy
-    letInitializer   : Maybe LetInitializerNode
+    letQualifiers    : List (AstNode phase QuantumStorageQualifier)
+    letPattern       : Pattern phase
+    letTypeAnnotation : Maybe (Ty phase (Expr phase))
+    letInitializer   : Maybe (LetInitializerNode phase)
 
   public export
-  record LetInitializerNode where
+  record LetInitializerNode (phase : AstPhase) where
     constructor MkLetInitializerNode
-    -- Located: the `:=` span is what "auto-uncompute is not allowed on
+    -- the `:=` span is what "auto-uncompute is not allowed on
     -- classical bindings"-style diagnostics point at.
-    initializerMarker : SurfaceAstNode InitializerMarker
-    initializerValue  : SurfaceExpr
+    initializerMarker : AstNode phase InitializerMarker
+    initializerValue  : Expr phase
 
   -- target op value;  where op is =, +=, <<=, ... (never :=).
   public export
-  record AssignmentNode where
+  record AssignmentNode (phase : AstPhase) where
     constructor MkAssignmentNode
-    assignmentTarget   : SurfaceAstNode AssignmentTargetNode
-    assignmentOperator : SurfaceAstNode AssignmentOperator
-    assignmentValue    : SurfaceExpr
+    assignmentTarget   : AstNode phase (AssignmentTargetNode phase)
+    assignmentOperator : AstNode phase AssignmentOperator
+    assignmentValue    : Expr phase
 
   -- The assignable-place grammar, kept apart from general expressions:
   --   x = 5;   x[0] = 10;   p.x = v;   t.0 = 3;
   -- Base positions are expressions (qs[i].0 = ... nests), but the OUTER
   -- shape is one of exactly these four; `f() = 5;` is unrepresentable.
   public export
-  data AssignmentTargetNode : Type where
+  data AssignmentTargetNode : (phase : AstPhase) -> Type where
 
     AssignTargetName :
-         (targetName : SurfaceName)
-      -> AssignmentTargetNode
+         (targetName : Name phase)
+      -> AssignmentTargetNode phase
 
     AssignTargetIndex :
-         (targetObject    : SurfaceExpr)
-      -> (indexExpression : SurfaceExpr)
-      -> AssignmentTargetNode
+         (targetObject    : Expr phase)
+      -> (indexExpression : Expr phase)
+      -> AssignmentTargetNode phase
 
     AssignTargetField :
-         (targetObject : SurfaceExpr)
-      -> (fieldName    : SurfaceName)
-      -> AssignmentTargetNode
+         (targetObject : Expr phase)
+      -> (fieldName    : Name phase)
+      -> AssignmentTargetNode phase
 
     -- t.0 = 3;  index spelling preserved raw, like every numeric literal.
     AssignTargetTupleIndex :
-         (targetObject      : SurfaceExpr)
+         (targetObject      : Expr phase)
       -> (tupleIndexRawText : String)
-      -> AssignmentTargetNode
+      -> AssignmentTargetNode phase
 
   ------------------------------------------------------------------------------
   -- Expressions
   ------------------------------------------------------------------------------
 
   public export
-  data ExpressionNode : Type where
+  data ExpressionNode : (phase : AstPhase) -> Type where
 
     ExprLiteral :
-         (literal : SurfaceLiteral)
-      -> ExpressionNode
+         (literal : Literal phase)
+      -> ExpressionNode phase
 
     -- A lone identifier. PARSER RULE (mirroring PatternName/PatternPath):
     -- one segment => ExprName, multiple segments => ExprPath.
     ExprName :
-         (valueName : SurfaceName)
-      -> ExpressionNode
+         (valueName : Name phase)
+      -> ExpressionNode phase
 
     -- Data::Left, Person::new, my_library::helper -- what the path denotes
     -- (variant, associated function, imported item) is resolution's job.
     ExprPath :
-         (valuePath : SurfacePath)
-      -> ExpressionNode
+         (valuePath : Path phase)
+      -> ExpressionNode phase
 
     -- A non-shadowable builtin in expression (usually callee) position:
     -- qalloc, measr, reset, discard, uncompute, weaken, barrier, ...
@@ -405,180 +492,180 @@ mutual
     -- grammar of their own (below).
     ExprBuiltin :
          (builtinFunction : Builtin)
-      -> ExpressionNode
+      -> ExpressionNode phase
 
     -- `self` in method bodies.
     ExprSelf :
-         ExpressionNode
+         ExpressionNode phase
 
     -- (e) -- kept distinct from (e,) [one-element ExprTuple]; discarded at
     -- canonicalization. Same story as TyParenthesized/PatternParenthesized.
     ExprParenthesized :
-         (innerExpression : SurfaceExpr)
-      -> ExpressionNode
+         (innerExpression : Expr phase)
+      -> ExpressionNode phase
 
     -- (a, b), (e,). At least one element; `()` is ExprLiteral LiteralUnit.
     ExprTuple :
-         (tupleElements : List1 SurfaceExpr)
-      -> ExpressionNode
+         (tupleElements : List1 (Expr phase))
+      -> ExpressionNode phase
 
     -- [1, 2, 3]; [] is legal syntax (typed elsewhere).
     ExprArray :
-         (arrayElements : List SurfaceExpr)
-      -> ExpressionNode
+         (arrayElements : List (Expr phase))
+      -> ExpressionNode phase
 
     -- [0; 3] -- element repeated count times; count is const-checked later.
     ExprRepeatedArray :
-         (repeatedElement : SurfaceExpr)
-      -> (repeatCount     : SurfaceExpr)
-      -> ExpressionNode
+         (repeatedElement : Expr phase)
+      -> (repeatCount     : Expr phase)
+      -> ExpressionNode phase
 
     -- Point { x: 1.0, y: 2.0 } / Pair { q0, q1 } -- shorthand vs explicit
     -- preserved per field.
     ExprStructLiteral :
-         (structPath        : SurfacePath)
-      -> (fieldInitializers : List (SurfaceAstNode FieldInitializerNode))
-      -> ExpressionNode
+         (structPath        : Path phase)
+      -> (fieldInitializers : List (AstNode phase (FieldInitializerNode phase)))
+      -> ExpressionNode phase
 
     -- f(a, b) -- callee is a full expression: names, paths, builtins,
     -- adjoint(f), ctrl(...).apply(f), parenthesized expressions.
     ExprCall :
-         (callee        : SurfaceExpr)
-      -> (callArguments : List SurfaceExpr)
-      -> ExpressionNode
+         (callee        : Expr phase)
+      -> (callArguments : List (Expr phase))
+      -> ExpressionNode phase
 
     -- a.len(), sq1.tensor(sq2), (0..n).rev(). The method name is stored
     -- textually even when it arrives as a builtin token (`tensor`): its
     -- category is recoverable via builtinFromString, and method-position
     -- resolution is a later concern.
     ExprMethodCall :
-         (receiver        : SurfaceExpr)
-      -> (methodName      : SurfaceName)
-      -> (methodArguments : List SurfaceExpr)
-      -> ExpressionNode
+         (receiver        : Expr phase)
+      -> (methodName      : Name phase)
+      -> (methodArguments : List (Expr phase))
+      -> ExpressionNode phase
 
     -- p.x
     ExprField :
-         (fieldObject : SurfaceExpr)
-      -> (fieldName   : SurfaceName)
-      -> ExpressionNode
+         (fieldObject : Expr phase)
+      -> (fieldName   : Name phase)
+      -> ExpressionNode phase
 
     -- t.0 -- raw index spelling preserved.
     ExprTupleIndex :
-         (indexedTuple      : SurfaceExpr)
+         (indexedTuple      : Expr phase)
       -> (tupleIndexRawText : String)
-      -> ExpressionNode
+      -> ExpressionNode phase
 
     -- a[i], and also slicing: a[1..4] is ExprIndex with a range index --
     -- slicing is not a separate node, exactly as in Rust's AST. `&a[1..4]`
     -- is ExprUnary borrow around this.
     ExprIndex :
-         (indexedObject   : SurfaceExpr)
-      -> (indexExpression : SurfaceExpr)
-      -> ExpressionNode
+         (indexedObject   : Expr phase)
+      -> (indexExpression : Expr phase)
+      -> ExpressionNode phase
 
     -- Operators are located so "cannot apply `+` here" points at the `+`.
     ExprUnary :
-         (unaryOperator : SurfaceAstNode UnaryOperator)
-      -> (operand       : SurfaceExpr)
-      -> ExpressionNode
+         (unaryOperator : AstNode phase UnaryOperator)
+      -> (operand       : Expr phase)
+      -> ExpressionNode phase
 
     ExprBinary :
-         (binaryOperator : SurfaceAstNode BinaryOperator)
-      -> (leftOperand    : SurfaceExpr)
-      -> (rightOperand   : SurfaceExpr)
-      -> ExpressionNode
+         (binaryOperator : AstNode phase BinaryOperator)
+      -> (leftOperand    : Expr phase)
+      -> (rightOperand   : Expr phase)
+      -> ExpressionNode phase
 
     -- a..b, a.., ..=5, .. -- both endpoints optional; `a..=` (inclusive
     -- with no end) is a parser rejection, not an AST impossibility.
     ExprRange :
-         (rangeStart    : Maybe SurfaceExpr)
-      -> (rangeOperator : SurfaceAstNode RangeOperator)
-      -> (rangeEnd      : Maybe SurfaceExpr)
-      -> ExpressionNode
+         (rangeStart    : Maybe (Expr phase))
+      -> (rangeOperator : AstNode phase RangeOperator)
+      -> (rangeEnd      : Maybe (Expr phase))
+      -> ExpressionNode phase
 
     -- e as T
     ExprCast :
-         (castOperand : SurfaceExpr)
-      -> (castTarget  : SurfaceTy)
-      -> ExpressionNode
+         (castOperand : Expr phase)
+      -> (castTarget  : Ty phase (Expr phase))
+      -> ExpressionNode phase
 
     ExprBlock :
-         (blockExpression : SurfaceBlock)
-      -> ExpressionNode
+         (blockExpression : Block phase)
+      -> ExpressionNode phase
 
     ExprIf :
-         (ifExpression : ClassicalIfNode)
-      -> ExpressionNode
+         (ifExpression : ClassicalIfNode phase)
+      -> ExpressionNode phase
 
     ExprQIf :
-         (qifExpression : QuantumIfNode)
-      -> ExpressionNode
+         (qifExpression : QuantumIfNode phase)
+      -> ExpressionNode phase
 
     ExprSIf :
-         (sifExpression : StateIfNode)
-      -> ExpressionNode
+         (sifExpression : StateIfNode phase)
+      -> ExpressionNode phase
 
     ExprMatch :
-         (matchExpression : ClassicalMatchNode)
-      -> ExpressionNode
+         (matchExpression : ClassicalMatchNode phase)
+      -> ExpressionNode phase
 
     ExprQMatch :
-         (qmatchExpression : QuantumMatchNode)
-      -> ExpressionNode
+         (qmatchExpression : QuantumMatchNode phase)
+      -> ExpressionNode phase
 
     ExprSMatch :
-         (smatchExpression : StateMatchNode)
-      -> ExpressionNode
+         (smatchExpression : StateMatchNode phase)
+      -> ExpressionNode phase
 
     ExprLoop :
-         (loopBody : SurfaceBlock)
-      -> ExpressionNode
+         (loopBody : Block phase)
+      -> ExpressionNode phase
 
     ExprWhile :
-         (whileCondition : SurfaceExpr)
-      -> (whileBody      : SurfaceBlock)
-      -> ExpressionNode
+         (whileCondition : Expr phase)
+      -> (whileBody      : Block phase)
+      -> ExpressionNode phase
 
     -- for i in 1..6 { ... } -- the binder is a full pattern
     -- (for (a, b) in ... is representable; a ruling can restrict it).
     ExprFor :
-         (forPattern       : SurfacePattern)
-      -> (forIterExpression : SurfaceExpr)
-      -> (forBody          : SurfaceBlock)
-      -> ExpressionNode
+         (forPattern       : Pattern phase)
+      -> (forIterExpression : Expr phase)
+      -> (forBody          : Block phase)
+      -> ExpressionNode phase
 
     ExprBreak :
-         (breakValue : Maybe SurfaceExpr)
-      -> ExpressionNode
+         (breakValue : Maybe (Expr phase))
+      -> ExpressionNode phase
 
     ExprContinue :
-         ExpressionNode
+         ExpressionNode phase
 
     ExprReturn :
-         (returnValue : Maybe SurfaceExpr)
-      -> ExpressionNode
+         (returnValue : Maybe (Expr phase))
+      -> ExpressionNode phase
 
     ExprCtrl :
-         (controlExpression : ControlExpressionNode)
-      -> ExpressionNode
+         (controlExpression : ControlExpressionNode phase)
+      -> ExpressionNode phase
 
     ExprAdjoint :
-         (adjointExpression : AdjointExpressionNode)
-      -> ExpressionNode
+         (adjointExpression : AdjointExpressionNode phase)
+      -> ExpressionNode phase
 
   -- One field in a struct literal: Pair { q0, q1 } vs Point { x: 1.0 }.
   public export
-  data FieldInitializerNode : Type where
+  data FieldInitializerNode : (phase : AstPhase) -> Type where
 
     FieldInitShorthand :
-         (fieldAndValueName : SurfaceName)
-      -> FieldInitializerNode
+         (fieldAndValueName : Name phase)
+      -> FieldInitializerNode phase
 
     FieldInitExplicit :
-         (fieldName  : SurfaceName)
-      -> (fieldValue : SurfaceExpr)
-      -> FieldInitializerNode
+         (fieldName  : Name phase)
+      -> (fieldValue : Expr phase)
+      -> FieldInitializerNode phase
 
   ------------------------------------------------------------------------------
   -- if / qif / sif -- three families, deliberately not merged
@@ -588,85 +675,85 @@ mutual
   -- Branches are blocks; else-if chains nest through ElseChainedIf, so
   -- "else associates with the nearest unmatched if" is structural.
   public export
-  record ClassicalIfNode where
+  record ClassicalIfNode (phase : AstPhase) where
     constructor MkClassicalIfNode
-    ifCondition  : SurfaceExpr
-    ifThenBlock  : SurfaceBlock
-    ifElseBranch : Maybe ClassicalElseNode
+    ifCondition  : Expr phase
+    ifThenBlock  : Block phase
+    ifElseBranch : Maybe (ClassicalElseNode phase)
 
   public export
-  data ClassicalElseNode : Type where
-    ElseBlock     : (elseBlock : SurfaceBlock) -> ClassicalElseNode
-    ElseChainedIf : (chainedIf : SurfaceAstNode ClassicalIfNode)
-                 -> ClassicalElseNode
+  data ClassicalElseNode : (phase : AstPhase) -> Type where
+    ElseBlock     : (elseBlock : Block phase) -> ClassicalElseNode phase
+    ElseChainedIf : (chainedIf : AstNode phase (ClassicalIfNode phase))
+                 -> ClassicalElseNode phase
 
   -- qif cond { ... } [qelse { ... }]      -- block branches
   -- qif c e1 qelse e2                     -- bare expression branches
   -- qelse optional, no `then` keyword; each branch independently records
   -- whether it was a block or a bare expression.
   public export
-  record QuantumIfNode where
+  record QuantumIfNode (phase : AstPhase) where
     constructor MkQuantumIfNode
-    qifCondition  : SurfaceExpr
-    qifThenBranch : QuantumBranchNode
-    qifElseBranch : Maybe QuantumBranchNode
+    qifCondition  : Expr phase
+    qifThenBranch : QuantumBranchNode phase
+    qifElseBranch : Maybe (QuantumBranchNode phase)
 
   public export
-  data QuantumBranchNode : Type where
-    QuantumBranchBlock      : (branchBlock : SurfaceBlock) -> QuantumBranchNode
-    QuantumBranchExpression : (branchExpression : SurfaceExpr)
-                           -> QuantumBranchNode
+  data QuantumBranchNode : (phase : AstPhase) -> Type where
+    QuantumBranchBlock      : (branchBlock : Block phase) -> QuantumBranchNode phase
+    QuantumBranchExpression : (branchExpression : Expr phase)
+                           -> QuantumBranchNode phase
 
   -- sif cond then e1 selse e2 -- expression-only, selse MANDATORY, `then`
   -- keyword required: all structural here, none of it deferred.
   public export
-  record StateIfNode where
+  record StateIfNode (phase : AstPhase) where
     constructor MkStateIfNode
-    sifCondition      : SurfaceExpr
-    sifThenExpression : SurfaceExpr
-    sifElseExpression : SurfaceExpr
+    sifCondition      : Expr phase
+    sifThenExpression : Expr phase
+    sifElseExpression : Expr phase
 
   ------------------------------------------------------------------------------
   -- match / qmatch / smatch -- three families
   ------------------------------------------------------------------------------
 
   public export
-  record ClassicalMatchNode where
+  record ClassicalMatchNode (phase : AstPhase) where
     constructor MkClassicalMatchNode
-    matchScrutinee : SurfaceExpr
-    matchArms      : List (SurfaceAstNode ClassicalMatchArmNode)
+    matchScrutinee : Expr phase
+    matchArms      : List (AstNode phase (ClassicalMatchArmNode phase))
 
   -- pattern [if guard] => body   -- the guard lives on the ARM (it
   -- conditions the arm, it is not part of the pattern), which is also what
   -- keeps Pattern.idr independent of expressions.
   public export
-  record ClassicalMatchArmNode where
+  record ClassicalMatchArmNode (phase : AstPhase) where
     constructor MkClassicalMatchArmNode
-    armPattern : SurfacePattern
-    armGuard   : Maybe SurfaceExpr
-    armBody    : SurfaceExpr
+    armPattern : Pattern phase
+    armGuard   : Maybe (Expr phase)
+    armBody    : Expr phase
 
   public export
-  record QuantumMatchNode where
+  record QuantumMatchNode (phase : AstPhase) where
     constructor MkQuantumMatchNode
-    qmatchScrutinee : SurfaceExpr
-    qmatchArms      : List (SurfaceAstNode QuantumMatchArmNode)
+    qmatchScrutinee : Expr phase
+    qmatchArms      : List (AstNode phase (QuantumMatchArmNode phase))
 
   public export
-  record StateMatchNode where
+  record StateMatchNode (phase : AstPhase) where
     constructor MkStateMatchNode
-    smatchScrutinee : SurfaceExpr
-    smatchArms      : List (SurfaceAstNode QuantumMatchArmNode)
+    smatchScrutinee : Expr phase
+    smatchArms      : List (AstNode phase (QuantumMatchArmNode phase))
 
   -- Shared by qmatch and smatch: the pattern grammar is the shared
   -- QuantumMatchPatternNode (Pattern.idr), with smatch's restrictions
   -- (no wildcard, no qenum variants) enforced at parse time. No guards in
   -- quantum matches -- the spec has none, so the field does not exist.
   public export
-  record QuantumMatchArmNode where
+  record QuantumMatchArmNode (phase : AstPhase) where
     constructor MkQuantumMatchArmNode
-    quantumArmPattern : SurfaceQuantumMatchPattern
-    quantumArmBody    : SurfaceExpr
+    quantumArmPattern : QuantumMatchPattern phase
+    quantumArmBody    : Expr phase
 
   ------------------------------------------------------------------------------
   -- ctrl and adjoint -- the two builtins with genuine grammar
@@ -685,96 +772,332 @@ mutual
   -- form without an empty-argument hack.
 
   public export
-  data ControlExpressionNode : Type where
+  data ControlExpressionNode : (phase : AstPhase) -> Type where
 
     -- ctrl(c0, c1)[.on(bs"10")].apply(f) -- at least one control; the
     -- optional basis string is preserved raw (bs"10" as written).
     ControlledCallable :
-         (controlQubits  : List1 SurfaceExpr)
-      -> (onBasisRaw     : Maybe (SurfaceAstNode String))
-      -> (controlledCallable : SurfaceExpr)
-      -> ControlExpressionNode
+         (controlQubits  : List1 (Expr phase))
+      -> (onBasisRaw     : Maybe (AstNode phase String))
+      -> (controlledCallable : Expr phase)
+      -> ControlExpressionNode phase
 
     -- ctrl(c0, c1)[.on(bs"10")] { ...body... }
     ControlledBlock :
-         (controlQubits   : List1 SurfaceExpr)
-      -> (onBasisRaw      : Maybe (SurfaceAstNode String))
-      -> (controlledBlock : SurfaceBlock)
-      -> ControlExpressionNode
+         (controlQubits   : List1 (Expr phase))
+      -> (onBasisRaw      : Maybe (AstNode phase String))
+      -> (controlledBlock : Block phase)
+      -> ControlExpressionNode phase
 
   public export
-  data AdjointExpressionNode : Type where
+  data AdjointExpressionNode : (phase : AstPhase) -> Type where
 
     -- adjoint(f) -- a first-class callable value.
     AdjointOfCallable :
-         (adjointedCallable : SurfaceExpr)
-      -> AdjointExpressionNode
+         (adjointedCallable : Expr phase)
+      -> AdjointExpressionNode phase
 
     -- adjoint { ...body... }
     AdjointBlock :
-         (adjointedBlock : SurfaceBlock)
-      -> AdjointExpressionNode
+         (adjointedBlock : Block phase)
+      -> AdjointExpressionNode phase
 
 --------------------------------------------------------------------------------
 -- Remaining located aliases
 --------------------------------------------------------------------------------
 
 public export
+SourceFile : AstPhase -> Type
+SourceFile phase = AstNode phase (SourceFileNode phase)
+
+public export
 SurfaceSourceFile : Type
-SurfaceSourceFile = SurfaceAstNode SourceFileNode
+SurfaceSourceFile = SourceFile SurfaceAstPhase
+
+public export
+CanonicalSourceFile : Type
+CanonicalSourceFile = SourceFile CanonicalAstPhase
+
+public export
+ResolvedSourceFile : Type
+ResolvedSourceFile = SourceFile ResolvedAstPhase
+
+public export
+TypedSourceFile : Type
+TypedSourceFile = SourceFile TypedAstPhase
+
+public export
+FunctionDeclaration : AstPhase -> Type
+FunctionDeclaration phase = AstNode phase (FunctionDeclarationNode phase)
 
 public export
 SurfaceFunctionDeclaration : Type
-SurfaceFunctionDeclaration = SurfaceAstNode FunctionDeclarationNode
+SurfaceFunctionDeclaration = FunctionDeclaration SurfaceAstPhase
+
+public export
+CanonicalFunctionDeclaration : Type
+CanonicalFunctionDeclaration = FunctionDeclaration CanonicalAstPhase
+
+public export
+ResolvedFunctionDeclaration : Type
+ResolvedFunctionDeclaration = FunctionDeclaration ResolvedAstPhase
+
+public export
+TypedFunctionDeclaration : Type
+TypedFunctionDeclaration = FunctionDeclaration TypedAstPhase
+
+public export
+FunctionParameter : AstPhase -> Type
+FunctionParameter phase = AstNode phase (FunctionParameterNode phase)
 
 public export
 SurfaceFunctionParameter : Type
-SurfaceFunctionParameter = SurfaceAstNode FunctionParameterNode
+SurfaceFunctionParameter = FunctionParameter SurfaceAstPhase
+
+public export
+CanonicalFunctionParameter : Type
+CanonicalFunctionParameter = FunctionParameter CanonicalAstPhase
+
+public export
+ResolvedFunctionParameter : Type
+ResolvedFunctionParameter = FunctionParameter ResolvedAstPhase
+
+public export
+TypedFunctionParameter : Type
+TypedFunctionParameter = FunctionParameter TypedAstPhase
+
+public export
+StructDeclaration : AstPhase -> Type
+StructDeclaration phase = AstNode phase (StructDeclarationNode phase)
 
 public export
 SurfaceStructDeclaration : Type
-SurfaceStructDeclaration = SurfaceAstNode StructDeclarationNode
+SurfaceStructDeclaration = StructDeclaration SurfaceAstPhase
+
+public export
+CanonicalStructDeclaration : Type
+CanonicalStructDeclaration = StructDeclaration CanonicalAstPhase
+
+public export
+ResolvedStructDeclaration : Type
+ResolvedStructDeclaration = StructDeclaration ResolvedAstPhase
+
+public export
+TypedStructDeclaration : Type
+TypedStructDeclaration = StructDeclaration TypedAstPhase
+
+public export
+EnumDeclaration : AstPhase -> Type
+EnumDeclaration phase = AstNode phase (EnumDeclarationNode phase)
 
 public export
 SurfaceEnumDeclaration : Type
-SurfaceEnumDeclaration = SurfaceAstNode EnumDeclarationNode
+SurfaceEnumDeclaration = EnumDeclaration SurfaceAstPhase
+
+public export
+CanonicalEnumDeclaration : Type
+CanonicalEnumDeclaration = EnumDeclaration CanonicalAstPhase
+
+public export
+ResolvedEnumDeclaration : Type
+ResolvedEnumDeclaration = EnumDeclaration ResolvedAstPhase
+
+public export
+TypedEnumDeclaration : Type
+TypedEnumDeclaration = EnumDeclaration TypedAstPhase
+
+public export
+QEnumDeclaration : AstPhase -> Type
+QEnumDeclaration phase = AstNode phase (QEnumDeclarationNode phase)
 
 public export
 SurfaceQEnumDeclaration : Type
-SurfaceQEnumDeclaration = SurfaceAstNode QEnumDeclarationNode
+SurfaceQEnumDeclaration = QEnumDeclaration SurfaceAstPhase
+
+public export
+CanonicalQEnumDeclaration : Type
+CanonicalQEnumDeclaration = QEnumDeclaration CanonicalAstPhase
+
+public export
+ResolvedQEnumDeclaration : Type
+ResolvedQEnumDeclaration = QEnumDeclaration ResolvedAstPhase
+
+public export
+TypedQEnumDeclaration : Type
+TypedQEnumDeclaration = QEnumDeclaration TypedAstPhase
+
+public export
+ImplDeclaration : AstPhase -> Type
+ImplDeclaration phase = AstNode phase (ImplDeclarationNode phase)
 
 public export
 SurfaceImplDeclaration : Type
-SurfaceImplDeclaration = SurfaceAstNode ImplDeclarationNode
+SurfaceImplDeclaration = ImplDeclaration SurfaceAstPhase
+
+public export
+CanonicalImplDeclaration : Type
+CanonicalImplDeclaration = ImplDeclaration CanonicalAstPhase
+
+public export
+ResolvedImplDeclaration : Type
+ResolvedImplDeclaration = ImplDeclaration ResolvedAstPhase
+
+public export
+TypedImplDeclaration : Type
+TypedImplDeclaration = ImplDeclaration TypedAstPhase
+
+public export
+ConstDeclaration : AstPhase -> Type
+ConstDeclaration phase = AstNode phase (ConstDeclarationNode phase)
 
 public export
 SurfaceConstDeclaration : Type
-SurfaceConstDeclaration = SurfaceAstNode ConstDeclarationNode
+SurfaceConstDeclaration = ConstDeclaration SurfaceAstPhase
+
+public export
+CanonicalConstDeclaration : Type
+CanonicalConstDeclaration = ConstDeclaration CanonicalAstPhase
+
+public export
+ResolvedConstDeclaration : Type
+ResolvedConstDeclaration = ConstDeclaration ResolvedAstPhase
+
+public export
+TypedConstDeclaration : Type
+TypedConstDeclaration = ConstDeclaration TypedAstPhase
+
+public export
+UseDeclaration : AstPhase -> Type
+UseDeclaration phase = AstNode phase (UseDeclarationNode phase)
 
 public export
 SurfaceUseDeclaration : Type
-SurfaceUseDeclaration = SurfaceAstNode UseDeclarationNode
+SurfaceUseDeclaration = UseDeclaration SurfaceAstPhase
+
+public export
+CanonicalUseDeclaration : Type
+CanonicalUseDeclaration = UseDeclaration CanonicalAstPhase
+
+public export
+ResolvedUseDeclaration : Type
+ResolvedUseDeclaration = UseDeclaration ResolvedAstPhase
+
+public export
+TypedUseDeclaration : Type
+TypedUseDeclaration = UseDeclaration TypedAstPhase
+
+public export
+ModuleDeclaration : AstPhase -> Type
+ModuleDeclaration phase = AstNode phase (ModuleDeclarationNode phase)
 
 public export
 SurfaceModuleDeclaration : Type
-SurfaceModuleDeclaration = SurfaceAstNode ModuleDeclarationNode
+SurfaceModuleDeclaration = ModuleDeclaration SurfaceAstPhase
+
+public export
+CanonicalModuleDeclaration : Type
+CanonicalModuleDeclaration = ModuleDeclaration CanonicalAstPhase
+
+public export
+ResolvedModuleDeclaration : Type
+ResolvedModuleDeclaration = ModuleDeclaration ResolvedAstPhase
+
+public export
+TypedModuleDeclaration : Type
+TypedModuleDeclaration = ModuleDeclaration TypedAstPhase
+
+public export
+LetBinding : AstPhase -> Type
+LetBinding phase = AstNode phase (LetBindingNode phase)
 
 public export
 SurfaceLetBinding : Type
-SurfaceLetBinding = SurfaceAstNode LetBindingNode
+SurfaceLetBinding = LetBinding SurfaceAstPhase
+
+public export
+CanonicalLetBinding : Type
+CanonicalLetBinding = LetBinding CanonicalAstPhase
+
+public export
+ResolvedLetBinding : Type
+ResolvedLetBinding = LetBinding ResolvedAstPhase
+
+public export
+TypedLetBinding : Type
+TypedLetBinding = LetBinding TypedAstPhase
+
+public export
+AssignmentTarget : AstPhase -> Type
+AssignmentTarget phase = AstNode phase (AssignmentTargetNode phase)
 
 public export
 SurfaceAssignmentTarget : Type
-SurfaceAssignmentTarget = SurfaceAstNode AssignmentTargetNode
+SurfaceAssignmentTarget = AssignmentTarget SurfaceAstPhase
+
+public export
+CanonicalAssignmentTarget : Type
+CanonicalAssignmentTarget = AssignmentTarget CanonicalAstPhase
+
+public export
+ResolvedAssignmentTarget : Type
+ResolvedAssignmentTarget = AssignmentTarget ResolvedAstPhase
+
+public export
+TypedAssignmentTarget : Type
+TypedAssignmentTarget = AssignmentTarget TypedAstPhase
+
+public export
+ClassicalMatchArm : AstPhase -> Type
+ClassicalMatchArm phase = AstNode phase (ClassicalMatchArmNode phase)
 
 public export
 SurfaceClassicalMatchArm : Type
-SurfaceClassicalMatchArm = SurfaceAstNode ClassicalMatchArmNode
+SurfaceClassicalMatchArm = ClassicalMatchArm SurfaceAstPhase
+
+public export
+CanonicalClassicalMatchArm : Type
+CanonicalClassicalMatchArm = ClassicalMatchArm CanonicalAstPhase
+
+public export
+ResolvedClassicalMatchArm : Type
+ResolvedClassicalMatchArm = ClassicalMatchArm ResolvedAstPhase
+
+public export
+TypedClassicalMatchArm : Type
+TypedClassicalMatchArm = ClassicalMatchArm TypedAstPhase
+
+public export
+QuantumMatchArm : AstPhase -> Type
+QuantumMatchArm phase = AstNode phase (QuantumMatchArmNode phase)
 
 public export
 SurfaceQuantumMatchArm : Type
-SurfaceQuantumMatchArm = SurfaceAstNode QuantumMatchArmNode
+SurfaceQuantumMatchArm = QuantumMatchArm SurfaceAstPhase
+
+public export
+CanonicalQuantumMatchArm : Type
+CanonicalQuantumMatchArm = QuantumMatchArm CanonicalAstPhase
+
+public export
+ResolvedQuantumMatchArm : Type
+ResolvedQuantumMatchArm = QuantumMatchArm ResolvedAstPhase
+
+public export
+TypedQuantumMatchArm : Type
+TypedQuantumMatchArm = QuantumMatchArm TypedAstPhase
 
 public export
 SurfaceContractPredicate : Type
-SurfaceContractPredicate = LocatedContractPredicate SurfaceExpr
+SurfaceContractPredicate = ContractPredicate SurfaceAstPhase SurfaceExpr
+
+public export
+CanonicalContractPredicate : Type
+CanonicalContractPredicate = ContractPredicate CanonicalAstPhase CanonicalExpr
+
+public export
+ResolvedContractPredicate : Type
+ResolvedContractPredicate = ContractPredicate ResolvedAstPhase ResolvedExpr
+
+public export
+TypedContractPredicate : Type
+TypedContractPredicate = ContractPredicate TypedAstPhase TypedExpr

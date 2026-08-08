@@ -2,7 +2,6 @@ module Frontend.ASTPhases
 
 import Frontend.ASTData
 import Frontend.Source
-import Frontend.Type
 
 %default total
 
@@ -10,30 +9,22 @@ import Frontend.Type
 -- Phase-specific AST wrappers
 --------------------------------------------------------------------------------
 
+public export
 data AstPhase     -- The four phases of processing the AST, each with its own metadata.
-  = Surface       -- parser output
-  | Canonical     -- desugaring output
-  | Resolved      -- name and scope resolution output
-  | Typed         -- type checking output
+  = SurfaceAstPhase       -- parser output
+  | CanonicalAstPhase     -- desugaring output
+  | ResolvedAstPhase      -- name and scope resolution output
+  | TypedAstPhase         -- type checking output
 
-record CanonicalMetadata where
-  constructor MkCanonicalMetadata
+record ProvenanceMetadata where
+  constructor MkProvenanceMetadata
   provenance : NodeProvenance
-
-record ResolvedMetadata where
-  constructor MkResolvedMetadata
-  provenance : NodeProvenance
-
-record TypedMetadata where
-  constructor MkTypedMetadata
-  provenance  : NodeProvenance
-  inferredType : LeafType
 
 MetadataFor : AstPhase -> Type
-MetadataFor Surface   = ()
-MetadataFor Canonical = CanonicalMetadata
-MetadataFor Resolved  = ResolvedMetadata
-MetadataFor Typed     = TypedMetadata
+MetadataFor SurfaceAstPhase   = ()
+MetadataFor CanonicalAstPhase = ProvenanceMetadata
+MetadataFor ResolvedAstPhase  = ProvenanceMetadata
+MetadataFor TypedAstPhase     = ProvenanceMetadata
 
 public export
 record AstNode (phase : AstPhase) a where
@@ -48,19 +39,19 @@ record AstNode (phase : AstPhase) a where
 
 public export
 SurfaceAstNode : Type -> Type
-SurfaceAstNode = AstNode Surface
+SurfaceAstNode = AstNode SurfaceAstPhase
 
 public export
 CanonicalAstNode : Type -> Type
-CanonicalAstNode = AstNode Canonical
+CanonicalAstNode = AstNode CanonicalAstPhase
 
 public export
 ResolvedAstNode : Type -> Type
-ResolvedAstNode = AstNode Resolved
+ResolvedAstNode = AstNode ResolvedAstPhase
 
 public export
 TypedAstNode : Type -> Type
-TypedAstNode = AstNode Typed
+TypedAstNode = AstNode TypedAstPhase
 
 --------------------------------------------------------------------------------
 -- Smart constructors for the four phases
@@ -74,17 +65,17 @@ surfaceAstNode astInfo value =
 public export
 canonicalAstNode : AstInfo -> NodeProvenance -> a -> CanonicalAstNode a
 canonicalAstNode astInfo origin value =
-  MkAstNode astInfo (MkCanonicalMetadata origin) value
+  MkAstNode astInfo (MkProvenanceMetadata origin) value
 
 public export
 resolvedAstNode : AstInfo -> NodeProvenance -> a -> ResolvedAstNode a
 resolvedAstNode astInfo origin value =
-  MkAstNode astInfo (MkResolvedMetadata origin) value
+  MkAstNode astInfo (MkProvenanceMetadata origin) value
 
 public export
-typedAstNode : AstInfo -> NodeProvenance -> LeafType -> a -> TypedAstNode a
-typedAstNode astInfo origin inferredType value =
-  MkAstNode astInfo (MkTypedMetadata origin inferredType) value
+typedAstNode : AstInfo -> NodeProvenance -> a -> TypedAstNode a
+typedAstNode astInfo origin value =
+  MkAstNode astInfo (MkProvenanceMetadata origin) value
 
 --------------------------------------------------------------------------------
 -- Show instance: print the payload only, never the bookkeeping

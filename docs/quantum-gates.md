@@ -34,7 +34,7 @@ All prelude quantum gates, CAN be shadowed by a local declaration:
 ### Identity
 
 ```leaf
-Id(&q);
+I(&q);
 ```
 
 ### Single-Qubit Gates
