@@ -16,6 +16,7 @@ data AstPhase     -- The four phases of processing the AST, each with its own me
   | ResolvedAstPhase      -- name and scope resolution output
   | TypedAstPhase         -- type checking output
 
+public export
 record ProvenanceMetadata where
   constructor MkProvenanceMetadata
   provenance : NodeProvenance
