@@ -21,7 +21,6 @@
 [![Idris 2](https://img.shields.io/badge/Idris%202-v0.8.0-blue.svg)](https://github.com/idris-lang/Idris2/releases/tag/v0.8.0)
 [![OpenQASM 3](https://img.shields.io/badge/target-OpenQASM%203-2c8ebb)](https://openqasm.com/)
 [![Lean4](https://img.shields.io/badge/Lean4-theorem%20proving-6f42c1)](https://lean-lang.org/)
-<!-- [![Supported By Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.foundation/) -->
 <!-- ![Development status: Alpha](https://img.shields.io/badge/development%20status-alpha-orange) -->
 
 ## About
