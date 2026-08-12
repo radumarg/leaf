@@ -140,6 +140,14 @@ desugarContrcatClause (MkAstNode contractAstInfo metadata (EnsuresClause predica
   canonicalAstNode contractAstInfo Written $
     EnsuresClause (desugarContractPredicate predicate)
 
+desugarPathSegment : PathSegment SurfaceAstPhase -> PathSegment CanonicalAstPhase
+desugarPathSegment (MkAstNode ?fill_0 ?fill_1 ?fill_2) = ?fillPathSegment
+
+desugarPath : SurfacePath -> CanonicalPath 
+desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSegments)) =
+  canonicalAstNode pathAstInfo Written $
+    MkPathNode (desugarPathSegment firstSegment) (map desugarPathSegment remainingSegments)
+
 desugarLetInitializer : LetInitializerNode SurfaceAstPhase -> LetInitializerNode CanonicalAstPhase
 desugarLetInitializer (MkLetInitializerNode marker value) =
   MkLetInitializerNode
@@ -150,9 +158,11 @@ desugarLetPattern : Pattern SurfaceAstPhase -> Pattern CanonicalAstPhase
 desugarLetPattern (MkAstNode letPatternAstInfo metadata PatternWildcard) = 
     canonicalAstNode letPatternAstInfo Written $ PatternWildcard
 desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternName mutability binderName)) = 
-    canonicalAstNode letPatternAstInfo Written $ ?xx_3
+    canonicalAstNode letPatternAstInfo Written $ 
+      PatternName mutability (desugarAstNode binderName)
 desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternPath valuePath)) = 
-    canonicalAstNode letPatternAstInfo Written $ ?xx_11
+    canonicalAstNode letPatternAstInfo Written $ 
+      PatternPath (desugarPath valuePath)
 desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternLiteral literal)) = 
     canonicalAstNode letPatternAstInfo Written $ ?xx_12
 desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternParenthesized innerPattern)) = 
