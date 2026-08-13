@@ -27,26 +27,29 @@ desugarAttribute (MkAstNode attributeInfo metadata (MkAttributeNode name argumen
       (map (map desugarAstNode) arguments)
 
 desugarType : Ty SurfaceAstPhase (Expr SurfaceAstPhase) -> Ty CanonicalAstPhase (Expr CanonicalAstPhase)
-desugarType (MkAstNode tyInfo metadata (TyPrimitive primitiveName)) =
-  canonicalAstNode tyInfo Written (TyPrimitive primitiveName)
-desugarType (MkAstNode tyInfo metadata (TyPath typePath)) = 
-  canonicalAstNode tyInfo Written (TyPath ?xx_2)
-desugarType (MkAstNode tyInfo metadata TyUnit) =
-  canonicalAstNode tyInfo Written TyUnit
-desugarType (MkAstNode tyInfo metadata (TyParenthesized innerType)) = 
-  canonicalAstNode tyInfo Written ?xx_4
-desugarType (MkAstNode tyInfo metadata (TyTuple elementTypes)) = 
-  canonicalAstNode tyInfo Written ?xx_5
-desugarType (MkAstNode tyInfo metadata (TyArray elementType sizeExpression)) = 
-  canonicalAstNode tyInfo Written ?xx_6
-desugarType (MkAstNode tyInfo metadata (TySlice elementType)) = 
-  canonicalAstNode tyInfo Written ?xx_7
-desugarType (MkAstNode tyInfo metadata (TyReference borrowKind referencedType)) = 
-  canonicalAstNode tyInfo Written ?xx_8
-desugarType (MkAstNode tyInfo metadata (TyQualified storageQualifiers qualifiedType)) = 
-  canonicalAstNode tyInfo Written ?xx_9
-desugarType (MkAstNode tyInfo metadata (TyFunction functionEffect functionParameters returnType)) = 
-  canonicalAstNode tyInfo Written ?xx_10
+desugarType (MkAstNode tyInfo metadata typeNode) =
+  canonicalAstNode tyInfo Written $
+    case typeNode of
+      TyPrimitive primitiveName =>
+        TyPrimitive primitiveName
+      TyPath typePath =>
+        TyPath ?xx_2
+      TyUnit =>
+        TyUnit
+      TyParenthesized innerType =>
+        ?xx_4
+      TyTuple elementTypes =>
+        ?xx_5
+      TyArray elementType sizeExpression =>
+        ?xx_6
+      TySlice elementType =>
+        ?xx_7
+      TyReference borrowKind referencedType =>
+        ?xx_8
+      TyQualified storageQualifiers qualifiedType =>
+        ?xx_9
+      TyFunction functionEffect functionParameters returnType =>
+        ?xx_10
 
 desugarFunctionParameter: AstNode SurfaceAstPhase (FunctionParameterNode SurfaceAstPhase) -> AstNode CanonicalAstPhase (FunctionParameterNode CanonicalAstPhase)
 desugarFunctionParameter (MkAstNode parameterInfo metadata (NormalParameter parameterDocs parameterMutability parameterName parameterType)) =
@@ -132,13 +135,12 @@ desugarContractPredicate (MkAstNode predicateInfo metadata predicateNode) =
           (desugarExpression qubitArgument)
           (map desugarSignedPauliTerm stabilizerTerms)
 
-desugarContrcatClause : ContractClause SurfaceAstPhase (Expr SurfaceAstPhase) -> ContractClause CanonicalAstPhase (Expr CanonicalAstPhase) 
-desugarContrcatClause (MkAstNode contractAstInfo metadata (RequiresClause predicate)) =
+desugarContractClause : ContractClause SurfaceAstPhase (Expr SurfaceAstPhase) -> ContractClause CanonicalAstPhase (Expr CanonicalAstPhase) 
+desugarContractClause (MkAstNode contractAstInfo metadata contractClauseNode) =
   canonicalAstNode contractAstInfo Written $
-    RequiresClause (desugarContractPredicate predicate)
-desugarContrcatClause (MkAstNode contractAstInfo metadata (EnsuresClause predicate)) =
-  canonicalAstNode contractAstInfo Written $
-    EnsuresClause (desugarContractPredicate predicate)
+    case contractClauseNode of
+      RequiresClause predicate => RequiresClause (desugarContractPredicate predicate)
+      EnsuresClause predicate => EnsuresClause (desugarContractPredicate predicate)
 
 desugarPath : SurfacePath -> CanonicalPath 
 desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSegments)) =
@@ -150,26 +152,27 @@ desugarLetInitializer (MkLetInitializerNode marker value) =
   MkLetInitializerNode (desugarAstNode marker) (desugarExpression value)
 
 desugarLetPattern : Pattern SurfaceAstPhase -> Pattern CanonicalAstPhase
-desugarLetPattern (MkAstNode letPatternAstInfo metadata PatternWildcard) = 
-    canonicalAstNode letPatternAstInfo Written $ PatternWildcard
-desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternName mutability binderName)) = 
-    canonicalAstNode letPatternAstInfo Written $ 
-      PatternName mutability (desugarAstNode binderName)
-desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternPath valuePath)) = 
-    canonicalAstNode letPatternAstInfo Written $ 
-      PatternPath (desugarPath valuePath)
-desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternLiteral literal)) = 
-    canonicalAstNode letPatternAstInfo Written $ ?xx_12
-desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternParenthesized innerPattern)) = 
-   canonicalAstNode letPatternAstInfo Written $ ?xx_13
-desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternTuple elementPatterns)) = 
-   canonicalAstNode letPatternAstInfo Written $ ?xx_14
-desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternArray elementPatterns)) = 
-   canonicalAstNode letPatternAstInfo Written $ ?xx_15
-desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternStruct structPath fieldPatterns)) = 
-   canonicalAstNode letPatternAstInfo Written $ ?xx_16
-desugarLetPattern (MkAstNode letPatternAstInfo metadata (PatternEnumTuple variantPath argumentPatterns)) = 
-   canonicalAstNode letPatternAstInfo Written $ ?xx_17
+desugarLetPattern (MkAstNode letPatternAstInfo metadata patternNode) =
+  canonicalAstNode letPatternAstInfo Written $
+    case patternNode of
+      PatternWildcard =>
+        PatternWildcard
+      PatternName mutability binderName =>
+        PatternName mutability (desugarAstNode binderName)
+      PatternPath valuePath =>
+        PatternPath (desugarPath valuePath)
+      PatternLiteral literal =>
+        ?xx_12
+      PatternParenthesized innerPattern =>
+        ?xx_13
+      PatternTuple elementPatterns =>
+        ?xx_14
+      PatternArray elementPatterns =>
+        ?xx_15
+      PatternStruct structPath fieldPatterns =>
+        ?xx_16
+      PatternEnumTuple variantPath argumentPatterns =>
+        ?xx_17
 
 desugarAssignmentTarget : SurfaceAstNode (AssignmentTargetNode SurfaceAstPhase) -> CanonicalAstNode (AssignmentTargetNode CanonicalAstPhase)
 desugarAssignmentTarget (MkAstNode assignmentTargetAstInfo metadata assignmentTargetNode) =
@@ -191,30 +194,26 @@ desugarAssignmentTarget (MkAstNode assignmentTargetAstInfo metadata assignmentTa
           tupleIndexRawText
 
 desugarStatement : Statement SurfaceAstPhase -> Statement CanonicalAstPhase
-desugarStatement (MkAstNode statementAstInfo metadata 
-    (StatementLet (MkLetBindingNode qualifiers pattern typeAnnotation initializer))) =
+desugarStatement (MkAstNode statementAstInfo metadata statementNode) =
   canonicalAstNode statementAstInfo Written $
-    StatementLet $
-      MkLetBindingNode
-        (map desugarAstNode qualifiers)
-        (desugarLetPattern pattern)
-        (map desugarType typeAnnotation)
-        (map desugarLetInitializer initializer)
-desugarStatement (MkAstNode statementAstInfo metadata (StatementAssignment (MkAssignmentNode assignmentTarget assignmentOperator assignmentValue))) =
-  canonicalAstNode statementAstInfo Written $
-    StatementAssignment $
-      MkAssignmentNode
-        (desugarAssignmentTarget assignmentTarget)
-        (desugarAstNode assignmentOperator)
-        (desugarExpression assignmentValue)
-desugarStatement (MkAstNode statementAstInfo metadata (StatementSemiExpression (MkAstNode statementSemiExprAstInfo _ expressionNode))) =
-  canonicalAstNode statementAstInfo Written $
-    StatementSemiExpression $
-      canonicalAstNode statementSemiExprAstInfo Written (desugarExpressionNode expressionNode)
-desugarStatement (MkAstNode statementAstInfo metadata (StatementExpression (MkAstNode statementExprAstInfo _ expressionNode))) =
-  canonicalAstNode statementAstInfo Written $
-    StatementExpression $
-      canonicalAstNode statementExprAstInfo Written (desugarExpressionNode expressionNode)
+    case statementNode of
+      StatementLet (MkLetBindingNode qualifiers pattern typeAnnotation initializer) =>
+        StatementLet $
+          MkLetBindingNode
+            (map desugarAstNode qualifiers)
+            (desugarLetPattern pattern)
+            (map desugarType typeAnnotation)
+            (map desugarLetInitializer initializer)
+      StatementAssignment (MkAssignmentNode assignmentTarget assignmentOperator assignmentValue) =>
+        StatementAssignment $
+          MkAssignmentNode
+            (desugarAssignmentTarget assignmentTarget)
+            (desugarAstNode assignmentOperator)
+            (desugarExpression assignmentValue)
+      StatementSemiExpression statementExpression =>
+        StatementSemiExpression (desugarExpression statementExpression)
+      StatementExpression statementExpression =>
+        StatementExpression (desugarExpression statementExpression)
  
 desugarFunctionBody : Block SurfaceAstPhase -> Block CanonicalAstPhase
 desugarFunctionBody (MkAstNode functionBodyAstInfo metadata (MkBlockNode blockInnerDocs blockStatements finalExpression)) =
@@ -275,7 +274,7 @@ desugarItem (MkAstNode itemInfo metadata item) =
                 (map desugarFunctionParameter functionParameters)
                 (map desugarType returnType)
                 (map desugarAstNode supportClause)
-                (map desugarContrcatClause contractClauses)
+                (map desugarContractClause contractClauses)
                 (desugarFunctionBody functionBody)
 
 desugarSurfaceSyntax : SurfaceSourceFile -> CanonicalSourceFile
