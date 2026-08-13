@@ -140,13 +140,10 @@ desugarContrcatClause (MkAstNode contractAstInfo metadata (EnsuresClause predica
   canonicalAstNode contractAstInfo Written $
     EnsuresClause (desugarContractPredicate predicate)
 
-desugarPathSegment : PathSegment SurfaceAstPhase -> PathSegment CanonicalAstPhase
-desugarPathSegment (MkAstNode ?fill_0 ?fill_1 ?fill_2) = ?fillPathSegment
-
 desugarPath : SurfacePath -> CanonicalPath 
 desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSegments)) =
   canonicalAstNode pathAstInfo Written $
-    MkPathNode (desugarPathSegment firstSegment) (map desugarPathSegment remainingSegments)
+    MkPathNode (desugarAstNode firstSegment) (map desugarAstNode remainingSegments)
 
 desugarLetInitializer : LetInitializerNode SurfaceAstPhase -> LetInitializerNode CanonicalAstPhase
 desugarLetInitializer (MkLetInitializerNode marker value) =
