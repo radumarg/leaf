@@ -26,44 +26,10 @@ desugarAttribute (MkAstNode attributeInfo metadata (MkAttributeNode name argumen
       (desugarAstNode name)
       (map (map desugarAstNode) arguments)
 
-desugarType : Ty SurfaceAstPhase (Expr SurfaceAstPhase) -> Ty CanonicalAstPhase (Expr CanonicalAstPhase)
-desugarType (MkAstNode tyInfo metadata typeNode) =
-  canonicalAstNode tyInfo Written $
-    case typeNode of
-      TyPrimitive primitiveName =>
-        TyPrimitive primitiveName
-      TyPath typePath =>
-        TyPath ?xx_2
-      TyUnit =>
-        TyUnit
-      TyParenthesized innerType =>
-        ?xx_4
-      TyTuple elementTypes =>
-        ?xx_5
-      TyArray elementType sizeExpression =>
-        ?xx_6
-      TySlice elementType =>
-        ?xx_7
-      TyReference borrowKind referencedType =>
-        ?xx_8
-      TyQualified storageQualifiers qualifiedType =>
-        ?xx_9
-      TyFunction functionEffect functionParameters returnType =>
-        ?xx_10
-
-desugarFunctionParameter: AstNode SurfaceAstPhase (FunctionParameterNode SurfaceAstPhase) -> AstNode CanonicalAstPhase (FunctionParameterNode CanonicalAstPhase)
-desugarFunctionParameter (MkAstNode parameterInfo metadata (NormalParameter parameterDocs parameterMutability parameterName parameterType)) =
-  canonicalAstNode parameterInfo Written $
-    NormalParameter
-      (map desugarAstNode parameterDocs)
-      (map desugarAstNode parameterMutability)
-      (desugarAstNode parameterName)
-      (desugarType parameterType)
-desugarFunctionParameter (MkAstNode parameterInfo metadata (ReceiverParameter receiverDocs receiverBorrow)) =
-  canonicalAstNode parameterInfo Written $
-    ReceiverParameter
-      (map desugarAstNode receiverDocs)
-      (map desugarAstNode receiverBorrow)
+desugarPath : SurfacePath -> CanonicalPath
+desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSegments)) =
+  canonicalAstNode pathAstInfo Written $
+    MkPathNode (desugarAstNode firstSegment) (map desugarAstNode remainingSegments)
 
 desugarExpressionNode : ExpressionNode SurfaceAstPhase -> ExpressionNode CanonicalAstPhase
 desugarExpressionNode expression =
@@ -107,6 +73,61 @@ desugarExpression : SurfaceExpr -> CanonicalExpr
 desugarExpression (MkAstNode expressionInfo metadata expressionNode) =
   canonicalAstNode expressionInfo Written (desugarExpressionNode expressionNode)
 
+desugarType : Ty SurfaceAstPhase (Expr SurfaceAstPhase) -> Ty CanonicalAstPhase (Expr CanonicalAstPhase)
+desugarType (MkAstNode tyAstInfo metadata typeNode) =
+  canonicalAstNode tyAstInfo Written $
+    case typeNode of
+      TyPrimitive primitiveName =>
+        TyPrimitive primitiveName
+      TyPath typePath =>
+        TyPath (desugarPath typePath)
+      TyUnit =>
+        TyUnit
+      TyParenthesized innerType =>
+        TyParenthesized (desugarNestedType innerType)
+      TyTuple elementTypes =>
+        TyTuple (map desugarNestedType elementTypes)
+      TyArray elementType sizeExpression =>
+        TyArray 
+          (desugarNestedType elementType) 
+          (desugarExpression sizeExpression)
+      TySlice elementType =>
+        TySlice (desugarNestedType elementType)
+      TyReference borrowKind referencedType =>
+        TyReference 
+          (desugarAstNode borrowKind) 
+          (desugarNestedType referencedType)
+      TyQualified storageQualifiers qualifiedType =>
+        TyQualified (map desugarAstNode storageQualifiers) (desugarNestedType qualifiedType)
+      TyFunction functionEffect functionParameters returnType =>
+        TyFunction
+          (map desugarAstNode functionEffect)
+          (map desugarParameter functionParameters)
+          (map desugarNestedType returnType)
+    where
+      desugarNestedType : SurfaceTy -> CanonicalTy
+      desugarNestedType nestedType =
+        desugarType (assert_smaller typeNode nestedType)
+      desugarParameter : SurfaceAstNode (FunctionTypeParameterNode SurfaceAstPhase (SurfaceAstNode (ExpressionNode SurfaceAstPhase))) ->
+        CanonicalAstNode (FunctionTypeParameterNode CanonicalAstPhase (CanonicalAstNode (ExpressionNode CanonicalAstPhase)))
+      desugarParameter (MkAstNode parameterAstInfo metadata (MkFunctionTypeParameterNode parameterName parameterType)) =
+        canonicalAstNode parameterAstInfo Written $ 
+          MkFunctionTypeParameterNode (desugarAstNode parameterName) (desugarNestedType parameterType)
+
+desugarFunctionParameter: AstNode SurfaceAstPhase (FunctionParameterNode SurfaceAstPhase) -> AstNode CanonicalAstPhase (FunctionParameterNode CanonicalAstPhase)
+desugarFunctionParameter (MkAstNode parameterInfo metadata (NormalParameter parameterDocs parameterMutability parameterName parameterType)) =
+  canonicalAstNode parameterInfo Written $
+    NormalParameter
+      (map desugarAstNode parameterDocs)
+      (map desugarAstNode parameterMutability)
+      (desugarAstNode parameterName)
+      (desugarType parameterType)
+desugarFunctionParameter (MkAstNode parameterInfo metadata (ReceiverParameter receiverDocs receiverBorrow)) =
+  canonicalAstNode parameterInfo Written $
+    ReceiverParameter
+      (map desugarAstNode receiverDocs)
+      (map desugarAstNode receiverBorrow)
+
 desugarSignedPauliTerm : SurfaceSignedPauliTerm -> SignedPauliTerm CanonicalAstPhase
 desugarSignedPauliTerm (MkAstNode termInfo metadata (MkSignedPauliTermNode sign pauliString)) =
   canonicalAstNode termInfo Written $
@@ -141,11 +162,6 @@ desugarContractClause (MkAstNode contractAstInfo metadata contractClauseNode) =
     case contractClauseNode of
       RequiresClause predicate => RequiresClause (desugarContractPredicate predicate)
       EnsuresClause predicate => EnsuresClause (desugarContractPredicate predicate)
-
-desugarPath : SurfacePath -> CanonicalPath 
-desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSegments)) =
-  canonicalAstNode pathAstInfo Written $
-    MkPathNode (desugarAstNode firstSegment) (map desugarAstNode remainingSegments)
 
 desugarLetInitializer : LetInitializerNode SurfaceAstPhase -> LetInitializerNode CanonicalAstPhase
 desugarLetInitializer (MkLetInitializerNode marker value) =
