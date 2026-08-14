@@ -89,11 +89,11 @@ desugarExpressionNode expression =
     ExprCast operand target => ?desugar_expr_cast
     ExprBlock block => ?desugar_expr_block
     ExprIf ifNode => ?desugar_expr_if
-    ExprQIf ifNode => assert_total $ idris_crash "Desugar.idr: desugar_expression_node: ExprQIf not implemented"
-    ExprSIf ifNode => assert_total $ idris_crash "Desugar.idr: desugar_expression_node: ExprSIf not implemented"
-    ExprMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugar_expression_node: ExprMatch not implemented"
-    ExprQMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugar_expression_node: ExprQMatch not implemented"
-    ExprSMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugar_expression_node: ExprSMatch not implemented"
+    ExprQIf ifNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprQIf not implemented"
+    ExprSIf ifNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprSIf not implemented"
+    ExprMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprMatch not implemented"
+    ExprQMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprQMatch not implemented"
+    ExprSMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprSMatch not implemented"
     ExprLoop body => ?desugar_expr_loop
     ExprWhile condition body => ?desugar_expr_while
     ExprFor pattern iterator body => ?desugar_expr_for
@@ -162,17 +162,38 @@ desugarLetPattern (MkAstNode letPatternAstInfo metadata patternNode) =
       PatternPath valuePath =>
         PatternPath (desugarPath valuePath)
       PatternLiteral literal =>
-        ?xx_12
+        PatternLiteral (desugarAstNode literal)
       PatternParenthesized innerPattern =>
-        ?xx_13
+        PatternParenthesized (desugarPattern innerPattern)
       PatternTuple elementPatterns =>
-        ?xx_14
+        PatternTuple (map desugarPattern elementPatterns)
       PatternArray elementPatterns =>
-        ?xx_15
+        PatternArray (map desugarPattern elementPatterns)
       PatternStruct structPath fieldPatterns =>
-        ?xx_16
+        PatternStruct
+          (desugarPath structPath)
+          (map desugarStructPatternField fieldPatterns)
       PatternEnumTuple variantPath argumentPatterns =>
-        ?xx_17
+        PatternEnumTuple
+          (desugarPath variantPath)
+          (map desugarPattern argumentPatterns)
+    where
+      desugarPattern : AstNode SurfaceAstPhase (PatternNode SurfaceAstPhase) -> AstNode CanonicalAstPhase (PatternNode CanonicalAstPhase)
+      desugarPattern pattern =
+        desugarLetPattern (assert_smaller patternNode pattern)
+
+      desugarStructPatternField : AstNode SurfaceAstPhase (StructPatternFieldNode SurfaceAstPhase) -> AstNode CanonicalAstPhase (StructPatternFieldNode CanonicalAstPhase)
+      desugarStructPatternField (MkAstNode fieldInfo metadata fieldNode) =
+        canonicalAstNode fieldInfo Written $
+          case fieldNode of
+            StructPatternFieldShorthand mutability fieldAndBinderName =>
+              StructPatternFieldShorthand
+                mutability
+                (desugarAstNode fieldAndBinderName)
+            StructPatternFieldExplicit fieldName fieldPattern =>
+              StructPatternFieldExplicit
+                (desugarAstNode fieldName)
+                (desugarPattern fieldPattern)
 
 desugarAssignmentTarget : SurfaceAstNode (AssignmentTargetNode SurfaceAstPhase) -> CanonicalAstNode (AssignmentTargetNode CanonicalAstPhase)
 desugarAssignmentTarget (MkAstNode assignmentTargetAstInfo metadata assignmentTargetNode) =
