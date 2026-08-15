@@ -15,7 +15,6 @@ Other:
 
 - Rust style slices.
 - Recursion.
-- Documentation comments.
 - Quantum conditionals.
   - `qif`+`qelse` & `qmatch`.
   - `sif`+`selse` & `smatch`.
@@ -23,6 +22,7 @@ Other:
   - `enum`
   - `qenum`
   - `struct` + `impl` blocks.
+- Documentation comments.
 - Classical subroutines.
 - Prelude math functions.
 - Prelude functions overloading.
