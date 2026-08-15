@@ -55,7 +55,7 @@ mutual
       ExprRange start operator end => ExprRange (map desugarNestedExpression start) (desugarAstNode operator) (map desugarNestedExpression end)
       ExprCast operand target => ExprCast (desugarNestedExpression operand) (desugarType target)
       ExprBlock block => ExprBlock (desugarBlockExpression block)
-      ExprIf ifNode => ?desugar_expr_if
+      ExprIf ifNode => ExprIf (desugarIfNode ifNode)
       ExprQIf ifNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprQIf not implemented"
       ExprSIf ifNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprSIf not implemented"
       ExprMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprMatch not implemented"
@@ -81,6 +81,20 @@ mutual
             (map desugarAstNode blockInnerDocs) 
             (map (\statement => desugarStatement (assert_smaller expression statement)) blockStatements) 
             (map desugarNestedExpression finalExpression)
+      desugarIfNode : ClassicalIfNode SurfaceAstPhase -> ClassicalIfNode CanonicalAstPhase
+      desugarIfNode ifNode@(MkClassicalIfNode ifCondition ifThenBlock ifElseBranch) =
+        MkClassicalIfNode
+          (desugarNestedExpression ifCondition)
+          (desugarBlockExpression ifThenBlock)
+          (map desugarElseNode ifElseBranch)
+        where
+          desugarElseNode : ClassicalElseNode SurfaceAstPhase -> ClassicalElseNode CanonicalAstPhase
+          desugarElseNode (ElseBlock elseBlock) =
+            ElseBlock (desugarBlockExpression elseBlock)
+          desugarElseNode (ElseChainedIf (MkAstNode chainedIfInfo _ chainedIfNode)) =
+            ElseChainedIf $
+              canonicalAstNode chainedIfInfo Written $
+                desugarIfNode (assert_smaller ifNode chainedIfNode)
   
   desugarExpression : SurfaceExpr -> CanonicalExpr
   desugarExpression (MkAstNode expressionInfo metadata expressionNode) =
