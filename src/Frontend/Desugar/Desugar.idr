@@ -61,9 +61,9 @@ mutual
       ExprMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprMatch not implemented"
       ExprQMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprQMatch not implemented"
       ExprSMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprSMatch not implemented"
-      ExprLoop body => ?desugar_expr_loop
-      ExprWhile condition body => ?desugar_expr_while
-      ExprFor pattern iterator body => ?desugar_expr_for
+      ExprLoop body => ExprLoop (desugarBlockExpression body)
+      ExprWhile condition body => ExprWhile (desugarNestedExpression condition) (desugarBlockExpression body)
+      ExprFor pattern iterator body => ExprFor (desugarPattern pattern) (desugarNestedExpression iterator) (desugarBlockExpression body)
       ExprBreak value => ?desugar_expr_break
       ExprContinue => ExprContinue
       ExprReturn value => ?desugar_expr_return
@@ -95,6 +95,16 @@ mutual
             ElseChainedIf $
               canonicalAstNode chainedIfInfo Written $
                 desugarIfNode (assert_smaller ifNode chainedIfNode)
+      desugarPattern : Pattern SurfaceAstPhase -> Pattern CanonicalAstPhase
+      desugarPattern (MkAstNode astInfo metadata PatternWildcard) = ?yyy_1
+      desugarPattern (MkAstNode astInfo metadata (PatternName mutability binderName)) = ?yyy_2
+      desugarPattern (MkAstNode astInfo metadata (PatternPath valuePath)) = ?yyy_3
+      desugarPattern (MkAstNode astInfo metadata (PatternLiteral literal)) = ?yyy_4
+      desugarPattern (MkAstNode astInfo metadata (PatternParenthesized innerPattern)) = ?yyy_5
+      desugarPattern (MkAstNode astInfo metadata (PatternTuple elementPatterns)) = ?yyy_6
+      desugarPattern (MkAstNode astInfo metadata (PatternArray elementPatterns)) = ?yyy_7
+      desugarPattern (MkAstNode astInfo metadata (PatternStruct structPath fieldPatterns)) = ?yyy_8
+      desugarPattern (MkAstNode astInfo metadata (PatternEnumTuple variantPath argumentPatterns)) = ?yyy_9
   
   desugarExpression : SurfaceExpr -> CanonicalExpr
   desugarExpression (MkAstNode expressionInfo metadata expressionNode) =
