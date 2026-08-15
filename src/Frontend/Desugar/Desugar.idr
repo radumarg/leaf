@@ -31,47 +31,48 @@ desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSe
   canonicalAstNode pathAstInfo Written $
     MkPathNode (desugarAstNode firstSegment) (map desugarAstNode remainingSegments)
 
-desugarExpressionNode : ExpressionNode SurfaceAstPhase -> ExpressionNode CanonicalAstPhase
-desugarExpressionNode expression =
-  case expression of
-    ExprLiteral literal => ExprLiteral (desugarAstNode literal)
-    ExprName name => ExprName (desugarAstNode name)
-    ExprPath path => ?desugar_expr_path
-    ExprBuiltin builtin => ExprBuiltin builtin
-    ExprSelf => ExprSelf
-    ExprParenthesized inner => ?desugar_expr_parenthesized
-    ExprTuple elements => ?desugar_expr_tuple
-    ExprArray elements => ?desugar_expr_array
-    ExprRepeatedArray element count => ?desugar_expr_repeated_array
-    ExprStructLiteral path fields => ?desugar_expr_struct_literal
-    ExprCall callee arguments => ?desugar_expr_call
-    ExprMethodCall receiver name arguments => ?desugar_expr_method_call
-    ExprField object name => ?desugar_expr_field
-    ExprTupleIndex tuple indexText => ?desugar_expr_tuple_index
-    ExprIndex object index => ?desugar_expr_index
-    ExprUnary operator operand => ?desugar_expr_unary
-    ExprBinary operator left right => ?desugar_expr_binary
-    ExprRange start operator end => ?desugar_expr_range
-    ExprCast operand target => ?desugar_expr_cast
-    ExprBlock block => ?desugar_expr_block
-    ExprIf ifNode => ?desugar_expr_if
-    ExprQIf ifNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprQIf not implemented"
-    ExprSIf ifNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprSIf not implemented"
-    ExprMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprMatch not implemented"
-    ExprQMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprQMatch not implemented"
-    ExprSMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprSMatch not implemented"
-    ExprLoop body => ?desugar_expr_loop
-    ExprWhile condition body => ?desugar_expr_while
-    ExprFor pattern iterator body => ?desugar_expr_for
-    ExprBreak value => ?desugar_expr_break
-    ExprContinue => ExprContinue
-    ExprReturn value => ?desugar_expr_return
-    ExprCtrl control => ?desugar_expr_ctrl
-    ExprAdjoint adjoint => ?desugar_expr_adjoint
+mutual
+  desugarExpressionNode : ExpressionNode SurfaceAstPhase -> ExpressionNode CanonicalAstPhase
+  desugarExpressionNode expression =
+    case expression of
+      ExprLiteral literal => ExprLiteral (desugarAstNode literal)
+      ExprName name => ExprName (desugarAstNode name)
+      ExprPath path => ExprPath (desugarPath path)
+      ExprBuiltin builtin => ExprBuiltin builtin
+      ExprSelf => ExprSelf
+      ExprParenthesized inner => ExprParenthesized (desugarExpression inner)
+      ExprTuple elements => ExprTuple (map desugarExpression elements)
+      ExprArray elements => ?desugar_expr_array
+      ExprRepeatedArray element count => ?desugar_expr_repeated_array
+      ExprStructLiteral path fields => ?desugar_expr_struct_literal
+      ExprCall callee arguments => ?desugar_expr_call
+      ExprMethodCall receiver name arguments => ?desugar_expr_method_call
+      ExprField object name => ?desugar_expr_field
+      ExprTupleIndex tuple indexText => ?desugar_expr_tuple_index
+      ExprIndex object index => ?desugar_expr_index
+      ExprUnary operator operand => ?desugar_expr_unary
+      ExprBinary operator left right => ?desugar_expr_binary
+      ExprRange start operator end => ?desugar_expr_range
+      ExprCast operand target => ?desugar_expr_cast
+      ExprBlock block => ?desugar_expr_block
+      ExprIf ifNode => ?desugar_expr_if
+      ExprQIf ifNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprQIf not implemented"
+      ExprSIf ifNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprSIf not implemented"
+      ExprMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprMatch not implemented"
+      ExprQMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprQMatch not implemented"
+      ExprSMatch matchNode => assert_total $ idris_crash "Desugar.idr: desugarExpressionNode: ExprSMatch not implemented"
+      ExprLoop body => ?desugar_expr_loop
+      ExprWhile condition body => ?desugar_expr_while
+      ExprFor pattern iterator body => ?desugar_expr_for
+      ExprBreak value => ?desugar_expr_break
+      ExprContinue => ExprContinue
+      ExprReturn value => ?desugar_expr_return
+      ExprCtrl control => ?desugar_expr_ctrl
+      ExprAdjoint adjoint => ?desugar_expr_adjoint
 
-desugarExpression : SurfaceExpr -> CanonicalExpr
-desugarExpression (MkAstNode expressionInfo metadata expressionNode) =
-  canonicalAstNode expressionInfo Written (desugarExpressionNode expressionNode)
+  desugarExpression : SurfaceExpr -> CanonicalExpr
+  desugarExpression (MkAstNode expressionInfo metadata expressionNode) =
+    canonicalAstNode expressionInfo Written (desugarExpressionNode expressionNode)
 
 desugarType : Ty SurfaceAstPhase (Expr SurfaceAstPhase) -> Ty CanonicalAstPhase (Expr CanonicalAstPhase)
 desugarType (MkAstNode tyAstInfo metadata typeNode) =
