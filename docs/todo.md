@@ -16,7 +16,7 @@ Other:
 - Rust style slices.
 - Recursion.
 - Documentation comments.
-- Quantum Conditionals.
+- Quantum conditionals.
   - `qif`+`qelse` & `qmatch`.
   - `sif`+`selse` & `smatch`.
 - Sum & Product data types:
