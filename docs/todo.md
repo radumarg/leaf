@@ -1,9 +1,10 @@
 
 ### Features Pending Implementation
 
-This document compiles a lists of features which are covered by the [language documentation](README.md) but not yet supported in code.
+This document compiles a lists of features which are covered by the [language documentation](README.md) but not yet planned for the alpha release.
 
 Higher priority:
+
 - Uncomputation support.
 - `affine` & `scratch` qubits.
 - Quantum contracts.
@@ -11,6 +12,7 @@ Higher priority:
 
   
 Other:
+
 - Rust style slices.
 - Recursion.
 - Documentation comments.
