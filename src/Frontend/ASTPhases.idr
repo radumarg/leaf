@@ -21,6 +21,7 @@ record ProvenanceMetadata where
   constructor MkProvenanceMetadata
   provenance : NodeProvenance
 
+public export
 MetadataFor : AstPhase -> Type
 MetadataFor SurfaceAstPhase   = ()
 MetadataFor CanonicalAstPhase = ProvenanceMetadata

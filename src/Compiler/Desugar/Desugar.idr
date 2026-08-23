@@ -1,4 +1,4 @@
-module Frontend.Desugar.Desugar
+module Compiler.Desugar.Desugar
 
 import Data.List1
 import Frontend.ASTData
@@ -30,6 +30,50 @@ desugarPath : SurfacePath -> CanonicalPath
 desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSegments)) =
   canonicalAstNode pathAstInfo Written $
     MkPathNode (desugarAstNode firstSegment) (map desugarAstNode remainingSegments)
+
+desugarPattern : SurfacePattern -> CanonicalPattern
+desugarPattern (MkAstNode patternInfo _ patternNode) =
+  canonicalAstNode patternInfo Written $
+    case patternNode of
+      PatternWildcard =>
+        PatternWildcard
+      PatternName mutability binderName =>
+        PatternName mutability (desugarAstNode binderName)
+      PatternPath valuePath =>
+        PatternPath (desugarPath valuePath)
+      PatternLiteral literal =>
+        PatternLiteral (desugarAstNode literal)
+      PatternParenthesized innerPattern =>
+        PatternParenthesized (recur innerPattern)
+      PatternTuple elementPatterns =>
+        PatternTuple (map recur elementPatterns)
+      PatternArray elementPatterns =>
+        PatternArray (map recur elementPatterns)
+      PatternStruct structPath fieldPatterns =>
+        PatternStruct
+          (desugarPath structPath)
+          (map desugarStructPatternField fieldPatterns)
+      PatternEnumTuple variantPath argumentPatterns =>
+        PatternEnumTuple
+          (desugarPath variantPath)
+          (map recur argumentPatterns)
+  where
+    recur : SurfacePattern -> CanonicalPattern
+    recur pattern =
+      desugarPattern (assert_smaller patternNode pattern)
+
+    desugarStructPatternField : SurfaceStructPatternField -> CanonicalStructPatternField
+    desugarStructPatternField (MkAstNode fieldInfo _ fieldNode) =
+      canonicalAstNode fieldInfo Written $
+        case fieldNode of
+          StructPatternFieldShorthand mutability fieldAndBinderName =>
+            StructPatternFieldShorthand
+              mutability
+              (desugarAstNode fieldAndBinderName)
+          StructPatternFieldExplicit fieldName fieldPattern =>
+            StructPatternFieldExplicit
+              (desugarAstNode fieldName)
+              (recur fieldPattern)
 
 mutual
   desugarExpressionNode : ExpressionNode SurfaceAstPhase -> ExpressionNode CanonicalAstPhase
@@ -64,11 +108,11 @@ mutual
       ExprLoop body => ExprLoop (desugarBlockExpression body)
       ExprWhile condition body => ExprWhile (desugarNestedExpression condition) (desugarBlockExpression body)
       ExprFor pattern iterator body => ExprFor (desugarPattern pattern) (desugarNestedExpression iterator) (desugarBlockExpression body)
-      ExprBreak value => ?desugar_expr_break
+      ExprBreak value => ExprBreak (map desugarNestedExpression value)
       ExprContinue => ExprContinue
-      ExprReturn value => ?desugar_expr_return
-      ExprCtrl control => ?desugar_expr_ctrl
-      ExprAdjoint adjoint => ?desugar_expr_adjoint
+      ExprReturn value => ExprReturn (map desugarNestedExpression value)
+      ExprCtrl control => ExprCtrl (desugarControlExpressionNode control)
+      ExprAdjoint adjoint => ExprAdjoint (desugarAdjointExpressionNode adjoint)
     where
       desugarNestedExpression : SurfaceExpr -> CanonicalExpr
       desugarNestedExpression nestedExpression =
@@ -95,17 +139,21 @@ mutual
             ElseChainedIf $
               canonicalAstNode chainedIfInfo Written $
                 desugarIfNode (assert_smaller ifNode chainedIfNode)
-      desugarPattern : Pattern SurfaceAstPhase -> Pattern CanonicalAstPhase
-      desugarPattern (MkAstNode astInfo metadata PatternWildcard) = ?yyy_1
-      desugarPattern (MkAstNode astInfo metadata (PatternName mutability binderName)) = ?yyy_2
-      desugarPattern (MkAstNode astInfo metadata (PatternPath valuePath)) = ?yyy_3
-      desugarPattern (MkAstNode astInfo metadata (PatternLiteral literal)) = ?yyy_4
-      desugarPattern (MkAstNode astInfo metadata (PatternParenthesized innerPattern)) = ?yyy_5
-      desugarPattern (MkAstNode astInfo metadata (PatternTuple elementPatterns)) = ?yyy_6
-      desugarPattern (MkAstNode astInfo metadata (PatternArray elementPatterns)) = ?yyy_7
-      desugarPattern (MkAstNode astInfo metadata (PatternStruct structPath fieldPatterns)) = ?yyy_8
-      desugarPattern (MkAstNode astInfo metadata (PatternEnumTuple variantPath argumentPatterns)) = ?yyy_9
-  
+      desugarControlExpressionNode : ControlExpressionNode SurfaceAstPhase -> ControlExpressionNode CanonicalAstPhase
+      desugarControlExpressionNode (ControlledCallable controlQubits onBasisRaw controlledCallable) =
+        ControlledCallable
+          (map desugarNestedExpression controlQubits)
+          (map desugarAstNode onBasisRaw)
+          (desugarNestedExpression controlledCallable)
+      desugarControlExpressionNode (ControlledBlock controlQubits onBasisRaw controlledBlock) =
+        ControlledBlock
+          (map desugarNestedExpression controlQubits)
+          (map desugarAstNode onBasisRaw)
+          (desugarBlockExpression controlledBlock)
+      desugarAdjointExpressionNode : AdjointExpressionNode SurfaceAstPhase -> AdjointExpressionNode CanonicalAstPhase
+      desugarAdjointExpressionNode (AdjointOfCallable adjointedCallable) = AdjointOfCallable (desugarNestedExpression adjointedCallable)
+      desugarAdjointExpressionNode (AdjointBlock adjointedBlock) = AdjointBlock (desugarBlockExpression adjointedBlock)
+
   desugarExpression : SurfaceExpr -> CanonicalExpr
   desugarExpression (MkAstNode expressionInfo metadata expressionNode) =
     canonicalAstNode expressionInfo Written (desugarExpressionNode expressionNode)
@@ -204,50 +252,6 @@ mutual
   desugarLetInitializer (MkLetInitializerNode marker value) =
     MkLetInitializerNode (desugarAstNode marker) (desugarExpression value)
 
-  desugarLetPattern : Pattern SurfaceAstPhase -> Pattern CanonicalAstPhase
-  desugarLetPattern (MkAstNode letPatternAstInfo metadata patternNode) =
-    canonicalAstNode letPatternAstInfo Written $
-      case patternNode of
-        PatternWildcard =>
-          PatternWildcard
-        PatternName mutability binderName =>
-          PatternName mutability (desugarAstNode binderName)
-        PatternPath valuePath =>
-          PatternPath (desugarPath valuePath)
-        PatternLiteral literal =>
-          PatternLiteral (desugarAstNode literal)
-        PatternParenthesized innerPattern =>
-          PatternParenthesized (desugarPattern innerPattern)
-        PatternTuple elementPatterns =>
-          PatternTuple (map desugarPattern elementPatterns)
-        PatternArray elementPatterns =>
-          PatternArray (map desugarPattern elementPatterns)
-        PatternStruct structPath fieldPatterns =>
-          PatternStruct
-            (desugarPath structPath)
-            (map desugarStructPatternField fieldPatterns)
-        PatternEnumTuple variantPath argumentPatterns =>
-          PatternEnumTuple
-            (desugarPath variantPath)
-            (map desugarPattern argumentPatterns)
-      where
-        desugarPattern : AstNode SurfaceAstPhase (PatternNode SurfaceAstPhase) -> AstNode CanonicalAstPhase (PatternNode CanonicalAstPhase)
-        desugarPattern pattern =
-          desugarLetPattern (assert_smaller patternNode pattern)
-
-        desugarStructPatternField : AstNode SurfaceAstPhase (StructPatternFieldNode SurfaceAstPhase) -> AstNode CanonicalAstPhase (StructPatternFieldNode CanonicalAstPhase)
-        desugarStructPatternField (MkAstNode fieldInfo metadata fieldNode) =
-          canonicalAstNode fieldInfo Written $
-            case fieldNode of
-              StructPatternFieldShorthand mutability fieldAndBinderName =>
-                StructPatternFieldShorthand
-                  mutability
-                  (desugarAstNode fieldAndBinderName)
-              StructPatternFieldExplicit fieldName fieldPattern =>
-                StructPatternFieldExplicit
-                  (desugarAstNode fieldName)
-                  (desugarPattern fieldPattern)
-
   desugarAssignmentTarget : SurfaceAstNode (AssignmentTargetNode SurfaceAstPhase) -> CanonicalAstNode (AssignmentTargetNode CanonicalAstPhase)
   desugarAssignmentTarget (MkAstNode assignmentTargetAstInfo metadata assignmentTargetNode) =
     canonicalAstNode assignmentTargetAstInfo Written $
@@ -275,7 +279,7 @@ mutual
           StatementLet $
             MkLetBindingNode
               (map desugarAstNode qualifiers)
-              (desugarLetPattern pattern)
+              (desugarPattern pattern)
               (map (\ty => desugarType (assert_smaller statementNode ty)) typeAnnotation)
               (map (\init => desugarLetInitializer (assert_smaller statementNode init)) initializer)
         StatementAssignment (MkAssignmentNode assignmentTarget assignmentOperator assignmentValue) =>
@@ -301,8 +305,8 @@ desugarItem : SurfaceItem -> CanonicalItem
 desugarItem (MkAstNode itemInfo metadata item) =
   canonicalAstNode itemInfo Written $
     case item of
-      ItemModule declaration => ItemModule ?desugar_module_declaration
-      ItemUse declaration => ItemUse ?desugar_use_declaration
+      ItemModule declaration => assert_total $ idris_crash "Desugar.idr: desugarItem: ItemModule not implemented."
+      ItemUse declaration => assert_total $ idris_crash "Desugar.idr: desugarItem: ItemUse not implemented."
       ItemConst declaration => ItemConst $ desugarConstDeclaration declaration
       ItemEnum declaration => assert_total $ idris_crash "Desugar.idr: desugarItem: ItemEnum not implemented"
       ItemQEnum declaration => assert_total $ idris_crash "Desugar.idr: desugarItem: ItemQEnum not implemented"
