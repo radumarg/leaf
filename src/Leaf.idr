@@ -3,6 +3,15 @@ module Leaf
 -- a module used to load Leaf libraries in REPL sessions
 
 import Frontend.ASTData
+import Frontend.ASTPhases
+import Frontend.PostParseValidation
+import Frontend.Source
+import Frontend.Token
+import Frontend.Type
+import Frontend.Lexer.Error
+import Frontend.Lexer.Lexer
+import Frontend.Lexer.Regex
+import Frontend.Lexer.Rules
 import Frontend.Parser.Error
 import Frontend.Parser.Helper
 import Frontend.Parser.Parser
