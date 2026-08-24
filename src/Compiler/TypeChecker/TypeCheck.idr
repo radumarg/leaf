@@ -364,6 +364,8 @@ typecheckItem (MkAstNode itemInfo (MkProvenanceMetadata provenance) item) =
                 (map typecheckContractClause contractClauses)
                 (typecheckFunctionBody functionBody)
 
+-- assign types to expressions, reject ill types programs, resolve overloads, 
+-- insert coercions, elaborate implicit arguments 
 typecheckResolvedSyntax : ResolvedSourceFile -> TypedSourceFile
 typecheckResolvedSyntax
     (MkAstNode fileInfo (MkProvenanceMetadata provenance) (MkSourceFileNode docs items)) =
