@@ -13,6 +13,7 @@ Higher priority:
   
 Other:
 
+- modules, resolve imports, cycle detection, shadowing
 - Rust style slices.
 - Recursion.
 - Quantum conditionals.
@@ -25,4 +26,4 @@ Other:
 - Documentation comments.
 - Classical subroutines.
 - Prelude math functions.
-- Prelude functions overloading.
+
