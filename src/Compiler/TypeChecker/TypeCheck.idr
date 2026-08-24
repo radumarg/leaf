@@ -330,13 +330,13 @@ typecheckItem (MkAstNode itemInfo (MkProvenanceMetadata provenance) item) =
             constVisibility
             (MkAstNode constNameInfo constNameMetadata constNameNode)
             constType
-            (MkAstNode constValueInfo constValueMetadata constValueNode)) =
+            constValue) =
               MkConstDeclarationNode
                 (map typecheckAstNode constDocs)
                 (map typecheckAstNode constVisibility)
                 (typecheckName (MkAstNode constNameInfo constNameMetadata constNameNode))
                 (typecheckType constType)
-                (MkAstNode constValueInfo constValueMetadata (typecheckExpressionNode constValueNode))
+                (typecheckExpression constValue)
       typecheckFunctionDeclaration : FunctionDeclarationNode ResolvedAstPhase -> FunctionDeclarationNode TypedAstPhase
       typecheckFunctionDeclaration
           (MkFunctionDeclarationNode

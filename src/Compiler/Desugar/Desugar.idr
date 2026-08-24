@@ -321,13 +321,13 @@ desugarItem (MkAstNode itemInfo metadata item) =
             constVisibility
             (MkAstNode constNameInfo constNameMetadata constNameNode)
             constType
-            (MkAstNode constValueInfo constValueMetadata constValueNode)) =
+            constValue) =
               MkConstDeclarationNode
                 (map desugarAstNode constDocs)
                 (map desugarAstNode constVisibility)
                 (canonicalAstNode constNameInfo Written constNameNode)
                 (desugarType constType)
-                (canonicalAstNode constValueInfo Written (desugarExpressionNode constValueNode))
+                (desugarExpression constValue)
       desugarFunctionDeclaration : FunctionDeclarationNode SurfaceAstPhase -> FunctionDeclarationNode CanonicalAstPhase
       desugarFunctionDeclaration
           (MkFunctionDeclarationNode

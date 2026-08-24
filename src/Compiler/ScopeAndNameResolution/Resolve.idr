@@ -337,13 +337,13 @@ resolveItem (MkAstNode itemInfo (MkProvenanceMetadata provenance) item) =
             constVisibility
             (MkAstNode constNameInfo constNameMetadata constNameNode)
             constType
-            (MkAstNode constValueInfo constValueMetadata constValueNode)) =
+            constValue) =
               MkConstDeclarationNode
                 (map resolveAstNode constDocs)
                 (map resolveAstNode constVisibility)
                 (resolveName (MkAstNode constNameInfo constNameMetadata constNameNode))
                 (resolveType constType)
-                (MkAstNode constValueInfo constValueMetadata (resolveExpressionNode constValueNode))
+                (resolveExpression constValue)
       resolveFunctionDeclaration : FunctionDeclarationNode CanonicalAstPhase -> FunctionDeclarationNode ResolvedAstPhase
       resolveFunctionDeclaration
           (MkFunctionDeclarationNode
