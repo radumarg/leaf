@@ -1,4 +1,4 @@
-collection = "nightly-260731"
+collection = "nightly-260823"
 
 [custom.all.leaf]
 type = "local"
