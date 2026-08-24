@@ -13,7 +13,8 @@ import Frontend.Source
 public export
 record NodeId where
   constructor MkNodeId
-  id : Nat
+  surfaceId : Nat
+  desugarId: Nat
 
 -- Unique id for a name/binding, 
 -- introduced by the program.
@@ -84,4 +85,4 @@ record Scope where
 
 public export
 reserveNodeId : Nat -> (NodeId, Nat)
-reserveNodeId current = (MkNodeId current, S current)
+reserveNodeId current = (MkNodeId current 0, S current)

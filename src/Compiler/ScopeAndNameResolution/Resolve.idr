@@ -26,7 +26,7 @@ resolveAstNode (MkAstNode docInfo (MkProvenanceMetadata provenance) value) = res
 resolveName : CanonicalName -> ResolvedName
 resolveName (MkAstNode nameInfo (MkProvenanceMetadata provenance) (MkNameNode nameText)) =
   resolveNode nameInfo (MkProvenanceMetadata provenance) $
-    MkResolvedNameNode nameText (MkSymbolId nameInfo.nodeId.id)
+    MkResolvedNameNode nameText (MkSymbolId nameInfo.nodeId.surfaceId) -- TODO REVIEW
 
 resolveAttribute : CanonicalAttribute -> ResolvedAttribute
 resolveAttribute (MkAstNode attributeInfo (MkProvenanceMetadata provenance) (MkAttributeNode name arguments)) =
@@ -41,7 +41,7 @@ resolvePath (MkAstNode pathAstInfo (MkProvenanceMetadata provenance) (MkPathNode
     MkResolvedPathNode
       (pathSegmentText firstSegment)
       (map pathSegmentText remainingSegments)
-      (MkSymbolId pathAstInfo.nodeId.id)
+      (MkSymbolId pathAstInfo.nodeId.surfaceId) -- TODO REVIEW
   where
     pathSegmentText : CanonicalPathSegment -> String
     pathSegmentText (MkAstNode _ _ (PathSegmentName text)) = text

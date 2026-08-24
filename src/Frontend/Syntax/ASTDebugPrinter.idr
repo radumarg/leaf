@@ -26,7 +26,7 @@ indent Z = ""
 indent (S n) = "  " ++ indent n
 
 astNodeNumber : AstInfo -> Nat
-astNodeNumber (MkAstInfo (MkNodeId n) _) = n
+astNodeNumber (MkAstInfo (MkNodeId surfaceId desugarId) _) = surfaceId
 
 node : Nat -> String -> String -> AstInfo -> String -> String
 node depth ty ctor info strict =

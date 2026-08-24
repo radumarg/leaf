@@ -2809,8 +2809,8 @@ parseModule fileName firstItemNodeId tokens acc =
         Succ0 (items, nextNodeId) remaining =>
             Succ0
                 ( surfaceAstNode
-                    (sourceFileInfo fileName (MkNodeId 0) items)  -- source file node id is always 0
-                    (MkSourceFileNode [] items)                   -- inner doc comments are not yet supported
+                    (sourceFileInfo fileName (MkNodeId 0 0) items)  -- source file node id is always 0
+                    (MkSourceFileNode [] items)                     -- inner doc comments are not yet supported
                 , nextNodeId
                 )
                 remaining
