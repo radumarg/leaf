@@ -371,6 +371,8 @@ resolveItem (MkAstNode itemInfo (MkProvenanceMetadata provenance) item) =
                 (map resolveContractClause contractClauses)
                 (resolveFunctionBody functionBody)
 
+
+-- ExprParenthesized, PatternParenthesized, TyParenthesized should dissapear
 resolveCanonicalSyntax : CanonicalSourceFile -> ResolvedSourceFile
 resolveCanonicalSyntax
     (MkAstNode fileInfo (MkProvenanceMetadata provenance) (MkSourceFileNode docs items)) =
