@@ -347,13 +347,23 @@ desugarItem (MkAstNode itemInfo metadata item) =
                 (map desugarAttribute functionAttributes)
                 (map desugarAstNode functionVisibility)
                 (map desugarAstNode functionConstness)
-                (map desugarAstNode functionEffect)
+                (desugarFunctionEffect functionEffect)
                 (desugarAstNode functionName)
                 (map desugarFunctionParameter functionParameters)
                 (map desugarType returnType)
                 (map desugarAstNode supportClause)
                 (map desugarContractClause contractClauses)
                 (desugarFunctionBody functionBody)
+              where
+                getAstInfo : Name SurfaceAstPhase -> AstInfo
+                getAstInfo (MkAstNode astInfo x value) =
+                  MkAstInfo
+                    (MkNodeId astInfo.nodeId.surfaceId (astInfo.nodeId.desugarId + 1))
+                    astInfo.span
+                desugarFunctionEffect : Maybe (AstNode SurfaceAstPhase FunctionEffect) -> Maybe (AstNode CanonicalAstPhase FunctionEffect)
+                desugarFunctionEffect Nothing = Just $ canonicalAstNode (getAstInfo functionName) InferredDefaultFunctionEffect EffectGeneral
+                desugarFunctionEffect (Just functionEffectNode) = Just $ desugarAstNode functionEffectNode
+
 
 desugarSurfaceSyntax : SurfaceSourceFile -> CanonicalSourceFile
 desugarSurfaceSyntax

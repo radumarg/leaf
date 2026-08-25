@@ -8,8 +8,11 @@ import Frontend.Source
 -- Compiler ids
 --------------------------------------------------------------------------------
 
--- Unique node id for 
--- each AST node.
+-- Unique node id for each AST node.
+-- surfaceId is incremented by the Parser.
+-- Parser also assigns desugarId 0 as default
+-- for each node, which will be incremented on 
+-- nodes generated during desugaring
 public export
 record NodeId where
   constructor MkNodeId
@@ -41,17 +44,17 @@ record ScopeId where
 public export
 data NodeProvenance
   = Written
-  | DesugarQubitQualifier
-  | DesugarFunctionEffect
-  | DesugarFunctionReturnType
+  | InferredDefaultFunctionEffect
+  | InferredDefaultFunctionReturnType
+  | InferredDefaultQubitQualifier
 
 
 public export
 Show NodeProvenance where
-  show Written = "user written code"
-  show DesugarQubitQualifier = "auto-generated default qubit qualifier"
-  show DesugarFunctionEffect = "auto-generated default function effect"
-  show DesugarFunctionReturnType = "auto-generated default function return type"
+  show Written = "written code"
+  show InferredDefaultFunctionEffect = "inferred default function effect"
+  show InferredDefaultFunctionReturnType = "inferred default function return type"
+  show InferredDefaultQubitQualifier = "inferred default qubit qualifier"
 
 --------------------------------------------------------------------------------
 -- Common AST information
