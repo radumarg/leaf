@@ -355,6 +355,7 @@ desugarItem (MkAstNode itemInfo metadata item) =
                 (map desugarContractClause contractClauses)
                 (desugarFunctionBody functionBody)
               where
+                -- TODO: complete attribute with function name if missing, add function default return type
                 getAstInfo : Name SurfaceAstPhase -> AstInfo
                 getAstInfo (MkAstNode astInfo x value) =
                   MkAstInfo
