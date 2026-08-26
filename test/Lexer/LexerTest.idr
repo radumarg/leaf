@@ -433,7 +433,7 @@ runLexerTests = runTests $ Test.do
           [ "Param", "phase", "turns", "abs", "acos", "asin", "atan"
           , "ceil", "cos", "exp", "floor", "ln", "log2", "log10"
           , "max", "min", "round", "sin", "sqrt", "tan"
-          , "Id", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG"
+          , "I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG"
           , "SX", "SXDG", "RX", "RY", "RZ", "U1", "U2", "U3"
           , "CNOT", "CX", "CY", "CZ", "CS", "CSDG", "CT", "CTDG"
           , "CSX", "CSXDG", "CRX", "CRY", "CRZ", "CU1", "CU2"

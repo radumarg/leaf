@@ -1,4 +1,4 @@
-module Parser.PostParseValidationTest
+module PostParseValidator.PostParseValidationTest
 
 import Test.Simple
 

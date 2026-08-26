@@ -5,7 +5,7 @@ import System
 import CompileCodeExamples
 import CompileCodeExamplesTest
 import Lexer.LexerTest
-import Parser.PostParseValidationTest
+import PostParseValidator.PostParseValidationTest
 import Parser.ExpressionParseTest
 import Parser.FunctionParseTest
 import Parser.TopModuleParseTest
