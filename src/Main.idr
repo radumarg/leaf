@@ -1,7 +1,8 @@
 module Main
 
-import System.File
+import Data.String
 import Text.Bounds
+import System.File
 
 import Frontend.ASTPhases
 import Frontend.Token
@@ -14,6 +15,11 @@ import Frontend.Source
 import Frontend.Syntax.AST
 import Frontend.Syntax.ASTDebugPrinter
 import Frontend.Syntax.ASTPrettyPrinter
+
+hasValidExtension : String -> Bool
+hasValidExtension fileName =
+  isSuffixOf ".rs" fileName ||
+  isSuffixOf ".lf" fileName
 
 showParseError : Located ParseError -> String
 showParseError err =
@@ -29,28 +35,31 @@ showParseError err =
       ++ renderParseError err.value
 
 main : IO ()
-main = let programFile = "program.rs" in
-  do
+main = do
     putStrLn "Hello from Leaf!"
-    fileResult <- readFile programFile
-    case fileResult of
-      Left fileErr => putStrLn $ "Failed to read \{programFile}: " ++ show fileErr
-      Right sampleProgram =>
-        case lexFile sampleProgram of
-          Left err => putStrLn $ renderLexerError err
-          Right tokens => do
-            putStrLn "Tokens:"
-            traverse_ (putStrLn . show) tokens
-            case parseFile programFile tokens of
-              Left err => putStrLn $ showParseError err
-              Right surfaceAST =>
-                case validateSourceFile surfaceAST of
-                  [] => do
-                    putStrLn ""
-                    putStrLn "AST Nodes:"
-                    putStrLn $ showAstDebug surfaceAST
-                    putStrLn "Pretty Printed Program:"
-                    putStrLn $ "Parsed program:\n" ++ showSourceFileStrict surfaceAST
-                  errors => do
-                    putStrLn "Validation errors:"
-                    traverse_ (putStrLn . interpolate) errors
+    fileName <- getLine
+    case hasValidExtension fileName of
+      False => putStrLn "Invalid filename: expected an .rs or .lf file."
+      True => do
+        fileResult <- readFile fileName
+        case fileResult of
+          Left fileErr => putStrLn $ "Failed to read \{fileName}: " ++ show fileErr
+          Right sampleProgram =>
+            case lexFile sampleProgram of
+              Left err => putStrLn $ renderLexerError err
+              Right tokens => do
+                putStrLn "Tokens:"
+                traverse_ (putStrLn . show) tokens
+                case parseFile fileName tokens of
+                  Left err => putStrLn $ showParseError err
+                  Right surfaceAST => do
+                    case validateSourceFile surfaceAST of
+                      errors => do
+                        putStrLn "Validation errors:"
+                        traverse_ (putStrLn . interpolate) errors
+                      [] => do
+                        putStrLn ""
+                        putStrLn "AST Nodes:"
+                        putStrLn $ showAstDebug surfaceAST
+                        putStrLn "Pretty Printed Program:"
+                        putStrLn $ "Parsed program:\n" ++ showSourceFileStrict surfaceAST
