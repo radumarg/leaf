@@ -1,5 +1,6 @@
 module Compiler.Desugar.Desugar
 
+import Compiler.Desugar.Helper
 import Data.List1
 import Frontend.ASTData
 import Frontend.ASTPhases
@@ -19,8 +20,8 @@ import Frontend.Syntax.Type
 desugarAstNode : {a : Type} -> AstNode SurfaceAstPhase a -> AstNode CanonicalAstPhase a
 desugarAstNode (MkAstNode docInfo metadata value) = canonicalAstNode docInfo Written value
 
-desugarAttribute : SurfaceAttribute -> CanonicalAttribute
-desugarAttribute (MkAstNode attributeInfo metadata (MkAttributeNode name arguments)) =
+desugarAttribute : Nat -> SurfaceAttribute -> CanonicalAttribute
+desugarAttribute id (MkAstNode attributeInfo metadata (MkAttributeNode name arguments)) =
   canonicalAstNode attributeInfo Written $
     MkAttributeNode
       (desugarAstNode name)
@@ -342,30 +343,32 @@ desugarItem (MkAstNode itemInfo metadata item) =
             supportClause
             contractClauses
             functionBody
-          ) = MkFunctionDeclarationNode
+          ) = let
+                (desugaredAttributes, increment) = mapWithId desugarAttribute 1 functionAttributes
+                (desugaredFunctionEffect, increment) = desugarFunctionEffectNode functionEffect increment
+                desugaredReturnType = desugarFunctionTypeNode returnType increment
+              in 
+                MkFunctionDeclarationNode
                 (map desugarAstNode functionDocs)
-                (map desugarAttribute functionAttributes)
+                desugaredAttributes
                 (map desugarAstNode functionVisibility)
                 (map desugarAstNode functionConstness)
-                (desugarFunctionEffect functionEffect)
+                desugaredFunctionEffect
                 (desugarAstNode functionName)
                 (map desugarFunctionParameter functionParameters)
-                (map desugarType returnType)
+                desugaredReturnType
                 (map desugarAstNode supportClause)
                 (map desugarContractClause contractClauses)
                 (desugarFunctionBody functionBody)
               where
-                -- TODO: complete attribute with function name if missing, add function default return type
-                getAstInfo : Name SurfaceAstPhase -> AstInfo
-                getAstInfo (MkAstNode astInfo x value) =
-                  MkAstInfo
-                    (MkNodeId astInfo.nodeId.surfaceId (astInfo.nodeId.desugarId + 1))
-                    astInfo.span
-                desugarFunctionEffect : Maybe (AstNode SurfaceAstPhase FunctionEffect) -> Maybe (AstNode CanonicalAstPhase FunctionEffect)
-                desugarFunctionEffect Nothing = Just $ canonicalAstNode (getAstInfo functionName) InferredDefaultFunctionEffect EffectGeneral
-                desugarFunctionEffect (Just functionEffectNode) = Just $ desugarAstNode functionEffectNode
+                desugarFunctionEffectNode : Maybe (AstNode SurfaceAstPhase FunctionEffect) -> Nat -> (Maybe (AstNode CanonicalAstPhase FunctionEffect), Nat)
+                desugarFunctionEffectNode Nothing inc = (Just $ canonicalAstNode (incrementedAstInfo functionName inc) InferredDefaultFunctionEffect EffectGeneral, inc + 1)
+                desugarFunctionEffectNode (Just functionEffectNode) inc = (Just $ desugarAstNode functionEffectNode, inc)
+                desugarFunctionTypeNode : Maybe (Ty SurfaceAstPhase (Expr SurfaceAstPhase)) -> Nat -> Maybe (Ty CanonicalAstPhase (Expr CanonicalAstPhase))
+                desugarFunctionTypeNode Nothing inc = Just $ canonicalAstNode (incrementedAstInfo functionName inc) InferredDefaultFunctionReturnType TyUnit
+                desugarFunctionTypeNode (Just functionTypeNode) _ = Just $ desugarType functionTypeNode
 
-
+export
 desugarSurfaceSyntax : SurfaceSourceFile -> CanonicalSourceFile
 desugarSurfaceSyntax
     (MkAstNode fileInfo metadata (MkSourceFileNode docs items)) =

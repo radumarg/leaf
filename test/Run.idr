@@ -4,6 +4,7 @@ import System
 
 import CompileCodeExamples
 import CompileCodeExamplesTest
+import Desugarer.DesugaringTest
 import Lexer.LexerTest
 import PostParseValidator.PostParseValidationTest
 import Parser.ExpressionParseTest
@@ -17,6 +18,7 @@ main = do
   runFunctionParseTests
   runTopModuleParseTests
   runPostParseValidationTests
+  runDesugaringTests
   runCompileCodeExamplesTests
   Right () <- discoverAndCompileExamples
     | Left err => do
