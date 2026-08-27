@@ -16,10 +16,15 @@ import Frontend.Syntax.AST
 import Frontend.Syntax.ASTDebugPrinter
 import Frontend.Syntax.ASTPrettyPrinter
 
-hasValidExtension : String -> Bool
-hasValidExtension fileName =
-  isSuffixOf ".rs" fileName ||
-  isSuffixOf ".lf" fileName
+isOneWord : String -> Bool
+isOneWord fileName =
+  fileName /= "" &&
+  not (any isSpace (unpack fileName))
+
+isValidLeafFileName : String -> Bool
+isValidLeafFileName fileName =
+  isOneWord fileName &&
+  (isSuffixOf ".rs" fileName || isSuffixOf ".lf" fileName)
 
 showParseError : Located ParseError -> String
 showParseError err =
@@ -38,7 +43,7 @@ main : IO ()
 main = do
     putStrLn "Hello from Leaf!"
     fileName <- getLine
-    case hasValidExtension fileName of
+    case isValidLeafFileName fileName of
       False => putStrLn "Invalid filename: expected an .rs or .lf file."
       True => do
         fileResult <- readFile fileName
