@@ -27,10 +27,17 @@ desugarAttribute defaultArgName id (MkAstNode attributeInfo metadata (MkAttribut
       (desugarAstNode name)
       (desugarArguments arguments)
   where
+    argInfo : AstInfo
     argInfo = incrementedAstInfo name id
+    defaultArg : Maybe (List (AttributeArgument CanonicalAstPhase))
+    defaultArg = Just [canonicalAstNode argInfo InferredAttributeArgument (AttributeArgumentStringLit ("\"" ++ defaultArgName ++ "\""))]
     desugarArguments : Maybe (List(AttributeArgument SurfaceAstPhase)) -> Maybe (List (AttributeArgument CanonicalAstPhase))
-    desugarArguments Nothing = Just [canonicalAstNode argInfo InferredAttributeArgument (AttributeArgumentStringLit ("\"" ++ defaultArgName ++ "\""))]
     desugarArguments (Just args) = Just ((map desugarAstNode) args)
+    desugarArguments Nothing =
+      case name.value.nameNodeText of
+        "qasm_gate" => defaultArg
+        "qasm_def"  => defaultArg
+        _           => Nothing
 
 desugarPath : SurfacePath -> CanonicalPath
 desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSegments)) =
