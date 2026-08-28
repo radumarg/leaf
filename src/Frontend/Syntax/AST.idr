@@ -211,13 +211,10 @@ mutual
   --   fn f(mut x: i32, person: &Person)   -- typed name binders
   --   fn is_adult(&self) -> bool          -- method receiver
   --
-  -- Normal parameters require BOTH a name and a type (the spec never shows
-  -- untyped or pattern-bound parameters; if `fn f((a, b): (i32, i32))` is
-  -- ever ruled legal, the name field becomes a Pattern). Parameters
-  -- carry their own outer docs, per the doc-comment attachment rules.
   public export
   data FunctionParameterNode : (phase : AstPhase) -> Type where
 
+    -- Normal parameters require both a name and a type
     NormalParameter :
          (parameterDocs       : List (DocComment phase))
       -> (parameterMutability : Maybe (AstNode phase Mutability))
@@ -225,9 +222,7 @@ mutual
       -> (parameterType       : Ty phase (Expr phase))
       -> FunctionParameterNode phase
 
-    -- `self`, `&self`, `&mut self`. Nothing = plain `self` (by value);
-    -- Just borrow = `&self` / `&mut self`. Only the spec's `&self` is
-    -- currently exercised; the others are representable and validated later.
+    -- `self`, `&self`, `&mut self`. Nothing = plain `self` (by value)
     ReceiverParameter :
          (receiverDocs   : List (DocComment phase))
       -> (receiverBorrow : Maybe (AstNode phase BorrowKind))
