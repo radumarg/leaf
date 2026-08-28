@@ -28,16 +28,6 @@ import Language.Reflection
 --------------------------------------------------------------------------------
 -- Borrows
 --------------------------------------------------------------------------------
--- The two borrow forms:  &x  and  &mut x.
---
--- BorrowKind is shared vocabulary: unary borrow EXPRESSIONS (&q, &mut m)
--- use it below, and reference TYPES (&T, &mut T, &[T], &mut [T]) in Type.idr
--- will import it too, so "shared vs. mutable" is spelled exactly once.
---
--- Note that the surface AST happily represents `&mut q` for a qubit; the rule
--- "mut is never written on a qubit reference" is a semantic check for a later
--- pass, with the span of the borrow available for the diagnostic.
---------------------------------------------------------------------------------
 
 public export
 data BorrowKind
