@@ -1736,7 +1736,7 @@ let i = 1;
 let p = Person { height: 10, age: 20 };
 
 /////////////////////////////////////////////////////////////////////////////
-// (68) Function annotations (only qasm_gate/qasm_def is supported for now):
+// (68) Function attributes (only qasm_gate/qasm_def is supported for now):
 /////////////////////////////////////////////////////////////////////////////
 
 // qasm_gate and qasm_def are mutually exclusive: a function may have at most

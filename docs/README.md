@@ -13,6 +13,7 @@
 - [Qubit Type Annotations](type-annotations.md)
 - [Quantum Gates](quantum-gates.md)
 - [Function Effects](function-effects.md)
+- [Function Attributes](function-attributes.md)
 - [Uncomputation](uncomputation.md)
 - [Control Gate Modifiers](control-modifiers.md)
 - [Adjoints and Inverse Operations](adjoint-operator.md)
