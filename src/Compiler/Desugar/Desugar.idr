@@ -20,12 +20,17 @@ import Frontend.Syntax.Type
 desugarAstNode : {a : Type} -> AstNode SurfaceAstPhase a -> AstNode CanonicalAstPhase a
 desugarAstNode (MkAstNode docInfo metadata value) = canonicalAstNode docInfo Written value
 
-desugarAttribute : Nat -> SurfaceAttribute -> CanonicalAttribute
-desugarAttribute id (MkAstNode attributeInfo metadata (MkAttributeNode name arguments)) =
+desugarAttribute : String -> Nat -> SurfaceAttribute -> CanonicalAttribute
+desugarAttribute defaultArgName id (MkAstNode attributeInfo metadata (MkAttributeNode name arguments)) =
   canonicalAstNode attributeInfo Written $
     MkAttributeNode
       (desugarAstNode name)
-      (map (map desugarAstNode) arguments)
+      (desugarArguments arguments)
+  where
+    argInfo = incrementedAstInfo name id
+    desugarArguments : Maybe (List(AttributeArgument SurfaceAstPhase)) -> Maybe (List (AttributeArgument CanonicalAstPhase))
+    desugarArguments Nothing = Just [canonicalAstNode argInfo InferredAttributeArgument (AttributeArgumentStringLit ("\"" ++ defaultArgName ++ "\""))]
+    desugarArguments (Just args) = Just ((map desugarAstNode) args)
 
 desugarPath : SurfacePath -> CanonicalPath
 desugarPath (MkAstNode pathAstInfo metadata (MkPathNode firstSegment remainingSegments)) =
@@ -344,7 +349,8 @@ desugarItem (MkAstNode itemInfo metadata item) =
             contractClauses
             functionBody
           ) = let
-                (desugaredAttributes, increment) = mapWithId desugarAttribute 1 functionAttributes
+                functionNameText = functionName.value.nameNodeText
+                (desugaredAttributes, increment) = mapWithId (desugarAttribute functionNameText) 1 functionAttributes
                 (desugaredFunctionEffect, increment) = desugarFunctionEffect functionEffect increment
                 desugaredReturnType = desugarFunctionType returnType increment
               in 

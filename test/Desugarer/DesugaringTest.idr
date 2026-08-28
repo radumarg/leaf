@@ -18,6 +18,10 @@ runDesugaringTests = runTests $ Test.do
     desugarAndPrettyPrint "fn f() -> i32 { 1 }"
       `shouldBe` Just "general fn f() -> i32 { 1 }"
 
+  test "default attribute argument is added if argument is missing" $
+    desugarAndPrettyPrint "#[qasm_gate]\ngeneral fn myFun() -> () {}"
+      `shouldBe` Just "#[qasm_gate(\"myFun\")]\ngeneral fn myFun() -> () { }"
+
   test "nested expressions round-trip through the canonical printer" $
     desugarAndPrettyPrint "fn add(x: i32) -> i32 { x + 1 }"
       `shouldBe` Just "general fn add(x: i32) -> i32 { (x + 1) }"

@@ -44,7 +44,7 @@ record ScopeId where
 public export
 data NodeProvenance
   = Written
-  | InferredAttributeName
+  | InferredAttributeArgument
   | InferredDefaultFunctionEffect
   | InferredDefaultFunctionReturnType
   | InferredDefaultQubitQualifier
@@ -53,7 +53,7 @@ data NodeProvenance
 public export
 Show NodeProvenance where
   show Written = "written code"
-  show InferredAttributeName = "inferred attribute name"
+  show InferredAttributeArgument = "inferred attribute argument"
   show InferredDefaultFunctionEffect = "inferred default function effect"
   show InferredDefaultFunctionReturnType = "inferred default function return type"
   show InferredDefaultQubitQualifier = "inferred default qubit qualifier"
