@@ -29,3 +29,22 @@ runDesugaringTests = runTests $ Test.do
   test "const declarations desugar unchanged" $
     desugarAndPrettyPrint "const N: i64 = 4;"
       `shouldBe` Just "const N: i64 = 4;"
+
+  -- Parenthesization nodes carry no meaning past the surface AST
+  -- so the canonical AST holds the bare inner node.
+
+  test "ExprParenthesized is discarded during canonicalization (1)" $
+    desugarAndPrettyPrint "fn wrap() -> i32 { ((1 + 2)) }"
+      `shouldBe` Just "general fn wrap() -> i32 { (1 + 2) }"
+
+  test "ExprParenthesized is discarded during canonicalization (2)" $
+    desugarAndPrettyPrint "fn wrap() -> i32 { (3) }"
+      `shouldBe` Just "general fn wrap() -> i32 { 3 }"
+
+  test "TyParenthesized is discarded during canonicalization (3)" $
+    desugarAndPrettyPrint "fn t(x: (i32)) -> (i32) { x }"
+      `shouldBe` Just "general fn t(x: i32) -> i32 { x }"
+
+  test "PatternParenthesized is discarded during canonicalization (4)" $
+    desugarAndPrettyPrint "fn p() { let (a) = 1; }"
+      `shouldBe` Just "general fn p() -> () { let a = 1; }"

@@ -50,7 +50,7 @@ desugarPattern (MkAstNode patternInfo _ patternNode) =
       PatternLiteral literal =>
         PatternLiteral (desugarAstNode literal)
       PatternParenthesized innerPattern =>
-        PatternParenthesized (recur innerPattern)
+        (recur innerPattern).value
       PatternTuple elementPatterns =>
         PatternTuple (map recur elementPatterns)
       PatternArray elementPatterns =>
@@ -90,7 +90,7 @@ mutual
       ExprPath path => ExprPath (desugarPath path)
       ExprBuiltin builtin => ExprBuiltin builtin
       ExprSelf => ExprSelf
-      ExprParenthesized inner => ExprParenthesized (desugarNestedExpression inner)
+      ExprParenthesized inner => (desugarNestedExpression inner).value
       ExprTuple elements => ExprTuple (map desugarNestedExpression elements)
       ExprArray elements => ExprArray (map desugarNestedExpression elements)
       ExprRepeatedArray element count => ExprRepeatedArray (desugarNestedExpression element) (desugarNestedExpression count)
@@ -175,7 +175,7 @@ mutual
         TyUnit =>
           TyUnit
         TyParenthesized innerType =>
-          TyParenthesized (desugarNestedType innerType)
+          (desugarNestedType innerType).value
         TyTuple elementTypes =>
           TyTuple (map desugarNestedType elementTypes)
         TyArray elementType sizeExpression =>
