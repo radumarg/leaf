@@ -54,7 +54,7 @@ showAstAndProgram astTree = do
 main : IO ()
 main = do
     putStrLn "Hello from Leaf!"
-    (_ :: args) <- getArgs
+    (program :: args) <- getArgs
       | [] => putStrLn "impossible: empty argv"
     case args of
       [fileName] => case isValidLeafFileName fileName of
