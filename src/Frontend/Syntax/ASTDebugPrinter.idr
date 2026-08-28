@@ -17,9 +17,12 @@ import Frontend.Syntax.Type
 -- AST.  Its source fragments are still produced by the total strict printer.
 %default covering
 
--- Structural output for inspecting the surface AST.  Every `strict` value is
--- delegated to PrettyStrict, which adds all syntactically optional
--- parentheses.  This module does not change the source-oriented Show instances.
+-- Structural output for inspecting the AST at ANY phase (surface, canonical,
+-- resolved, typed): generic over `phase : AstPhase`, exactly like
+-- ASTPrettyPrinter, and delegating every `strict = ...` fragment to that
+-- module's phase-polymorphic PrettyStrict renderers (which add all
+-- syntactically optional parentheses).  This module does not change the
+-- source-oriented Show instances.
 
 indent : Nat -> String
 indent Z = ""
@@ -30,19 +33,19 @@ astNodeNumber (MkAstInfo (MkNodeId surfaceId desugarId) _) = surfaceId
 
 node : Nat -> String -> String -> AstInfo -> String -> String
 node depth ty ctor info strict =
-  indent depth ++ "SurfaceAstNode<" ++ ty ++ "> #" ++ show (astNodeNumber info) ++
+  indent depth ++ "AstNode<" ++ ty ++ "> #" ++ show (astNodeNumber info) ++
   " " ++ ctor ++ "\n" ++ indent (S depth) ++ "strict = " ++ show strict ++ "\n"
 
 field : Nat -> String -> String -> String
 field depth name value = indent depth ++ name ++ " = " ++ show value ++ "\n"
 
-nameText : SurfaceName -> String
-nameText (MkAstNode _ _ (MkNameNode text)) = text
+nameText : PhasePretty phase => Name phase -> String
+nameText (MkAstNode _ _ n) = prettyName n
 
-leafText : Show a => SurfaceAstNode a -> String
+leafText : Show a => AstNode phase a -> String
 leafText (MkAstNode _ _ value) = show value
 
-exprCtor : ExpressionNode SurfaceAstPhase -> String
+exprCtor : ExpressionNode phase -> String
 exprCtor e = case e of
   ExprLiteral _ => "ExprLiteral"
   ExprName _ => "ExprName"
@@ -80,12 +83,12 @@ exprCtor e = case e of
   ExprAdjoint _ => "ExprAdjoint"
 
 mutual
-  debugExpr : Nat -> SurfaceExpr -> String
+  debugExpr : PhasePretty phase => Nat -> Expr phase -> String
   debugExpr depth expression@(MkAstNode info _ value) =
     node depth "ExpressionNode" (exprCtor value) info (showExprStrict expression) ++
     debugExprChildren (S depth) value
 
-  debugExprChildren : Nat -> ExpressionNode SurfaceAstPhase -> String
+  debugExprChildren : PhasePretty phase => Nat -> ExpressionNode phase -> String
   debugExprChildren depth e = case e of
     ExprParenthesized x => debugExpr depth x
     ExprTuple xs => debugExprs depth (forget xs)
@@ -110,52 +113,52 @@ mutual
     ExprReturn x => debugMaybeExpr depth x
     _ => ""
 
-  debugExprs : Nat -> List SurfaceExpr -> String
+  debugExprs : PhasePretty phase => Nat -> List (Expr phase) -> String
   debugExprs _ [] = ""
   debugExprs depth (x :: xs) = debugExpr depth x ++ debugExprs depth xs
 
-  debugMaybeExpr : Nat -> Maybe SurfaceExpr -> String
+  debugMaybeExpr : PhasePretty phase => Nat -> Maybe (Expr phase) -> String
   debugMaybeExpr _ Nothing = ""
   debugMaybeExpr depth (Just x) = debugExpr depth x
 
-  debugTy : Nat -> SurfaceTy -> String
+  debugTy : PhasePretty phase => Nat -> Ty phase (Expr phase) -> String
   debugTy depth ty@(MkAstNode info _ value) = case value of
     TyPrimitive primitive =>
-      node depth "TyNode SurfaceExpr" "TyPrimitive" info (showTyStrict ty) ++
+      node depth "TyNode Expr" "TyPrimitive" info (showTyStrict ty) ++
       field (S depth) "primitive" (showTypPrimLeaf primitive)
-    TyPath _ => node depth "TyNode SurfaceExpr" "TyPath" info (showTyStrict ty)
-    TyUnit => node depth "TyNode SurfaceExpr" "TyUnit" info (showTyStrict ty)
+    TyPath _ => node depth "TyNode Expr" "TyPath" info (showTyStrict ty)
+    TyUnit => node depth "TyNode Expr" "TyUnit" info (showTyStrict ty)
     TyParenthesized x =>
-      node depth "TyNode SurfaceExpr" "TyParenthesized" info (showTyStrict ty) ++ debugTy (S depth) x
+      node depth "TyNode Expr" "TyParenthesized" info (showTyStrict ty) ++ debugTy (S depth) x
     TyTuple xs =>
-      node depth "TyNode SurfaceExpr" "TyTuple" info (showTyStrict ty) ++ debugTys (S depth) (forget xs)
+      node depth "TyNode Expr" "TyTuple" info (showTyStrict ty) ++ debugTys (S depth) (forget xs)
     TyArray element size =>
-      node depth "TyNode SurfaceExpr" "TyArray" info (showTyStrict ty) ++
+      node depth "TyNode Expr" "TyArray" info (showTyStrict ty) ++
       debugTy (S depth) element ++ debugExpr (S depth) size
-    TySlice x => node depth "TyNode SurfaceExpr" "TySlice" info (showTyStrict ty) ++ debugTy (S depth) x
-    TyReference _ x => node depth "TyNode SurfaceExpr" "TyReference" info (showTyStrict ty) ++ debugTy (S depth) x
-    TyQualified _ x => node depth "TyNode SurfaceExpr" "TyQualified" info (showTyStrict ty) ++ debugTy (S depth) x
+    TySlice x => node depth "TyNode Expr" "TySlice" info (showTyStrict ty) ++ debugTy (S depth) x
+    TyReference _ x => node depth "TyNode Expr" "TyReference" info (showTyStrict ty) ++ debugTy (S depth) x
+    TyQualified _ x => node depth "TyNode Expr" "TyQualified" info (showTyStrict ty) ++ debugTy (S depth) x
     TyFunction _ _ result =>
-      node depth "TyNode SurfaceExpr" "TyFunction" info (showTyStrict ty) ++ debugMaybeTy (S depth) result
+      node depth "TyNode Expr" "TyFunction" info (showTyStrict ty) ++ debugMaybeTy (S depth) result
 
-  debugTys : Nat -> List SurfaceTy -> String
+  debugTys : PhasePretty phase => Nat -> List (Ty phase (Expr phase)) -> String
   debugTys _ [] = ""
   debugTys depth (x :: xs) = debugTy depth x ++ debugTys depth xs
 
-  debugMaybeTy : Nat -> Maybe SurfaceTy -> String
+  debugMaybeTy : PhasePretty phase => Nat -> Maybe (Ty phase (Expr phase)) -> String
   debugMaybeTy _ Nothing = ""
   debugMaybeTy depth (Just x) = debugTy depth x
 
-  debugBlock : Nat -> SurfaceBlock -> String
+  debugBlock : PhasePretty phase => Nat -> Block phase -> String
   debugBlock depth block@(MkAstNode info _ (MkBlockNode _ statements final)) =
     node depth "BlockNode" "MkBlockNode" info (showBlockStrict block) ++
     debugStatements (S depth) statements ++ debugMaybeExpr (S depth) final
 
-  debugStatements : Nat -> List SurfaceStatement -> String
+  debugStatements : PhasePretty phase => Nat -> List (Statement phase) -> String
   debugStatements _ [] = ""
   debugStatements depth (x :: xs) = debugStatement depth x ++ debugStatements depth xs
 
-  debugStatement : Nat -> SurfaceStatement -> String
+  debugStatement : PhasePretty phase => Nat -> Statement phase -> String
   debugStatement depth (MkAstNode info _ statement) = case statement of
     StatementLet binding =>
       node depth "StatementNode" "StatementLet" info "let ...;" ++ debugLet (S depth) binding
@@ -168,19 +171,19 @@ mutual
       node depth "StatementNode" "StatementExpression" info (showExprStrict expression) ++
       debugExpr (S depth) expression
 
-  debugLet : Nat -> LetBindingNode SurfaceAstPhase -> String
+  debugLet : PhasePretty phase => Nat -> LetBindingNode phase -> String
   debugLet depth (MkLetBindingNode _ pattern annotation initializer) =
     indent depth ++ "LetBindingNode MkLetBindingNode\n" ++
     field (S depth) "pattern" (showPattern pattern) ++ debugMaybeTy (S depth) annotation ++
     debugInitializer (S depth) initializer
 
-  debugInitializer : Nat -> Maybe (LetInitializerNode SurfaceAstPhase) -> String
+  debugInitializer : PhasePretty phase => Nat -> Maybe (LetInitializerNode phase) -> String
   debugInitializer _ Nothing = ""
   debugInitializer depth (Just (MkLetInitializerNode marker value)) =
     indent depth ++ "LetInitializerNode MkLetInitializerNode\n" ++
     field (S depth) "marker" (leafText marker) ++ debugExpr (S depth) value
 
-  debugParameter : Nat -> SurfaceFunctionParameter -> String
+  debugParameter : PhasePretty phase => Nat -> FunctionParameter phase -> String
   debugParameter depth (MkAstNode info _ parameter) = case parameter of
     NormalParameter _ mutability name ty =>
       node depth "FunctionParameterNode" "NormalParameter" info
@@ -190,18 +193,18 @@ mutual
       node depth "FunctionParameterNode" "ReceiverParameter" info
         (maybe "self" (\b => leafText b ++ "self") borrow)
 
-  debugParameters : Nat -> List SurfaceFunctionParameter -> String
+  debugParameters : PhasePretty phase => Nat -> List (FunctionParameter phase) -> String
   debugParameters _ [] = ""
   debugParameters depth (x :: xs) = debugParameter depth x ++ debugParameters depth xs
 
-  debugFunction : Nat -> AstInfo -> SurfaceItem -> FunctionDeclarationNode SurfaceAstPhase -> String
+  debugFunction : PhasePretty phase => Nat -> AstInfo -> Item phase -> FunctionDeclarationNode phase -> String
   debugFunction depth info item function = case function of
     MkFunctionDeclarationNode _ _ _ _ _ name params result _ _ body =>
       node depth "ItemNode" "ItemFunction(FunctionDeclarationNode)" info (showItemStrict item) ++
       field (S depth) "functionName" (nameText name) ++ debugParameters (S depth) params ++
       debugMaybeTy (S depth) result ++ debugBlock (S depth) body
 
-  debugItem : Nat -> SurfaceItem -> String
+  debugItem : PhasePretty phase => Nat -> Item phase -> String
   debugItem depth item@(MkAstNode info _ value) = case value of
     ItemFunction function => debugFunction depth info item function
     ItemModule _ => node depth "ItemNode" "ItemModule" info (showItemStrict item)
@@ -212,11 +215,11 @@ mutual
     ItemStruct _ => node depth "ItemNode" "ItemStruct" info (showItemStrict item)
     ItemImpl _ => node depth "ItemNode" "ItemImpl" info (showItemStrict item)
 
-  debugItems : Nat -> List SurfaceItem -> String
+  debugItems : PhasePretty phase => Nat -> List (Item phase) -> String
   debugItems _ [] = ""
   debugItems depth (x :: xs) = debugItem depth x ++ debugItems depth xs
 
 public export
-showAstDebug : SurfaceSourceFile -> String
+showAstDebug : PhasePretty phase => SourceFile phase -> String
 showAstDebug source@(MkAstNode info _ (MkSourceFileNode _ items)) =
   node 0 "SourceFileNode" "MkSourceFileNode" info (showSourceFileStrict source) ++ debugItems 1 items

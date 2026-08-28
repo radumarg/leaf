@@ -80,7 +80,7 @@ typedAstNode astInfo origin value =
   MkAstNode astInfo (MkProvenanceMetadata origin) value
 
 --------------------------------------------------------------------------------
--- Show instance: print the payload only, never the bookkeeping
+-- Show instance: print the payload only, skip the bookkeeping
 --------------------------------------------------------------------------------
 
 public export

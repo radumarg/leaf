@@ -4,6 +4,7 @@ import Data.String
 import Text.Bounds
 import System.File
 
+import Compiler.Desugar.Desugar
 import Frontend.ASTPhases
 import Frontend.Token
 import Frontend.Lexer.Error
@@ -39,6 +40,13 @@ showParseError err =
       ++ ", with message: "
       ++ renderParseError err.value
 
+showAstAndProgram : PhasePretty phase => SourceFile phase -> IO ()
+showAstAndProgram astTree = do
+  putStrLn "AST Nodes:"
+  putStrLn $ showAstDebug astTree
+  putStrLn "Pretty Printed Program:"
+  putStrLn $ "Parsed program:\n" ++ showSourceFileStrict astTree
+
 main : IO ()
 main = do
     putStrLn "Hello from Leaf!"
@@ -53,18 +61,15 @@ main = do
             case lexFile sampleProgram of
               Left err => putStrLn $ renderLexerError err
               Right tokens => do
-                putStrLn "Tokens:"
-                traverse_ (putStrLn . show) tokens
                 case parseFile fileName tokens of
                   Left err => putStrLn $ showParseError err
-                  Right surfaceAST => do
-                    case validateSourceFile surfaceAST of
+                  Right surfaceAst => do
+                    case validateSourceFile surfaceAst of
+                      [] => do
+                          let canonicalAst = desugarSurfaceSyntax surfaceAst
+                          showAstAndProgram canonicalAst
                       errors => do
                         putStrLn "Validation errors:"
                         traverse_ (putStrLn . interpolate) errors
-                      [] => do
-                        putStrLn ""
-                        putStrLn "AST Nodes:"
-                        putStrLn $ showAstDebug surfaceAST
-                        putStrLn "Pretty Printed Program:"
-                        putStrLn $ "Parsed program:\n" ++ showSourceFileStrict surfaceAST
+
+

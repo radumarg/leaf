@@ -345,8 +345,8 @@ desugarItem (MkAstNode itemInfo metadata item) =
             functionBody
           ) = let
                 (desugaredAttributes, increment) = mapWithId desugarAttribute 1 functionAttributes
-                (desugaredFunctionEffect, increment) = desugarFunctionEffectNode functionEffect increment
-                desugaredReturnType = desugarFunctionTypeNode returnType increment
+                (desugaredFunctionEffect, increment) = desugarFunctionEffect functionEffect increment
+                desugaredReturnType = desugarFunctionType returnType increment
               in 
                 MkFunctionDeclarationNode
                 (map desugarAstNode functionDocs)
@@ -361,12 +361,12 @@ desugarItem (MkAstNode itemInfo metadata item) =
                 (map desugarContractClause contractClauses)
                 (desugarFunctionBody functionBody)
               where
-                desugarFunctionEffectNode : Maybe (AstNode SurfaceAstPhase FunctionEffect) -> Nat -> (Maybe (AstNode CanonicalAstPhase FunctionEffect), Nat)
-                desugarFunctionEffectNode Nothing inc = (Just $ canonicalAstNode (incrementedAstInfo functionName inc) InferredDefaultFunctionEffect EffectGeneral, inc + 1)
-                desugarFunctionEffectNode (Just functionEffectNode) inc = (Just $ desugarAstNode functionEffectNode, inc)
-                desugarFunctionTypeNode : Maybe (Ty SurfaceAstPhase (Expr SurfaceAstPhase)) -> Nat -> Maybe (Ty CanonicalAstPhase (Expr CanonicalAstPhase))
-                desugarFunctionTypeNode Nothing inc = Just $ canonicalAstNode (incrementedAstInfo functionName inc) InferredDefaultFunctionReturnType TyUnit
-                desugarFunctionTypeNode (Just functionTypeNode) _ = Just $ desugarType functionTypeNode
+                desugarFunctionEffect : Maybe (AstNode SurfaceAstPhase FunctionEffect) -> Nat -> (Maybe (AstNode CanonicalAstPhase FunctionEffect), Nat)
+                desugarFunctionEffect Nothing inc = (Just $ canonicalAstNode (incrementedAstInfo functionName inc) InferredDefaultFunctionEffect EffectGeneral, inc + 1)
+                desugarFunctionEffect (Just functionEffectNode) inc = (Just $ desugarAstNode functionEffectNode, inc)
+                desugarFunctionType : Maybe (Ty SurfaceAstPhase (Expr SurfaceAstPhase)) -> Nat -> Maybe (Ty CanonicalAstPhase (Expr CanonicalAstPhase))
+                desugarFunctionType Nothing inc = Just $ canonicalAstNode (incrementedAstInfo functionName inc) InferredDefaultFunctionReturnType TyUnit
+                desugarFunctionType (Just functionTypeNode) _ = Just $ desugarType functionTypeNode
 
 export
 desugarSurfaceSyntax : SurfaceSourceFile -> CanonicalSourceFile
