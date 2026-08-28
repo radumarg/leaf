@@ -15,34 +15,10 @@ import Frontend.Syntax.Name
 --   #[qasm_def]
 --   #[qasm_def("my_def")]
 --
--- Design choices:
---
---   * Every phase stores an attribute GENERICALLY: a name plus an optional
---     argument list -- indexed by `phase : AstPhase` like every other node
---     family, following ASTPhases.idr's XFor convention.
---
---   * The parser enforces argument SHAPE directly, for every attribute
---     regardless of name: `#[name]` (no arguments) or `#[name("string")]`
---     (exactly one string literal argument). Anything else -- `#[name()]`,
---     a non-string argument, more than one argument -- is a parse error.
---
---   * Attribute NAME is a separate, semantic question from shape: unknown
---     names are preserved by the parser and rejected by a later validation
---     pass (`PostParseValidation`) instead.
---
---   * Attribute names are NEVER resolved to program symbols -- they are
---     compiler-directed metadata, not references to bindings. So unlike
---     every other name in the tree, an attribute's name does NOT route
---     through the `Name phase` family (which carries a SymbolId from
---     ResolvedAstPhase onward) -- it stays the plain textual `NameNode` at every
---     phase, ResolvedAstPhase and TypedAstPhase included.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 -- Known attribute kinds
---------------------------------------------------------------------------------
--- The attributes the compiler currently understands needed by the
--- `PostParseValidation` pass.
 --------------------------------------------------------------------------------
 
 public export
@@ -79,9 +55,7 @@ recognizeKnownAttribute s =
 --   #[qasm_gate("my_gate")]              -- string literal argument
 --
 -- Literal spellings are preserved raw (quotes included), matching the
--- convention used for literal tokens elsewhere in the frontend. Phase-
--- invariant payload, like Literal.idr/Doc.idr: no phase ever rewrites an
--- argument's raw spelling.
+-- convention used for literal tokens elsewhere in the frontend. 
 --------------------------------------------------------------------------------
 
 public export
@@ -118,12 +92,6 @@ TypedAttributeArgument = AttributeArgument TypedAstPhase
 --   Nothing  <=>  #[qasm_gate]      -- no argument list written at all
 --   Just []  <=>  #[qasm_gate()]    -- an explicit, empty argument list
 --
--- The distinction is preserved because it is visible in source (and a later
--- pass may well want to reject the `Just []` form for known attributes).
---
--- `attributeName` is deliberately `AstNode phase NameNode`, NOT
--- `Name phase` -- see the module header: attribute names never resolve to a
--- SymbolId at any phase.
 --------------------------------------------------------------------------------
 
 public export
