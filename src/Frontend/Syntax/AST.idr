@@ -652,12 +652,12 @@ mutual
       -> FieldInitializerNode phase
 
   ------------------------------------------------------------------------------
-  -- if / qif / sif -- three families, deliberately not merged
+  -- if / qif / sif
   ------------------------------------------------------------------------------
 
   -- if cond { ... } [else { ... } | else if ...]
-  -- Branches are blocks; else-if chains nest through ElseChainedIf, so
-  -- "else associates with the nearest unmatched if" is structural.
+  -- Branches are blocks; else-if chains nest through ElseChainedIf,
+  -- so else associates with the nearest unmatched if
   public export
   record ClassicalIfNode (phase : AstPhase) where
     constructor MkClassicalIfNode
@@ -668,13 +668,11 @@ mutual
   public export
   data ClassicalElseNode : (phase : AstPhase) -> Type where
     ElseBlock     : (elseBlock : Block phase) -> ClassicalElseNode phase
-    ElseChainedIf : (chainedIf : AstNode phase (ClassicalIfNode phase))
-                 -> ClassicalElseNode phase
+    ElseChainedIf : (chainedIf : AstNode phase (ClassicalIfNode phase)) -> ClassicalElseNode phase
 
   -- qif cond { ... } [qelse { ... }]      -- block branches
   -- qif c e1 qelse e2                     -- bare expression branches
-  -- qelse optional, no `then` keyword; each branch independently records
-  -- whether it was a block or a bare expression.
+  -- qelse optional
   public export
   record QuantumIfNode (phase : AstPhase) where
     constructor MkQuantumIfNode
@@ -685,11 +683,10 @@ mutual
   public export
   data QuantumBranchNode : (phase : AstPhase) -> Type where
     QuantumBranchBlock      : (branchBlock : Block phase) -> QuantumBranchNode phase
-    QuantumBranchExpression : (branchExpression : Expr phase)
-                           -> QuantumBranchNode phase
+    QuantumBranchExpression : (branchExpression : Expr phase) -> QuantumBranchNode phase
 
-  -- sif cond then e1 selse e2 -- expression-only, selse MANDATORY, `then`
-  -- keyword required: all structural here, none of it deferred.
+  -- sif cond then e1 selse e2 -- expression-only,
+  -- selse mandatory, `then` keyword required
   public export
   record StateIfNode (phase : AstPhase) where
     constructor MkStateIfNode
