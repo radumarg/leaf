@@ -1,7 +1,9 @@
 module Main
 
+import Data.List
 import Data.String
 import Text.Bounds
+import System
 import System.File
 
 import Compiler.Desugar.Desugar
@@ -17,6 +19,8 @@ import Frontend.Syntax.AST
 import Frontend.Syntax.ASTDebugPrinter
 import Frontend.Syntax.ASTPrettyPrinter
 
+%default total
+
 isOneWord : String -> Bool
 isOneWord fileName =
   fileName /= "" &&
@@ -25,7 +29,7 @@ isOneWord fileName =
 isValidLeafFileName : String -> Bool
 isValidLeafFileName fileName =
   isOneWord fileName &&
-  (isSuffixOf ".rs" fileName || isSuffixOf ".lf" fileName)
+  (isSuffixOf ".lf" fileName || isSuffixOf ".rs" fileName)
 
 showParseError : Located ParseError -> String
 showParseError err =
@@ -43,33 +47,36 @@ showParseError err =
 showAstAndProgram : PhasePretty phase => SourceFile phase -> IO ()
 showAstAndProgram astTree = do
   putStrLn "AST Nodes:"
-  putStrLn $ showAstDebug astTree
+  putStrLn $ assert_total showAstDebug astTree
   putStrLn "Pretty Printed Program:"
   putStrLn $ "Parsed program:\n" ++ showSourceFileStrict astTree
 
 main : IO ()
 main = do
     putStrLn "Hello from Leaf!"
-    fileName <- getLine
-    case isValidLeafFileName fileName of
-      False => putStrLn "Invalid filename: expected an .rs or .lf file."
-      True => do
-        fileResult <- readFile fileName
-        case fileResult of
-          Left fileErr => putStrLn $ "Failed to read \{fileName}: " ++ show fileErr
-          Right sampleProgram =>
-            case lexFile sampleProgram of
-              Left err => putStrLn $ renderLexerError err
-              Right tokens => do
-                case parseFile fileName tokens of
-                  Left err => putStrLn $ showParseError err
-                  Right surfaceAst => do
-                    case validateSourceFile surfaceAst of
-                      [] => do
-                          let canonicalAst = desugarSurfaceSyntax surfaceAst
-                          showAstAndProgram canonicalAst
-                      errors => do
-                        putStrLn "Validation errors:"
-                        traverse_ (putStrLn . interpolate) errors
+    (_ :: args) <- getArgs
+      | [] => putStrLn "impossible: empty argv"
+    case args of
+      [fileName] => case isValidLeafFileName fileName of
+        False => putStrLn "Invalid filename: expected an .lf or .rs file."
+        True => do
+          fileResult <- assert_total readFile fileName
+          case fileResult of
+            Left fileErr => putStrLn $ "Failed to read \{fileName}: " ++ show fileErr
+            Right sampleProgram =>
+              case lexFile sampleProgram of
+                Left err => putStrLn $ renderLexerError err
+                Right tokens => do
+                  case parseFile fileName tokens of
+                    Left err => putStrLn $ showParseError err
+                    Right surfaceAst => do
+                      case validateSourceFile surfaceAst of
+                        [] => do
+                            let canonicalAst = desugarSurfaceSyntax surfaceAst
+                            showAstAndProgram canonicalAst
+                        errors => do
+                          putStrLn "Validation errors:"
+                          traverse_ (putStrLn . interpolate) errors
+      _ => putStrLn "Please provide exactly one input .lf or .rs file."
 
 
