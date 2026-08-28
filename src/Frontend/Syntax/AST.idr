@@ -191,29 +191,18 @@ mutual
   -- Function declarations
   ------------------------------------------------------------------------------
 
-  -- A function declaration preserves everything the user wrote around the
-  -- signature. The surface AST records that the user WROTE `unitary`; it
-  -- does not know or care whether the body is unitary.
   public export
   record FunctionDeclarationNode (phase : AstPhase) where
     constructor MkFunctionDeclarationNode
     functionDocs       : List (DocComment phase)
     functionAttributes : List (Attribute phase)
     functionVisibility : Maybe (AstNode phase VisibilityQualifier)
-    -- Nothing: ordinary `fn`. Just: the user explicitly wrote `const fn`.
     functionConstness  : Maybe (AstNode phase FunctionConstness)
-    -- Nothing: no effect written (treated as general later).
-    -- Just (located EffectGeneral): the user explicitly wrote `general`.
     functionEffect     : Maybe (AstNode phase FunctionEffect)
     functionName       : Name phase
     functionParameters : List (AstNode phase (FunctionParameterNode phase))
-    -- Nothing: no `->` written (distinct from an explicit `-> ()`).
     returnType         : Maybe (Ty phase (Expr phase))
-    -- Empty: no `supports` clause written. A written clause always names
-    -- at least one kind, so emptiness is unambiguous.
     supportClause      : List (AstNode phase SupportKind)
-    -- requires/ensures in SOURCE ORDER; the requires-before-ensures rule
-    -- is a validation check against this order, not an AST shape.
     contractClauses    : List (ContractClause phase (Expr phase))
     functionBody       : Block phase
 
