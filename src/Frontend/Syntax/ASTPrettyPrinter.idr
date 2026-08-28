@@ -18,7 +18,7 @@ import Frontend.Syntax.Type
 %default total
 
 --------------------------------------------------------------------------------
--- Pretty-printing for the surface AST (Frontend.Syntax.AST and friends).
+-- Pretty-printing for the AST (Frontend.Syntax.AST and friends).
 --------------------------------------------------------------------------------
 -- Two styles, selected by PrettyStyle:
 --
@@ -52,8 +52,16 @@ import Frontend.Syntax.Type
 -- get their own, smaller mutual block, checked independently and reused
 -- freely (via ordinary, non-recursive calls) from the big block below.
 --
--- Every node family is fixed to the SurfaceAstPhase phase throughout this module:
--- pretty-printing only ever renders freshly-parsed source.
+-- PHASE POLYMORPHISM: every renderer is generic over `phase : AstPhase`
+-- ("trees that grow": surface -> canonical -> resolved -> typed). The ONLY
+-- payloads that differ across phases are names and paths -- `NameFor phase`
+-- (a bare `NameNode` until resolution attaches a `SymbolId`) and
+-- `PathFor phase` (a segment list until resolution collapses it). Those two
+-- are the whole content of the `PhasePretty` interface below; the rendered
+-- form is always just the written text (a pretty-printer reproduces source
+-- syntax, so a resolved name's `SymbolId` is intentionally dropped).
+-- Everything else in the AST is uniformly phase-parametric, so the bodies
+-- are shared verbatim by all four phases.
 --------------------------------------------------------------------------------
 
 public export
@@ -118,22 +126,72 @@ showTupleLike [x] = "(" ++ x ++ ",)"
 showTupleLike xs  = "(" ++ joinWith ", " xs ++ ")"
 
 --------------------------------------------------------------------------------
--- Names and paths (Frontend.Syntax.Name) -- not recursive into expressions,
--- so plain (non-mutual) functions, freely callable from anywhere below.
+-- Names and paths (Frontend.Syntax.Name)
+--------------------------------------------------------------------------------
+-- Path segments are phase-invariant text (`self` or an identifier), so this
+-- one is a plain generic function. Names and whole paths are what the
+-- `PhasePretty` interface abstracts -- see the module header.
 --------------------------------------------------------------------------------
 
-showName : SurfaceName -> String
-showName (MkAstNode _ _ (MkNameNode text)) = text
-
-showPathSegment : SurfacePathSegment -> String
+showPathSegment : PathSegment phase -> String
 showPathSegment (MkAstNode _ _ seg) =
   case seg of
     PathSegmentName s => s
     PathSegmentSelf   => "self"
 
-showPath : SurfacePath -> String
-showPath (MkAstNode _ _ (MkPathNode first rest)) =
+prettyNameNode : NameNode -> String
+prettyNameNode (MkNameNode text) = text
+
+prettyResolvedNameNode : ResolvedNameNode -> String
+prettyResolvedNameNode (MkResolvedNameNode text _) = text
+
+prettyPathNode : PathNode phase -> String
+prettyPathNode (MkPathNode first rest) =
   joinWith "::" (showPathSegment first :: map showPathSegment rest)
+
+prettyResolvedPathNode : ResolvedPathNode -> String
+prettyResolvedPathNode (MkResolvedPathNode first rest _) =
+  joinWith "::" (first :: rest)
+
+-- Rendering the two payloads that "grow" across phases. `prettyName` takes
+-- the raw `NameFor phase`, `prettyPath` the raw `PathFor phase`; the located
+-- `showName`/`showPath` wrappers below unwrap the AstNode first.
+public export
+interface PhasePretty phase where
+  prettyName : NameFor phase -> String
+  prettyPath : PathFor phase -> String
+
+public export
+PhasePretty SurfaceAstPhase where
+  prettyName = prettyNameNode
+  prettyPath = prettyPathNode
+
+public export
+PhasePretty CanonicalAstPhase where
+  prettyName = prettyNameNode
+  prettyPath = prettyPathNode
+
+public export
+PhasePretty ResolvedAstPhase where
+  prettyName = prettyResolvedNameNode
+  prettyPath = prettyResolvedPathNode
+
+public export
+PhasePretty TypedAstPhase where
+  prettyName = prettyResolvedNameNode
+  prettyPath = prettyResolvedPathNode
+
+showName : PhasePretty phase => Name phase -> String
+showName (MkAstNode _ _ n) = prettyName n
+
+showPath : PhasePretty phase => Path phase -> String
+showPath (MkAstNode _ _ p) = prettyPath p
+
+-- Attribute names are `AstNode phase NameNode`, NOT `Name phase` -- they
+-- never resolve to a SymbolId at any phase (see Attribute.idr) -- so they
+-- are rendered directly, with no `PhasePretty` constraint.
+showPlainName : AstNode phase NameNode -> String
+showPlainName (MkAstNode _ _ (MkNameNode text)) = text
 
 --------------------------------------------------------------------------------
 -- Literals (Frontend.Syntax.Literal) -- every payload is already the raw
@@ -141,7 +199,7 @@ showPath (MkAstNode _ _ (MkPathNode first rest)) =
 -- lookup, no recursion.
 --------------------------------------------------------------------------------
 
-showLiteral : SurfaceLiteral -> String
+showLiteral : Literal phase -> String
 showLiteral (MkAstNode _ _ lit) =
   case lit of
     LiteralIntegerRaw s     => s
@@ -159,30 +217,30 @@ showLiteral (MkAstNode _ _ lit) =
 -- delimiters, so printing one back out is verbatim.
 --------------------------------------------------------------------------------
 
-showDocComment : SurfaceDocComment -> String
+showDocComment : DocComment phase -> String
 showDocComment (MkAstNode _ _ (MkDocCommentNode _ _ rawText)) = rawText
 
 -- A block of doc comments, one per line, immediately preceding whatever
 -- follows -- "" when there are none.
-docsPrefix : List SurfaceDocComment -> String
+docsPrefix : List (DocComment phase) -> String
 docsPrefix docs = concatMap (\d => showDocComment d ++ "\n") docs
 
 --------------------------------------------------------------------------------
 -- Attributes (Frontend.Syntax.Attribute)
 --------------------------------------------------------------------------------
 
-showAttributeArgument : SurfaceAttributeArgument -> String
+showAttributeArgument : AttributeArgument phase -> String
 showAttributeArgument (MkAstNode _ _ (AttributeArgumentStringLit s)) = s
 
-showAttribute : SurfaceAttribute -> String
+showAttribute : Attribute phase -> String
 showAttribute (MkAstNode _ _ (MkAttributeNode nm margs)) =
-  "#[" ++ showName nm ++
+  "#[" ++ showPlainName nm ++
     (case margs of
        Nothing   => ""
        Just args => "(" ++ joinWith ", " (map showAttributeArgument args) ++ ")") ++
   "]"
 
-attrsPrefix : List SurfaceAttribute -> String
+attrsPrefix : List (Attribute phase) -> String
 attrsPrefix attrs = concatMap (\a => showAttribute a ++ "\n") attrs
 
 --------------------------------------------------------------------------------
@@ -193,24 +251,24 @@ attrsPrefix attrs = concatMap (\a => showAttribute a ++ "\n") attrs
 visPrefix : VisibilityQualifier -> String
 visPrefix v = prefixSpace (show v)
 
-optionalVisPrefix : Maybe (SurfaceAstNode VisibilityQualifier) -> String
+optionalVisPrefix : Maybe (AstNode phase VisibilityQualifier) -> String
 optionalVisPrefix Nothing = ""
 optionalVisPrefix (Just (MkAstNode _ _ visibility)) = visPrefix visibility
 
-showQualifiersPrefix : List (SurfaceAstNode QuantumStorageQualifier) -> String
+showQualifiersPrefix : List (AstNode phase QuantumStorageQualifier) -> String
 showQualifiersPrefix []    = ""
 showQualifiersPrefix quals =
   joinWith " " (map (\(MkAstNode _ _ q) => show q) quals) ++ " "
 
-showOnBasis : Maybe (SurfaceAstNode String) -> String
+showOnBasis : Maybe (AstNode phase String) -> String
 showOnBasis Nothing                    = ""
 showOnBasis (Just (MkAstNode _ _ raw)) = ".on(" ++ raw ++ ")"
 
-showQualifiersPrefix1 : List1 (SurfaceAstNode QuantumStorageQualifier) -> String
+showQualifiersPrefix1 : List1 (AstNode phase QuantumStorageQualifier) -> String
 showQualifiersPrefix1 quals =
   joinWith " " (map (\(MkAstNode _ _ q) => show q) (forget quals)) ++ " "
 
-showMutabilityPrefix : Maybe (SurfaceAstNode Mutability) -> String
+showMutabilityPrefix : Maybe (AstNode phase Mutability) -> String
 showMutabilityPrefix Nothing = ""
 showMutabilityPrefix (Just (MkAstNode _ _ mutability)) =
   prefixSpace (show mutability)
@@ -223,10 +281,10 @@ showMutabilityPrefix (Just (MkAstNode _ _ mutability)) =
 mutual
 
   public export
-  showPattern : SurfacePattern -> String
+  showPattern : PhasePretty phase => Pattern phase -> String
   showPattern (MkAstNode _ _ pat) = showPatternNode pat
 
-  showPatternNode : PatternNode SurfaceAstPhase -> String
+  showPatternNode : PhasePretty phase => PatternNode phase -> String
   showPatternNode pat =
     case pat of
       PatternWildcard          => "_"
@@ -242,14 +300,14 @@ mutual
       PatternEnumTuple p args    =>
         showPath p ++ parens (joinWith ", " (showPatternList args))
 
-  showPatternList : List SurfacePattern -> List String
+  showPatternList : PhasePretty phase => List (Pattern phase) -> List String
   showPatternList []        = []
   showPatternList (p :: ps) = showPattern p :: showPatternList ps
 
-  showPatternList1 : List1 SurfacePattern -> List String
+  showPatternList1 : PhasePretty phase => List1 (Pattern phase) -> List String
   showPatternList1 (p ::: ps) = showPattern p :: showPatternList ps
 
-  showStructPatternField : SurfaceStructPatternField -> String
+  showStructPatternField : PhasePretty phase => StructPatternField phase -> String
   showStructPatternField (MkAstNode _ _ f) =
     case f of
       StructPatternFieldShorthand mutability nm =>
@@ -257,14 +315,14 @@ mutual
       StructPatternFieldExplicit nm pat =>
         showName nm ++ ": " ++ showPattern pat
 
-  showStructPatternFieldList : List SurfaceStructPatternField -> List String
+  showStructPatternFieldList : PhasePretty phase => List (StructPatternField phase) -> List String
   showStructPatternFieldList []        = []
   showStructPatternFieldList (f :: fs) =
     showStructPatternField f :: showStructPatternFieldList fs
 
 -- Quantum match patterns: flat, not self-recursive.
 public export
-showQuantumMatchPattern : SurfaceQuantumMatchPattern -> String
+showQuantumMatchPattern : PhasePretty phase => QuantumMatchPattern phase -> String
 showQuantumMatchPattern (MkAstNode _ _ pat) =
   case pat of
     QuantumPatternBasisStringRaw s => s
@@ -275,10 +333,11 @@ showQuantumMatchPattern (MkAstNode _ _ pat) =
 
 --------------------------------------------------------------------------------
 -- Pauli strings and stabilizer terms (Frontend.Syntax.Contract) -- these do
--- not mention expressions, so they too sit outside the big mutual block.
+-- not mention expressions or names, so they too sit outside the big mutual
+-- block and need no phase dictionary.
 --------------------------------------------------------------------------------
 
-showPauliString : SurfacePauliString -> String
+showPauliString : PauliString phase -> String
 showPauliString (MkAstNode _ _ (MkPauliStringNode ops)) =
   joinWith "" (map show (forget ops))
 
@@ -286,7 +345,7 @@ showStabilizerSign : StabilizerSign -> String
 showStabilizerSign StabilizerPlus  = "+"
 showStabilizerSign StabilizerMinus = "-"
 
-showSignedPauliTerm : SurfaceSignedPauliTerm -> String
+showSignedPauliTerm : SignedPauliTerm phase -> String
 showSignedPauliTerm (MkAstNode _ _ (MkSignedPauliTermNode sign pauli)) =
   showStabilizerSign sign ++ showPauliString pauli
 
@@ -345,7 +404,7 @@ binaryOperatorPrecedence op =
     BinaryLogicalAnd   => precLogicalAnd
     BinaryLogicalOr    => precLogicalOr
 
-exprOwnPrecedence : ExpressionNode SurfaceAstPhase -> Nat
+exprOwnPrecedence : ExpressionNode phase -> Nat
 exprOwnPrecedence e =
   case e of
     ExprLiteral _         => precAtomic
@@ -383,7 +442,7 @@ exprOwnPrecedence e =
     ExprContinue                                                              => precLowest
     ExprReturn _                                                                => precLowest
 
-isOperatorClassExpr : ExpressionNode SurfaceAstPhase -> Bool
+isOperatorClassExpr : ExpressionNode phase -> Bool
 isOperatorClassExpr e =
   case e of
     ExprUnary _ _   => True
@@ -407,7 +466,7 @@ mutual
   -- Types (Frontend.Syntax.Type)
   ------------------------------------------------------------------
 
-  showTyNode : PrettyStyle -> TyNode SurfaceAstPhase SurfaceExpr -> String
+  showTyNode : PhasePretty phase => PrettyStyle -> TyNode phase (Expr phase) -> String
   showTyNode style ty =
     case ty of
       TyPrimitive p         => showTypPrimLeaf p
@@ -432,19 +491,20 @@ mutual
            Just t  => " -> " ++ showTy style t)
 
   public export
-  showTy : PrettyStyle -> SurfaceTy -> String
+  showTy : PhasePretty phase => PrettyStyle -> Ty phase (Expr phase) -> String
   showTy style (MkAstNode _ _ ty) = showTyNode style ty
 
-  showTyList : PrettyStyle -> List SurfaceTy -> List String
+  showTyList : PhasePretty phase => PrettyStyle -> List (Ty phase (Expr phase)) -> List String
   showTyList style []        = []
   showTyList style (t :: ts) = showTy style t :: showTyList style ts
 
-  showTyList1 : PrettyStyle -> List1 SurfaceTy -> List String
+  showTyList1 : PhasePretty phase => PrettyStyle -> List1 (Ty phase (Expr phase)) -> List String
   showTyList1 style (t ::: ts) = showTy style t :: showTyList style ts
 
   showFunctionTypeParameterList :
-       PrettyStyle
-    -> List (SurfaceAstNode (FunctionTypeParameterNode SurfaceAstPhase SurfaceExpr))
+       PhasePretty phase
+    => PrettyStyle
+    -> List (AstNode phase (FunctionTypeParameterNode phase (Expr phase)))
     -> List String
   showFunctionTypeParameterList style [] = []
   showFunctionTypeParameterList style (MkAstNode _ _ (MkFunctionTypeParameterNode nm ty) :: rest) =
@@ -459,14 +519,14 @@ mutual
   -- Exported for callers that need explicit control over the ambient
   -- precedence; `showExpr` below is the common case (no ambient requirement).
   public export
-  showExprAt : PrettyStyle -> Nat -> SurfaceExpr -> String
+  showExprAt : PhasePretty phase => PrettyStyle -> Nat -> Expr phase -> String
   showExprAt style outerReq (MkAstNode _ _ value) = wrapExpr style outerReq value
 
   public export
-  showExpr : PrettyStyle -> SurfaceExpr -> String
+  showExpr : PhasePretty phase => PrettyStyle -> Expr phase -> String
   showExpr style = showExprAt style 0
 
-  wrapExpr : PrettyStyle -> Nat -> ExpressionNode SurfaceAstPhase -> String
+  wrapExpr : PhasePretty phase => PrettyStyle -> Nat -> ExpressionNode phase -> String
   wrapExpr style outerReq value =
     let body     = showExpressionNodeBody style value
         own      = exprOwnPrecedence value
@@ -475,10 +535,10 @@ mutual
 
   -- Top-level (unconstrained) rendering of a raw ExpressionNode -- used by
   -- the Show instance further down.
-  showExpressionNode : PrettyStyle -> ExpressionNode SurfaceAstPhase -> String
+  showExpressionNode : PhasePretty phase => PrettyStyle -> ExpressionNode phase -> String
   showExpressionNode style value = wrapExpr style 0 value
 
-  showExpressionNodeBody : PrettyStyle -> ExpressionNode SurfaceAstPhase -> String
+  showExpressionNodeBody : PhasePretty phase => PrettyStyle -> ExpressionNode phase -> String
   showExpressionNodeBody style value =
     case value of
       ExprLiteral lit => showLiteral lit
@@ -577,21 +637,21 @@ mutual
       ExprCtrl c    => showControlExpr style c
       ExprAdjoint a => showAdjointExpr style a
 
-  showExprList : PrettyStyle -> List SurfaceExpr -> List String
+  showExprList : PhasePretty phase => PrettyStyle -> List (Expr phase) -> List String
   showExprList style []        = []
   showExprList style (e :: es) = showExprAt style 0 e :: showExprList style es
 
-  showExprList1 : PrettyStyle -> List1 SurfaceExpr -> List String
+  showExprList1 : PhasePretty phase => PrettyStyle -> List1 (Expr phase) -> List String
   showExprList1 style (e ::: es) = showExprAt style 0 e :: showExprList style es
 
-  showFieldInit : PrettyStyle -> AstNode SurfaceAstPhase (FieldInitializerNode SurfaceAstPhase) -> String
+  showFieldInit : PhasePretty phase => PrettyStyle -> AstNode phase (FieldInitializerNode phase) -> String
   showFieldInit style (MkAstNode _ _ f) =
     case f of
       FieldInitShorthand nm => showName nm
       FieldInitExplicit nm e => showName nm ++ ": " ++ showExprAt style 0 e
 
   showFieldInitList :
-       PrettyStyle -> List (AstNode SurfaceAstPhase (FieldInitializerNode SurfaceAstPhase)) -> List String
+       PhasePretty phase => PrettyStyle -> List (AstNode phase (FieldInitializerNode phase)) -> List String
   showFieldInitList style []        = []
   showFieldInitList style (f :: fs) = showFieldInit style f :: showFieldInitList style fs
 
@@ -599,7 +659,7 @@ mutual
   -- if / qif / sif
   ------------------------------------------------------------------
 
-  showClassicalIfNode : PrettyStyle -> ClassicalIfNode SurfaceAstPhase -> String
+  showClassicalIfNode : PhasePretty phase => PrettyStyle -> ClassicalIfNode phase -> String
   showClassicalIfNode style (MkClassicalIfNode cond thenBlk elseBranch) =
     "if " ++ showExprAt style 0 cond ++ " " ++ showBlock style thenBlk ++
       (case elseBranch of
@@ -608,7 +668,7 @@ mutual
          Just (ElseChainedIf (MkAstNode _ _ chained)) =>
            " else " ++ showClassicalIfNode style chained)
 
-  showQuantumBranch : PrettyStyle -> QuantumBranchNode SurfaceAstPhase -> String
+  showQuantumBranch : PhasePretty phase => PrettyStyle -> QuantumBranchNode phase -> String
   showQuantumBranch style branch =
     case branch of
       QuantumBranchBlock b      => showBlock style b
@@ -618,7 +678,7 @@ mutual
   -- match / qmatch / smatch
   ------------------------------------------------------------------
 
-  showClassicalMatchArmNode : PrettyStyle -> ClassicalMatchArmNode SurfaceAstPhase -> String
+  showClassicalMatchArmNode : PhasePretty phase => PrettyStyle -> ClassicalMatchArmNode phase -> String
   showClassicalMatchArmNode style (MkClassicalMatchArmNode pat guard armBody) =
     showPattern pat ++
       (case guard of
@@ -627,25 +687,25 @@ mutual
       " => " ++ showExprAt style 0 armBody
 
   public export
-  showClassicalMatchArm : PrettyStyle -> SurfaceClassicalMatchArm -> String
+  showClassicalMatchArm : PhasePretty phase => PrettyStyle -> ClassicalMatchArm phase -> String
   showClassicalMatchArm style (MkAstNode _ _ arm) = showClassicalMatchArmNode style arm
 
   showClassicalMatchArmList :
-       PrettyStyle -> List SurfaceClassicalMatchArm -> List String
+       PhasePretty phase => PrettyStyle -> List (ClassicalMatchArm phase) -> List String
   showClassicalMatchArmList style []        = []
   showClassicalMatchArmList style (a :: as) =
     showClassicalMatchArm style a :: showClassicalMatchArmList style as
 
-  showQuantumMatchArmNode : PrettyStyle -> QuantumMatchArmNode SurfaceAstPhase -> String
+  showQuantumMatchArmNode : PhasePretty phase => PrettyStyle -> QuantumMatchArmNode phase -> String
   showQuantumMatchArmNode style (MkQuantumMatchArmNode pat armBody) =
     showQuantumMatchPattern pat ++ " => " ++ showExprAt style 0 armBody
 
   public export
-  showQuantumMatchArm : PrettyStyle -> SurfaceQuantumMatchArm -> String
+  showQuantumMatchArm : PhasePretty phase => PrettyStyle -> QuantumMatchArm phase -> String
   showQuantumMatchArm style (MkAstNode _ _ arm) = showQuantumMatchArmNode style arm
 
   showQuantumMatchArmList :
-       PrettyStyle -> List SurfaceQuantumMatchArm -> List String
+       PhasePretty phase => PrettyStyle -> List (QuantumMatchArm phase) -> List String
   showQuantumMatchArmList style []        = []
   showQuantumMatchArmList style (a :: as) =
     showQuantumMatchArm style a :: showQuantumMatchArmList style as
@@ -654,7 +714,7 @@ mutual
   -- ctrl and adjoint
   ------------------------------------------------------------------
 
-  showControlExpr : PrettyStyle -> ControlExpressionNode SurfaceAstPhase -> String
+  showControlExpr : PhasePretty phase => PrettyStyle -> ControlExpressionNode phase -> String
   showControlExpr style c =
     case c of
       ControlledCallable controls onBasis callable =>
@@ -664,7 +724,7 @@ mutual
         "ctrl(" ++ joinWith ", " (showExprList1 style controls) ++ ")" ++
           showOnBasis onBasis ++ " " ++ showBlock style body
 
-  showAdjointExpr : PrettyStyle -> AdjointExpressionNode SurfaceAstPhase -> String
+  showAdjointExpr : PhasePretty phase => PrettyStyle -> AdjointExpressionNode phase -> String
   showAdjointExpr style a =
     case a of
       AdjointOfCallable callable => "adjoint(" ++ showExprAt style 0 callable ++ ")"
@@ -674,7 +734,7 @@ mutual
   -- Blocks and statements
   ------------------------------------------------------------------
 
-  showBlockNode : PrettyStyle -> BlockNode SurfaceAstPhase -> String
+  showBlockNode : PhasePretty phase => PrettyStyle -> BlockNode phase -> String
   showBlockNode style (MkBlockNode innerDocs stmts finalE) =
     let docsStrs  = map showDocComment innerDocs
         stmtsStrs = showStatementList style stmts
@@ -687,10 +747,10 @@ mutual
          _  => braces (joinWith " " parts)
 
   public export
-  showBlock : PrettyStyle -> SurfaceBlock -> String
+  showBlock : PhasePretty phase => PrettyStyle -> Block phase -> String
   showBlock style (MkAstNode _ _ blk) = showBlockNode style blk
 
-  showStatementNode : PrettyStyle -> StatementNode SurfaceAstPhase -> String
+  showStatementNode : PhasePretty phase => PrettyStyle -> StatementNode phase -> String
   showStatementNode style stmt =
     case stmt of
       StatementLet letBinding         => showLetBindingNode style letBinding ++ ";"
@@ -699,14 +759,14 @@ mutual
       StatementExpression e           => showExprAt style 0 e
 
   public export
-  showStatement : PrettyStyle -> SurfaceStatement -> String
+  showStatement : PhasePretty phase => PrettyStyle -> Statement phase -> String
   showStatement style (MkAstNode _ _ stmt) = showStatementNode style stmt
 
-  showStatementList : PrettyStyle -> List SurfaceStatement -> List String
+  showStatementList : PhasePretty phase => PrettyStyle -> List (Statement phase) -> List String
   showStatementList style []        = []
   showStatementList style (s :: ss) = showStatement style s :: showStatementList style ss
 
-  showLetBindingNode : PrettyStyle -> LetBindingNode SurfaceAstPhase -> String
+  showLetBindingNode : PhasePretty phase => PrettyStyle -> LetBindingNode phase -> String
   showLetBindingNode style (MkLetBindingNode quals pat tyAnn maybeInit) =
     "let " ++ showQualifiersPrefix quals ++ showPattern pat ++
       (case tyAnn of
@@ -718,14 +778,14 @@ mutual
            " " ++ show marker ++ " " ++ showExprAt style 0 val)
 
   public export
-  showLetBinding : PrettyStyle -> SurfaceLetBinding -> String
+  showLetBinding : PhasePretty phase => PrettyStyle -> LetBinding phase -> String
   showLetBinding style (MkAstNode _ _ lb) = showLetBindingNode style lb
 
-  showAssignmentNode : PrettyStyle -> AssignmentNode SurfaceAstPhase -> String
+  showAssignmentNode : PhasePretty phase => PrettyStyle -> AssignmentNode phase -> String
   showAssignmentNode style (MkAssignmentNode (MkAstNode _ _ target) (MkAstNode _ _ op) val) =
     showAssignmentTargetNode style target ++ " " ++ show op ++ " " ++ showExprAt style 0 val
 
-  showAssignmentTargetNode : PrettyStyle -> AssignmentTargetNode SurfaceAstPhase -> String
+  showAssignmentTargetNode : PhasePretty phase => PrettyStyle -> AssignmentTargetNode phase -> String
   showAssignmentTargetNode style target =
     case target of
       AssignTargetName nm      => showName nm
@@ -735,14 +795,14 @@ mutual
       AssignTargetTupleIndex obj ix => showExprAt style precPostfix obj ++ "." ++ ix
 
   public export
-  showAssignmentTarget : PrettyStyle -> SurfaceAssignmentTarget -> String
+  showAssignmentTarget : PhasePretty phase => PrettyStyle -> AssignmentTarget phase -> String
   showAssignmentTarget style (MkAstNode _ _ t) = showAssignmentTargetNode style t
 
   ------------------------------------------------------------------
   -- Contracts: requires/ensures clauses and their predicates
   ------------------------------------------------------------------
 
-  showContractPredicateNode : PrettyStyle -> ContractPredicateNode SurfaceAstPhase SurfaceExpr -> String
+  showContractPredicateNode : PhasePretty phase => PrettyStyle -> ContractPredicateNode phase (Expr phase) -> String
   showContractPredicateNode style predicate =
     case predicate of
       ContractClean e        => "clean(" ++ showExprAt style 0 e ++ ")"
@@ -759,20 +819,20 @@ mutual
           joinWith ", " (map showSignedPauliTerm (forget terms)) ++ "])"
 
   public export
-  showContractPredicate : PrettyStyle -> SurfaceContractPredicate -> String
+  showContractPredicate : PhasePretty phase => PrettyStyle -> ContractPredicate phase (Expr phase) -> String
   showContractPredicate style (MkAstNode _ _ p) = showContractPredicateNode style p
 
-  showContractClauseNode : PrettyStyle -> ContractClauseNode SurfaceAstPhase SurfaceExpr -> String
+  showContractClauseNode : PhasePretty phase => PrettyStyle -> ContractClauseNode phase (Expr phase) -> String
   showContractClauseNode style clause =
     case clause of
       RequiresClause p => "requires " ++ showContractPredicate style p
       EnsuresClause p  => "ensures " ++ showContractPredicate style p
 
   public export
-  showContractClause : PrettyStyle -> SurfaceContractClause -> String
+  showContractClause : PhasePretty phase => PrettyStyle -> ContractClause phase (Expr phase) -> String
   showContractClause style (MkAstNode _ _ c) = showContractClauseNode style c
 
-  showContractClauseList : PrettyStyle -> List SurfaceContractClause -> List String
+  showContractClauseList : PhasePretty phase => PrettyStyle -> List (ContractClause phase (Expr phase)) -> List String
   showContractClauseList style []        = []
   showContractClauseList style (c :: cs) =
     showContractClause style c :: showContractClauseList style cs
@@ -781,7 +841,7 @@ mutual
   -- Function declarations and parameters
   ------------------------------------------------------------------
 
-  showFunctionParameterNode : PrettyStyle -> FunctionParameterNode SurfaceAstPhase -> String
+  showFunctionParameterNode : PhasePretty phase => PrettyStyle -> FunctionParameterNode phase -> String
   showFunctionParameterNode style p =
     case p of
       NormalParameter docs mutability nm ty =>
@@ -795,15 +855,15 @@ mutual
              MutableBorrow => "&mut self")
 
   public export
-  showFunctionParameter : PrettyStyle -> SurfaceFunctionParameter -> String
+  showFunctionParameter : PhasePretty phase => PrettyStyle -> FunctionParameter phase -> String
   showFunctionParameter style (MkAstNode _ _ p) = showFunctionParameterNode style p
 
-  showFunctionParameterList : PrettyStyle -> List SurfaceFunctionParameter -> List String
+  showFunctionParameterList : PhasePretty phase => PrettyStyle -> List (FunctionParameter phase) -> List String
   showFunctionParameterList style []        = []
   showFunctionParameterList style (p :: ps) =
     showFunctionParameter style p :: showFunctionParameterList style ps
 
-  showFunctionDeclarationNode : PrettyStyle -> FunctionDeclarationNode SurfaceAstPhase -> String
+  showFunctionDeclarationNode : PhasePretty phase => PrettyStyle -> FunctionDeclarationNode phase -> String
   showFunctionDeclarationNode style
     (MkFunctionDeclarationNode docs attrs vis constness effect nm params retTy supports contracts body) =
     let visibilityStr = case vis of
@@ -829,11 +889,11 @@ mutual
        contractsStr ++ " " ++ showBlock style body
 
   public export
-  showFunctionDeclaration : PrettyStyle -> SurfaceFunctionDeclaration -> String
+  showFunctionDeclaration : PhasePretty phase => PrettyStyle -> FunctionDeclaration phase -> String
   showFunctionDeclaration style (MkAstNode _ _ fd) = showFunctionDeclarationNode style fd
 
   showImplFunctionList :
-       PrettyStyle -> List SurfaceFunctionDeclaration -> List String
+       PhasePretty phase => PrettyStyle -> List (FunctionDeclaration phase) -> List String
   showImplFunctionList style []        = []
   showImplFunctionList style (MkAstNode _ _ fd :: rest) =
     showFunctionDeclarationNode style fd :: showImplFunctionList style rest
@@ -842,102 +902,102 @@ mutual
   -- struct / enum / qenum declarations
   ------------------------------------------------------------------
 
-  showStructField : PrettyStyle -> AstNode SurfaceAstPhase (StructFieldNode SurfaceAstPhase) -> String
+  showStructField : PhasePretty phase => PrettyStyle -> AstNode phase (StructFieldNode phase) -> String
   showStructField style (MkAstNode _ _ (MkStructFieldNode docs nm ty)) =
     docsPrefix docs ++ showName nm ++ ": " ++ showTy style ty
 
   showStructFieldList :
-       PrettyStyle -> List (AstNode SurfaceAstPhase (StructFieldNode SurfaceAstPhase)) -> List String
+       PhasePretty phase => PrettyStyle -> List (AstNode phase (StructFieldNode phase)) -> List String
   showStructFieldList style []        = []
   showStructFieldList style (f :: fs) = showStructField style f :: showStructFieldList style fs
 
-  showStructDeclarationNode : PrettyStyle -> StructDeclarationNode SurfaceAstPhase -> String
+  showStructDeclarationNode : PhasePretty phase => PrettyStyle -> StructDeclarationNode phase -> String
   showStructDeclarationNode style (MkStructDeclarationNode docs attrs vis nm fields) =
     docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "struct " ++ showName nm ++
       " " ++ braces (joinWith ", " (showStructFieldList style fields))
 
   public export
-  showStructDeclaration : PrettyStyle -> SurfaceStructDeclaration -> String
+  showStructDeclaration : PhasePretty phase => PrettyStyle -> StructDeclaration phase -> String
   showStructDeclaration style (MkAstNode _ _ sd) = showStructDeclarationNode style sd
 
-  showEnumVariantBody : PrettyStyle -> EnumVariantBody SurfaceAstPhase -> String
+  showEnumVariantBody : PhasePretty phase => PrettyStyle -> EnumVariantBody phase -> String
   showEnumVariantBody style body =
     case body of
       VariantUnit          => ""
       VariantTuple tys      => parens (joinWith ", " (showTyList1 style tys))
       VariantStruct fields   => " " ++ braces (joinWith ", " (showStructFieldList style fields))
 
-  showEnumVariant : PrettyStyle -> AstNode SurfaceAstPhase (EnumVariantNode SurfaceAstPhase) -> String
+  showEnumVariant : PhasePretty phase => PrettyStyle -> AstNode phase (EnumVariantNode phase) -> String
   showEnumVariant style (MkAstNode _ _ (MkEnumVariantNode docs nm body)) =
     docsPrefix docs ++ showName nm ++ showEnumVariantBody style body
 
   showEnumVariantList :
-       PrettyStyle -> List (AstNode SurfaceAstPhase (EnumVariantNode SurfaceAstPhase)) -> List String
+       PhasePretty phase => PrettyStyle -> List (AstNode phase (EnumVariantNode phase)) -> List String
   showEnumVariantList style []        = []
   showEnumVariantList style (v :: vs) = showEnumVariant style v :: showEnumVariantList style vs
 
-  showEnumDeclarationNode : PrettyStyle -> EnumDeclarationNode SurfaceAstPhase -> String
+  showEnumDeclarationNode : PhasePretty phase => PrettyStyle -> EnumDeclarationNode phase -> String
   showEnumDeclarationNode style (MkEnumDeclarationNode docs attrs vis nm variants) =
     docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "enum " ++ showName nm ++
       " " ++ braces (joinWith ", " (showEnumVariantList style variants))
 
   public export
-  showEnumDeclaration : PrettyStyle -> SurfaceEnumDeclaration -> String
+  showEnumDeclaration : PhasePretty phase => PrettyStyle -> EnumDeclaration phase -> String
   showEnumDeclaration style (MkAstNode _ _ ed) = showEnumDeclarationNode style ed
 
-  showQEnumVariant : PrettyStyle -> AstNode SurfaceAstPhase (QEnumVariantNode SurfaceAstPhase) -> String
+  showQEnumVariant : PhasePretty phase => PrettyStyle -> AstNode phase (QEnumVariantNode phase) -> String
   showQEnumVariant style (MkAstNode _ _ (MkQEnumVariantNode docs nm payloadTys)) =
     docsPrefix docs ++ showName nm ++ parens (joinWith ", " (showTyList1 style payloadTys))
 
   showQEnumVariantList :
-       PrettyStyle -> List (AstNode SurfaceAstPhase (QEnumVariantNode SurfaceAstPhase)) -> List String
+       PhasePretty phase => PrettyStyle -> List (AstNode phase (QEnumVariantNode phase)) -> List String
   showQEnumVariantList style []        = []
   showQEnumVariantList style (v :: vs) = showQEnumVariant style v :: showQEnumVariantList style vs
 
-  showQEnumDeclarationNode : PrettyStyle -> QEnumDeclarationNode SurfaceAstPhase -> String
+  showQEnumDeclarationNode : PhasePretty phase => PrettyStyle -> QEnumDeclarationNode phase -> String
   showQEnumDeclarationNode style (MkQEnumDeclarationNode docs attrs vis nm variants) =
     docsPrefix docs ++ attrsPrefix attrs ++ optionalVisPrefix vis ++ "qenum " ++ showName nm ++
       " " ++ braces (joinWith ", " (showQEnumVariantList style variants))
 
   public export
-  showQEnumDeclaration : PrettyStyle -> SurfaceQEnumDeclaration -> String
+  showQEnumDeclaration : PhasePretty phase => PrettyStyle -> QEnumDeclaration phase -> String
   showQEnumDeclaration style (MkAstNode _ _ qd) = showQEnumDeclarationNode style qd
 
   ------------------------------------------------------------------
   -- impl / const / use / mod declarations
   ------------------------------------------------------------------
 
-  showImplDeclarationNode : PrettyStyle -> ImplDeclarationNode SurfaceAstPhase -> String
+  showImplDeclarationNode : PhasePretty phase => PrettyStyle -> ImplDeclarationNode phase -> String
   showImplDeclarationNode style (MkImplDeclarationNode docs target fns) =
     docsPrefix docs ++ "impl " ++ showPath target ++ " " ++
       braces (joinWith " " (showImplFunctionList style fns))
 
   public export
-  showImplDeclaration : PrettyStyle -> SurfaceImplDeclaration -> String
+  showImplDeclaration : PhasePretty phase => PrettyStyle -> ImplDeclaration phase -> String
   showImplDeclaration style (MkAstNode _ _ impl) = showImplDeclarationNode style impl
 
-  showConstDeclarationNode : PrettyStyle -> ConstDeclarationNode SurfaceAstPhase -> String
+  showConstDeclarationNode : PhasePretty phase => PrettyStyle -> ConstDeclarationNode phase -> String
   showConstDeclarationNode style (MkConstDeclarationNode docs vis nm ty val) =
     docsPrefix docs ++ optionalVisPrefix vis ++ "const " ++ showName nm ++ ": " ++ showTy style ty ++
       " = " ++ showExprAt style 0 val ++ ";"
 
   public export
-  showConstDeclaration : PrettyStyle -> SurfaceConstDeclaration -> String
+  showConstDeclaration : PhasePretty phase => PrettyStyle -> ConstDeclaration phase -> String
   showConstDeclaration style (MkAstNode _ _ cd) = showConstDeclarationNode style cd
 
-  showUseDeclarationNode : PrettyStyle -> UseDeclarationNode SurfaceAstPhase -> String
+  showUseDeclarationNode : PhasePretty phase => PrettyStyle -> UseDeclarationNode phase -> String
   showUseDeclarationNode style (MkUseDeclarationNode docs vis path) =
     docsPrefix docs ++ optionalVisPrefix vis ++ "use " ++ showPath path ++ ";"
 
   public export
-  showUseDeclaration : PrettyStyle -> SurfaceUseDeclaration -> String
+  showUseDeclaration : PhasePretty phase => PrettyStyle -> UseDeclaration phase -> String
   showUseDeclaration style (MkAstNode _ _ ud) = showUseDeclarationNode style ud
 
-  showModuleDeclarationNode : PrettyStyle -> ModuleDeclarationNode SurfaceAstPhase -> String
+  showModuleDeclarationNode : PhasePretty phase => PrettyStyle -> ModuleDeclarationNode phase -> String
   showModuleDeclarationNode style (MkModuleDeclarationNode docs vis nm body) =
     docsPrefix docs ++ optionalVisPrefix vis ++ "mod " ++ showName nm ++ showModuleBody style body
 
-  showModuleBody : PrettyStyle -> ModuleBody SurfaceAstPhase -> String
+  showModuleBody : PhasePretty phase => PrettyStyle -> ModuleBody phase -> String
   showModuleBody style body =
     case body of
       ModuleInline innerDocs items =>
@@ -945,14 +1005,14 @@ mutual
       ModuleExternal => ";"
 
   public export
-  showModuleDeclaration : PrettyStyle -> SurfaceModuleDeclaration -> String
+  showModuleDeclaration : PhasePretty phase => PrettyStyle -> ModuleDeclaration phase -> String
   showModuleDeclaration style (MkAstNode _ _ md) = showModuleDeclarationNode style md
 
   ------------------------------------------------------------------
   -- Items and the source file
   ------------------------------------------------------------------
 
-  showItemNode : PrettyStyle -> ItemNode SurfaceAstPhase -> String
+  showItemNode : PhasePretty phase => PrettyStyle -> ItemNode phase -> String
   showItemNode style item =
     case item of
       ItemFunction fd => showFunctionDeclarationNode style fd
@@ -965,19 +1025,19 @@ mutual
       ItemModule md   => showModuleDeclarationNode style md
 
   public export
-  showItem : PrettyStyle -> SurfaceItem -> String
+  showItem : PhasePretty phase => PrettyStyle -> Item phase -> String
   showItem style (MkAstNode _ _ item) = showItemNode style item
 
-  showItemList : PrettyStyle -> List SurfaceItem -> List String
+  showItemList : PhasePretty phase => PrettyStyle -> List (Item phase) -> List String
   showItemList style []        = []
   showItemList style (i :: is) = showItem style i :: showItemList style is
 
-  showSourceFileNode : PrettyStyle -> SourceFileNode SurfaceAstPhase -> String
+  showSourceFileNode : PhasePretty phase => PrettyStyle -> SourceFileNode phase -> String
   showSourceFileNode style (MkSourceFileNode innerDocs items) =
     joinWith "\n" (map showDocComment innerDocs ++ showItemList style items)
 
   public export
-  showSourceFile : PrettyStyle -> SurfaceSourceFile -> String
+  showSourceFile : PhasePretty phase => PrettyStyle -> SourceFile phase -> String
   showSourceFile style (MkAstNode _ _ sf) = showSourceFileNode style sf
 
 --------------------------------------------------------------------------------
@@ -985,135 +1045,135 @@ mutual
 --------------------------------------------------------------------------------
 
 public export
-showSourceFileLax : SurfaceSourceFile -> String
+showSourceFileLax : PhasePretty phase => SourceFile phase -> String
 showSourceFileLax = showSourceFile PrettyLax
 
 public export
-showSourceFileStrict : SurfaceSourceFile -> String
+showSourceFileStrict : PhasePretty phase => SourceFile phase -> String
 showSourceFileStrict = showSourceFile PrettyStrict
 
 public export
-showExprLax : SurfaceExpr -> String
+showExprLax : PhasePretty phase => Expr phase -> String
 showExprLax = showExprAt PrettyLax 0
 
 public export
-showExprStrict : SurfaceExpr -> String
+showExprStrict : PhasePretty phase => Expr phase -> String
 showExprStrict = showExprAt PrettyStrict 0
 
 public export
-showBlockLax : SurfaceBlock -> String
+showBlockLax : PhasePretty phase => Block phase -> String
 showBlockLax = showBlock PrettyLax
 
 public export
-showBlockStrict : SurfaceBlock -> String
+showBlockStrict : PhasePretty phase => Block phase -> String
 showBlockStrict = showBlock PrettyStrict
 
 public export
-showItemLax : SurfaceItem -> String
+showItemLax : PhasePretty phase => Item phase -> String
 showItemLax = showItem PrettyLax
 
 public export
-showItemStrict : SurfaceItem -> String
+showItemStrict : PhasePretty phase => Item phase -> String
 showItemStrict = showItem PrettyStrict
 
 public export
-showTyLax : SurfaceTy -> String
+showTyLax : PhasePretty phase => Ty phase (Expr phase) -> String
 showTyLax = showTy PrettyLax
 
 public export
-showTyStrict : SurfaceTy -> String
+showTyStrict : PhasePretty phase => Ty phase (Expr phase) -> String
 showTyStrict = showTy PrettyStrict
 
 --------------------------------------------------------------------------------
 -- Show instances on the raw (un-located) payload types. Frontend.ASTPhases
--- implements `Show a => Show (SurfaceAstNode a)` (and the CanonicalAstPhase/ResolvedAstPhase/
--- TypedAstPhase equivalents) generically by printing `value` alone and skipping
--- AstInfo/NodeOrigin -- so giving each raw type below a Show instance is
--- enough for every SurfaceXxx alias in Frontend.Syntax.AST to be `Show`
--- automatically, always in PrettyLax style. Call showXxxStrict (or
--- showXxxWith-style functions above) directly when strict style is wanted.
+-- implements `Show a => Show (AstNode phase a)` generically by printing
+-- `value` alone and skipping AstInfo/metadata -- so giving each raw type
+-- below a Show instance is enough for every located alias in
+-- Frontend.Syntax.AST to be `Show` automatically, always in PrettyLax style
+-- and for any phase with a `PhasePretty` instance. Call showXxxStrict (or the
+-- showXxx style-taking functions above) directly when strict style is wanted.
 --------------------------------------------------------------------------------
 
 public export
-implementation Show (ExpressionNode SurfaceAstPhase) where
+PhasePretty phase => Show (ExpressionNode phase) where
   show = showExpressionNode PrettyLax
 
 public export
-implementation Show (BlockNode SurfaceAstPhase) where
+PhasePretty phase => Show (BlockNode phase) where
   show = showBlockNode PrettyLax
 
 public export
-implementation Show (StatementNode SurfaceAstPhase) where
+PhasePretty phase => Show (StatementNode phase) where
   show = showStatementNode PrettyLax
 
 public export
-implementation Show (ItemNode SurfaceAstPhase) where
+PhasePretty phase => Show (ItemNode phase) where
   show = showItemNode PrettyLax
 
 public export
-implementation Show (TyNode SurfaceAstPhase SurfaceExpr) where
+PhasePretty phase => Show (TyNode phase (Expr phase)) where
   show = showTyNode PrettyLax
 
 public export
-implementation Show (ContractClauseNode SurfaceAstPhase SurfaceExpr) where
+PhasePretty phase => Show (ContractClauseNode phase (Expr phase)) where
   show = showContractClauseNode PrettyLax
 
 public export
-implementation Show (ContractPredicateNode SurfaceAstPhase SurfaceExpr) where
+PhasePretty phase => Show (ContractPredicateNode phase (Expr phase)) where
   show = showContractPredicateNode PrettyLax
 
 public export
-implementation Show (SourceFileNode SurfaceAstPhase) where
+PhasePretty phase => Show (SourceFileNode phase) where
   show = showSourceFileNode PrettyLax
 
 public export
-implementation Show (FunctionDeclarationNode SurfaceAstPhase) where
+PhasePretty phase => Show (FunctionDeclarationNode phase) where
   show = showFunctionDeclarationNode PrettyLax
 
 public export
-implementation Show (FunctionParameterNode SurfaceAstPhase) where
+PhasePretty phase => Show (FunctionParameterNode phase) where
   show = showFunctionParameterNode PrettyLax
 
 public export
-implementation Show (StructDeclarationNode SurfaceAstPhase) where
+PhasePretty phase => Show (StructDeclarationNode phase) where
   show = showStructDeclarationNode PrettyLax
 
 public export
-implementation Show (EnumDeclarationNode SurfaceAstPhase) where
+PhasePretty phase => Show (EnumDeclarationNode phase) where
   show = showEnumDeclarationNode PrettyLax
 
 public export
-implementation Show (QEnumDeclarationNode SurfaceAstPhase) where
+PhasePretty phase => Show (QEnumDeclarationNode phase) where
   show = showQEnumDeclarationNode PrettyLax
 
 public export
-implementation Show (ImplDeclarationNode SurfaceAstPhase) where
+PhasePretty phase => Show (ImplDeclarationNode phase) where
   show = showImplDeclarationNode PrettyLax
 
 public export
-implementation Show (ConstDeclarationNode SurfaceAstPhase) where
+PhasePretty phase => Show (ConstDeclarationNode phase) where
   show = showConstDeclarationNode PrettyLax
 
 public export
-implementation Show (UseDeclarationNode SurfaceAstPhase) where
+PhasePretty phase => Show (UseDeclarationNode phase) where
   show = showUseDeclarationNode PrettyLax
 
 public export
-implementation Show (ModuleDeclarationNode SurfaceAstPhase) where
+PhasePretty phase => Show (ModuleDeclarationNode phase) where
   show = showModuleDeclarationNode PrettyLax
 
 public export
-implementation Show (LetBindingNode SurfaceAstPhase) where
+PhasePretty phase => Show (LetBindingNode phase) where
   show = showLetBindingNode PrettyLax
 
 public export
-implementation Show (AssignmentTargetNode SurfaceAstPhase) where
+PhasePretty phase => Show (AssignmentTargetNode phase) where
   show = showAssignmentTargetNode PrettyLax
 
 public export
-implementation Show (ClassicalMatchArmNode SurfaceAstPhase) where
+PhasePretty phase => Show (ClassicalMatchArmNode phase) where
   show = showClassicalMatchArmNode PrettyLax
 
 public export
-implementation Show (QuantumMatchArmNode SurfaceAstPhase) where
+PhasePretty phase => Show (QuantumMatchArmNode phase) where
   show = showQuantumMatchArmNode PrettyLax
