@@ -138,20 +138,34 @@ mutual
             (map desugarAstNode blockInnerDocs) 
             (map (\statement => desugarStatement (assert_smaller expression statement)) blockStatements) 
             (map desugarNestedExpression finalExpression)
-      desugarIfNode : ClassicalIfNode SurfaceAstPhase -> ClassicalIfNode CanonicalAstPhase
-      desugarIfNode ifNode@(MkClassicalIfNode ifCondition ifThenBlock ifElseBranch) =
-        MkClassicalIfNode
-          (desugarNestedExpression ifCondition)
-          (desugarBlockExpression ifThenBlock)
-          (map desugarElseNode ifElseBranch)
-        where
-          desugarElseNode : ClassicalElseNode SurfaceAstPhase -> ClassicalElseNode CanonicalAstPhase
-          desugarElseNode (ElseBlock elseBlock) =
-            ElseBlock (desugarBlockExpression elseBlock)
-          desugarElseNode (ElseChainedIf (MkAstNode chainedIfInfo _ chainedIfNode)) =
-            ElseChainedIf $
-              canonicalAstNode chainedIfInfo Written $
-                desugarIfNode (assert_smaller ifNode chainedIfNode)
+      mutual
+        desugarIfNode : ClassicalIfNode SurfaceAstPhase -> ClassicalIfNode CanonicalAstPhase
+        desugarIfNode ifNode@(MkClassicalIfNode ifCondition ifThenBlock Nothing) = 
+          MkClassicalIfNode
+            (desugarNestedExpression ifCondition)
+            (desugarBlockExpression ifThenBlock)
+            (Just $ ElseBlock (canonicalAstNode ifCondition.astInfo DefaultElseBlock unitBlockNode))
+          where
+            unitBlockNode : BlockNode CanonicalAstPhase
+            unitBlockNode =
+              MkBlockNode [] [] $
+                Just (canonicalAstNode 
+                  ifCondition.astInfo 
+                  DesugaredExpression
+                  (ExprLiteral $ canonicalAstNode ifCondition.astInfo DefaultUnitValue LiteralUnit)
+                )
+        desugarIfNode ifNode@(MkClassicalIfNode ifCondition ifThenBlock ifElseBranch) =
+          MkClassicalIfNode
+            (desugarNestedExpression ifCondition)
+            (desugarBlockExpression ifThenBlock)
+            (map (desugarElseNode ifNode) ifElseBranch)
+        desugarElseNode : ClassicalIfNode SurfaceAstPhase -> ClassicalElseNode SurfaceAstPhase -> ClassicalElseNode CanonicalAstPhase
+        desugarElseNode _ (ElseBlock elseBlock) =
+          ElseBlock (desugarBlockExpression elseBlock)
+        desugarElseNode ifNode (ElseChainedIf (MkAstNode chainedIfInfo _ chainedIfNode)) =
+          ElseChainedIf $
+            canonicalAstNode chainedIfInfo Written $
+              desugarIfNode (assert_smaller ifNode chainedIfNode)
       desugarControlExpressionNode : ControlExpressionNode SurfaceAstPhase -> ControlExpressionNode CanonicalAstPhase
       desugarControlExpressionNode (ControlledCallable controlQubits onBasisRaw controlledCallable) =
         ControlledCallable

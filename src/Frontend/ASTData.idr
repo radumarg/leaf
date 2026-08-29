@@ -44,6 +44,9 @@ record ScopeId where
 public export
 data NodeProvenance
   = Written
+  | DefaultElseBlock
+  | DefaultUnitValue
+  | DesugaredExpression
   | InferredAttributeArgument
   | InferredDefaultFunctionEffect
   | InferredDefaultFunctionReturnType
@@ -52,11 +55,14 @@ data NodeProvenance
 
 public export
 Show NodeProvenance where
-  show Written = "written code"
+  show DefaultElseBlock = "default empty else block"
+  show DefaultUnitValue = "default unit value"
+  show DesugaredExpression = "desugared expression"
   show InferredAttributeArgument = "inferred attribute argument"
   show InferredDefaultFunctionEffect = "inferred default function effect"
   show InferredDefaultFunctionReturnType = "inferred default function return type"
   show InferredDefaultQubitQualifier = "inferred default qubit qualifier"
+  show Written = "user written code"
 
 --------------------------------------------------------------------------------
 -- Common AST information
