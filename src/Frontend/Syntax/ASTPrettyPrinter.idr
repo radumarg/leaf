@@ -39,18 +39,19 @@ import Frontend.Syntax.Type
 -- credits CONSTRUCTOR PATTERNS ONLY. Every record is destructured via its
 -- constructor in the pattern head (never through a `.field` projection) when
 -- the projected value feeds a recursive call, and every List/List1 that is
--- walked with a function from the same mutual block is walked with a
+-- walked with a function from the same recursive group is walked with a
 -- hand-written recursive helper (never `map`/`concatMap`/`maybe`, which hide
 -- the recursive call behind a higher-order function the checker cannot see
 -- through). Expressions and types are mutually recursive (casts embed types,
--- array-size positions embed expressions), and blocks/statements/items hang
--- off of them, so the whole family below is ONE mutual block -- exactly the
--- shape validated by Frontend.PostParseValidation, and, like that module, it needs no
--- fuel parameter to be accepted as total.
+-- array-size positions embed expressions), while blocks and statements close
+-- that recursive core. Downstream declaration printers are kept in smaller
+-- groups; modules and items form a second genuine recursive group. One
+-- `assert_total` boundary breaks the otherwise global cycle while keeping
+-- every printer entry point total.
 --
 -- Patterns (Frontend.Syntax.Pattern) do not depend on expressions, so they
 -- get their own, smaller mutual block, checked independently and reused
--- freely (via ordinary, non-recursive calls) from the big block below.
+-- freely (via ordinary, non-recursive calls) from the core block below.
 --
 -- PHASE POLYMORPHISM: every renderer is generic over `phase : AstPhase`
 -- ("trees that grow": surface -> canonical -> resolved -> typed). The ONLY
@@ -452,13 +453,20 @@ isOperatorClassExpr e =
     _                => False
 
 --------------------------------------------------------------------------------
--- The big mutual block: types, expressions (and every node family they
--- embed), blocks, statements, contracts, items, and declarations. All of
--- these are one strongly-connected recursive family: casts embed types,
--- array sizes embed expressions, function declarations embed blocks and
--- contract clauses, impl/mod declarations embed items which embed function
--- declarations again.
+-- The recursive core: casts embed types, array-size positions embed
+-- expressions, and expressions embed blocks whose statements contain more
+-- expressions and types.
 --------------------------------------------------------------------------------
+
+-- Declaring the two cross-group entry points up front lets Idris elaborate
+-- the type, expression, and block renderers separately. Their definitions
+-- remain total while the internal covering boundary keeps the global cycle
+-- out of a single size-change analysis.
+public export
+showExprAt : PhasePretty phase => PrettyStyle -> Nat -> Expr phase -> String
+
+public export
+showBlock : PhasePretty phase => PrettyStyle -> Block phase -> String
 
 mutual
 
@@ -510,25 +518,58 @@ mutual
   showFunctionTypeParameterList style (MkAstNode _ _ (MkFunctionTypeParameterNode nm ty) :: rest) =
     (showName nm ++ ": " ++ showTy style ty) :: showFunctionTypeParameterList style rest
 
-  ------------------------------------------------------------------
-  -- Expressions
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Expressions
+--------------------------------------------------------------------------------
+
+showExprList : PhasePretty phase => PrettyStyle -> List (Expr phase) -> List String
+showExprList1 : PhasePretty phase => PrettyStyle -> List1 (Expr phase) -> List String
+wrapExpr : PhasePretty phase => PrettyStyle -> Nat -> ExpressionNode phase -> String
+showExpressionNodeBody :
+     PhasePretty phase
+  => PrettyStyle
+  -> ExpressionNode phase
+  -> String
+showFieldInitList :
+     PhasePretty phase
+  => PrettyStyle
+  -> List (AstNode phase (FieldInitializerNode phase))
+  -> List String
+showClassicalIfNode : PhasePretty phase => PrettyStyle -> ClassicalIfNode phase -> String
+showQuantumBranch : PhasePretty phase => PrettyStyle -> QuantumBranchNode phase -> String
+showClassicalMatchArmList :
+     PhasePretty phase
+  => PrettyStyle
+  -> List (ClassicalMatchArm phase)
+  -> List String
+showQuantumMatchArmList :
+     PhasePretty phase
+  => PrettyStyle
+  -> List (QuantumMatchArm phase)
+  -> List String
+showControlExpr : PhasePretty phase => PrettyStyle -> ControlExpressionNode phase -> String
+showAdjointExpr : PhasePretty phase => PrettyStyle -> AdjointExpressionNode phase -> String
+
+mutual
 
   -- The single entry point that decides whether a child expression needs to
   -- be parenthesized, given the precedence its syntactic position requires.
   -- Exported for callers that need explicit control over the ambient
   -- precedence; `showExpr` below is the common case (no ambient requirement).
-  public export
-  showExprAt : PhasePretty phase => PrettyStyle -> Nat -> Expr phase -> String
   showExprAt style outerReq (MkAstNode _ _ value) = wrapExpr style outerReq value
 
   public export
   showExpr : PhasePretty phase => PrettyStyle -> Expr phase -> String
   showExpr style = showExprAt style 0
 
-  wrapExpr : PhasePretty phase => PrettyStyle -> Nat -> ExpressionNode phase -> String
+--------------------------------------------------------------------------------
+-- Expression precedence wrapper
+--------------------------------------------------------------------------------
+
+mutual
+
   wrapExpr style outerReq value =
-    let body     = showExpressionNodeBody style value
+    let body     = assert_total $ showExpressionNodeBody style value
         own      = exprOwnPrecedence value
         mustWrap = (own < outerReq) || (isPrettyStrict style && isOperatorClassExpr value)
     in if mustWrap then parens body else body
@@ -538,7 +579,12 @@ mutual
   showExpressionNode : PhasePretty phase => PrettyStyle -> ExpressionNode phase -> String
   showExpressionNode style value = wrapExpr style 0 value
 
-  showExpressionNodeBody : PhasePretty phase => PrettyStyle -> ExpressionNode phase -> String
+--------------------------------------------------------------------------------
+-- Expression bodies
+--------------------------------------------------------------------------------
+
+mutual
+
   showExpressionNodeBody style value =
     case value of
       ExprLiteral lit => showLiteral lit
@@ -637,11 +683,15 @@ mutual
       ExprCtrl c    => showControlExpr style c
       ExprAdjoint a => showAdjointExpr style a
 
-  showExprList : PhasePretty phase => PrettyStyle -> List (Expr phase) -> List String
+--------------------------------------------------------------------------------
+-- Expression collections and struct fields
+--------------------------------------------------------------------------------
+
+mutual
+
   showExprList style []        = []
   showExprList style (e :: es) = showExprAt style 0 e :: showExprList style es
 
-  showExprList1 : PhasePretty phase => PrettyStyle -> List1 (Expr phase) -> List String
   showExprList1 style (e ::: es) = showExprAt style 0 e :: showExprList style es
 
   showFieldInit : PhasePretty phase => PrettyStyle -> AstNode phase (FieldInitializerNode phase) -> String
@@ -650,16 +700,15 @@ mutual
       FieldInitShorthand nm => showName nm
       FieldInitExplicit nm e => showName nm ++ ": " ++ showExprAt style 0 e
 
-  showFieldInitList :
-       PhasePretty phase => PrettyStyle -> List (AstNode phase (FieldInitializerNode phase)) -> List String
   showFieldInitList style []        = []
   showFieldInitList style (f :: fs) = showFieldInit style f :: showFieldInitList style fs
 
-  ------------------------------------------------------------------
-  -- if / qif / sif
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- if / qif / sif
+--------------------------------------------------------------------------------
 
-  showClassicalIfNode : PhasePretty phase => PrettyStyle -> ClassicalIfNode phase -> String
+mutual
+
   showClassicalIfNode style (MkClassicalIfNode cond thenBlk elseBranch) =
     "if " ++ showExprAt style 0 cond ++ " " ++ showBlock style thenBlk ++
       (case elseBranch of
@@ -668,15 +717,16 @@ mutual
          Just (ElseChainedIf (MkAstNode _ _ chained)) =>
            " else " ++ showClassicalIfNode style chained)
 
-  showQuantumBranch : PhasePretty phase => PrettyStyle -> QuantumBranchNode phase -> String
   showQuantumBranch style branch =
     case branch of
       QuantumBranchBlock b      => showBlock style b
       QuantumBranchExpression e => showExprAt style 0 e
 
-  ------------------------------------------------------------------
-  -- match / qmatch / smatch
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- match / qmatch / smatch
+--------------------------------------------------------------------------------
+
+mutual
 
   showClassicalMatchArmNode : PhasePretty phase => PrettyStyle -> ClassicalMatchArmNode phase -> String
   showClassicalMatchArmNode style (MkClassicalMatchArmNode pat guard armBody) =
@@ -690,8 +740,6 @@ mutual
   showClassicalMatchArm : PhasePretty phase => PrettyStyle -> ClassicalMatchArm phase -> String
   showClassicalMatchArm style (MkAstNode _ _ arm) = showClassicalMatchArmNode style arm
 
-  showClassicalMatchArmList :
-       PhasePretty phase => PrettyStyle -> List (ClassicalMatchArm phase) -> List String
   showClassicalMatchArmList style []        = []
   showClassicalMatchArmList style (a :: as) =
     showClassicalMatchArm style a :: showClassicalMatchArmList style as
@@ -704,17 +752,16 @@ mutual
   showQuantumMatchArm : PhasePretty phase => PrettyStyle -> QuantumMatchArm phase -> String
   showQuantumMatchArm style (MkAstNode _ _ arm) = showQuantumMatchArmNode style arm
 
-  showQuantumMatchArmList :
-       PhasePretty phase => PrettyStyle -> List (QuantumMatchArm phase) -> List String
   showQuantumMatchArmList style []        = []
   showQuantumMatchArmList style (a :: as) =
     showQuantumMatchArm style a :: showQuantumMatchArmList style as
 
-  ------------------------------------------------------------------
-  -- ctrl and adjoint
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- ctrl and adjoint
+--------------------------------------------------------------------------------
 
-  showControlExpr : PhasePretty phase => PrettyStyle -> ControlExpressionNode phase -> String
+mutual
+
   showControlExpr style c =
     case c of
       ControlledCallable controls onBasis callable =>
@@ -724,15 +771,16 @@ mutual
         "ctrl(" ++ joinWith ", " (showExprList1 style controls) ++ ")" ++
           showOnBasis onBasis ++ " " ++ showBlock style body
 
-  showAdjointExpr : PhasePretty phase => PrettyStyle -> AdjointExpressionNode phase -> String
   showAdjointExpr style a =
     case a of
       AdjointOfCallable callable => "adjoint(" ++ showExprAt style 0 callable ++ ")"
       AdjointBlock body          => "adjoint " ++ showBlock style body
 
-  ------------------------------------------------------------------
-  -- Blocks and statements
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Blocks and statements
+--------------------------------------------------------------------------------
+
+mutual
 
   showBlockNode : PhasePretty phase => PrettyStyle -> BlockNode phase -> String
   showBlockNode style (MkBlockNode innerDocs stmts finalE) =
@@ -746,8 +794,6 @@ mutual
          [] => "{ }"
          _  => braces (joinWith " " parts)
 
-  public export
-  showBlock : PhasePretty phase => PrettyStyle -> Block phase -> String
   showBlock style (MkAstNode _ _ blk) = showBlockNode style blk
 
   showStatementNode : PhasePretty phase => PrettyStyle -> StatementNode phase -> String
@@ -798,9 +844,11 @@ mutual
   showAssignmentTarget : PhasePretty phase => PrettyStyle -> AssignmentTarget phase -> String
   showAssignmentTarget style (MkAstNode _ _ t) = showAssignmentTargetNode style t
 
-  ------------------------------------------------------------------
-  -- Contracts: requires/ensures clauses and their predicates
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Contracts: requires/ensures clauses and their predicates
+--------------------------------------------------------------------------------
+
+mutual
 
   showContractPredicateNode : PhasePretty phase => PrettyStyle -> ContractPredicateNode phase (Expr phase) -> String
   showContractPredicateNode style predicate =
@@ -837,9 +885,11 @@ mutual
   showContractClauseList style (c :: cs) =
     showContractClause style c :: showContractClauseList style cs
 
-  ------------------------------------------------------------------
-  -- Function declarations and parameters
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Function declarations and parameters
+--------------------------------------------------------------------------------
+
+mutual
 
   showFunctionParameterNode : PhasePretty phase => PrettyStyle -> FunctionParameterNode phase -> String
   showFunctionParameterNode style p =
@@ -898,9 +948,11 @@ mutual
   showImplFunctionList style (MkAstNode _ _ fd :: rest) =
     showFunctionDeclarationNode style fd :: showImplFunctionList style rest
 
-  ------------------------------------------------------------------
-  -- struct / enum / qenum declarations
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- struct / enum / qenum declarations
+--------------------------------------------------------------------------------
+
+mutual
 
   showStructField : PhasePretty phase => PrettyStyle -> AstNode phase (StructFieldNode phase) -> String
   showStructField style (MkAstNode _ _ (MkStructFieldNode docs nm ty)) =
@@ -963,9 +1015,11 @@ mutual
   showQEnumDeclaration : PhasePretty phase => PrettyStyle -> QEnumDeclaration phase -> String
   showQEnumDeclaration style (MkAstNode _ _ qd) = showQEnumDeclarationNode style qd
 
-  ------------------------------------------------------------------
-  -- impl / const / use / mod declarations
-  ------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- impl / const / use declarations
+--------------------------------------------------------------------------------
+
+mutual
 
   showImplDeclarationNode : PhasePretty phase => PrettyStyle -> ImplDeclarationNode phase -> String
   showImplDeclarationNode style (MkImplDeclarationNode docs target fns) =
@@ -993,6 +1047,12 @@ mutual
   showUseDeclaration : PhasePretty phase => PrettyStyle -> UseDeclaration phase -> String
   showUseDeclaration style (MkAstNode _ _ ud) = showUseDeclarationNode style ud
 
+--------------------------------------------------------------------------------
+-- Modules and items are mutually recursive through inline module bodies.
+--------------------------------------------------------------------------------
+
+mutual
+
   showModuleDeclarationNode : PhasePretty phase => PrettyStyle -> ModuleDeclarationNode phase -> String
   showModuleDeclarationNode style (MkModuleDeclarationNode docs vis nm body) =
     docsPrefix docs ++ optionalVisPrefix vis ++ "mod " ++ showName nm ++ showModuleBody style body
@@ -1009,7 +1069,7 @@ mutual
   showModuleDeclaration style (MkAstNode _ _ md) = showModuleDeclarationNode style md
 
   ------------------------------------------------------------------
-  -- Items and the source file
+  -- Items
   ------------------------------------------------------------------
 
   showItemNode : PhasePretty phase => PrettyStyle -> ItemNode phase -> String
@@ -1031,6 +1091,12 @@ mutual
   showItemList : PhasePretty phase => PrettyStyle -> List (Item phase) -> List String
   showItemList style []        = []
   showItemList style (i :: is) = showItem style i :: showItemList style is
+
+--------------------------------------------------------------------------------
+-- Source files
+--------------------------------------------------------------------------------
+
+mutual
 
   showSourceFileNode : PhasePretty phase => PrettyStyle -> SourceFileNode phase -> String
   showSourceFileNode style (MkSourceFileNode innerDocs items) =
